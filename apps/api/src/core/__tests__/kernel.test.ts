@@ -145,6 +145,11 @@ describe('config', () => {
     );
   });
 
+  it('normalises NODE_ENV pasted with quotes, spaces or capitals', () => {
+    expect(loadEnv({ ...base, NODE_ENV: ' "Production" ' }).NODE_ENV).toBe('production');
+    expect(() => loadEnv({ ...base, NODE_ENV: 'prod' })).toThrow(/NODE_ENV/);
+  });
+
   it('requires an API key when AI is enabled', () => {
     expect(() => loadEnv({ ...base, AI_ENABLED: 'true' })).toThrow(/ANTHROPIC_API_KEY/);
   });

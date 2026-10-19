@@ -11,7 +11,17 @@ const optionalString = z
   .transform((v) => (v === undefined || v.trim() === '' ? undefined : v));
 
 export const EnvSchema = z.object({
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  // Tolerates values pasted into hosting dashboards with quotes, spaces or capitals.
+  NODE_ENV: z.preprocess(
+    (v) =>
+      typeof v === 'string'
+        ? v
+            .trim()
+            .replace(/^["']|["']$/g, '')
+            .toLowerCase()
+        : v,
+    z.enum(['development', 'test', 'production']).default('development'),
+  ),
   PORT: z.coerce.number().int().positive().default(4000),
   // Proxies in front of the API in production (host load balancer + web-host rewrite proxy),
   // so req.ip is the real client for per-IP rate limits. See docs/DEPLOYMENT.md.
