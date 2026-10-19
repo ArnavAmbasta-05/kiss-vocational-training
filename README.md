@@ -9,6 +9,7 @@ Passport. Software Engineering project by
 - **Architecture:** [docs/TAD.md](docs/TAD.md)
 - **Sprint log:** [docs/PROGRESS.md](docs/PROGRESS.md)
 - **API contract:** [apps/api/openapi.yaml](apps/api/openapi.yaml)
+- **Deployment:** [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) (Vercel + Render + Neon)
 
 ## Stack
 
@@ -50,6 +51,9 @@ The seed also creates an open training cycle, three courses (Electrician — Dom
 Installer, Tailoring & Garment Making) with open enrollment windows, and every Setting at its
 default. It is idempotent: run it again any time. `pnpm db:seed --large` adds students up to
 500 for the allocation timing test. Database tables are described in [docs/ER.md](docs/ER.md).
+
+Sign in at http://localhost:5173 with any seed account: each role lands on its own dashboard
+(`/student`, `/trainer`, `/admin`).
 
 ## Scripts
 

@@ -15,6 +15,73 @@ Read this at the start of every session and update it at the end of every sprint
 
 ---
 
+## Sprint 2 — Auth, RBAC, ownership, role dashboards (built; deploy pending accounts, 2026-10-19)
+
+### Built
+- **`core/auth`** (kernel shared by all modules): bcrypt hashing (cost from `BCRYPT_ROUNDS`,
+  default 12) with a timing-equalising check for unknown emails; HS256 access JWT, 15 min,
+  issuer/audience checked; refresh tokens = 32 random bytes, stored as a keyed SHA-256 hash,
+  7 days; `authenticate` reloads the user on every request (deactivation and role changes apply
+  immediately); `authorize(...roles)`; `requireOwnership(resolver)` with reusable resolvers
+  `isOwnStudent`, `canAccessBatch` (BR-05), `canAccessSession`, `canAccessAssessment` and
+  predicates `trainerOwnsBatch`, `trainerTeachesStudent`. Unknown id → 404, someone else's → 403.
+- **`modules/auth`**: `POST /auth/login` (generic "Invalid email or password" for wrong
+  password, unknown email and inactive account; lockout after `auth.maxFailedLogins` for
+  `auth.lockMinutes` → 429 `ACCOUNT_LOCKED`, audited as `USER_LOCKED`; per-IP limit on failed
+  attempts), `POST /auth/refresh` (rotation on every use, token families, reuse → whole family
+  revoked, race-safe conditional claim), `POST /auth/logout`, `GET /auth/me`. Cookie
+  `vtmp_rt`: httpOnly, SameSite=Strict, path `/api/v1/auth`, Secure in production.
+- **`modules/users`**: `PATCH /users/me` (name, locale, phone; strict schema blocks role/email
+  changes), `POST /users/me/password` (verifies current, signs out other sessions, keeps this
+  one), admin `GET/POST/PATCH /admin/users` (search, role/status filters, pagination;
+  role-specific create with 409 `EMAIL_TAKEN`/`ROLL_NO_TAKEN`/`EMPLOYEE_CODE_TAKEN`;
+  deactivate revokes sessions, reactivate clears lock, no self-deactivation). All writes audited,
+  never with password material. Shared Zod schemas in `packages/shared/src/schemas/auth.ts`.
+- **Web**: `AuthProvider` (access token in memory only, session restored from the cookie on
+  load, proactive refresh 1 min before expiry, single-flight refresh, 401 → refresh → retry
+  once), `RequireAuth` (→ `/login?next=`), `RequireRole` (→ 403 page), login page (RHF + shared
+  Zod), role layouts with per-role sidebar, account menu, dashboards with quick links, "coming
+  soon" pages for later features, profile + change-password pages, admin Users page (search,
+  filters, pagination, create modal with role-specific fields, deactivate confirm). Language
+  switch is saved to `User.locale` and applied at login.
+- **Deploy prep**: `render.yaml` (API, migrations in build), `apps/web/vercel.json` (SPA +
+  `/api/*` rewrite to Render so the Strict cookie stays same-site), `TRUST_PROXY_HOPS`,
+  `SEED_PASSWORD` override for a public demo, `docs/DEPLOYMENT.md`, CI job that smoke-tests the
+  live site once `PUBLIC_BASE_URL` is configured.
+
+### NFR-04: three clicks from the dashboard
+Every navigation entry is one click from each dashboard (sidebar + quick links). Profile and
+password are two clicks via the account menu.
+
+### Deviations
+- Auth middleware and ownership resolvers live in `core/auth` (kernel), not `modules/auth`,
+  so every module can use them without importing another module.
+- Per-IP limit counts **failed** logins only (`skipSuccessfulRequests`); refresh is not
+  IP-limited beyond the global limiter. Counting every `/auth` call would lock out normal users,
+  since each page load refreshes. New setting `auth.ipRateLimitPer15Min` (50).
+- Locked accounts get 429 `ACCOUNT_LOCKED` rather than the generic 401, so a real user knows to
+  wait. This reveals that a locked email exists; accepted for usability.
+- CI does not push deploys itself. Render and Vercel deploy `main` through their GitHub
+  integrations, and CI smoke-tests the live site afterwards.
+- Refresh in two tabs at the exact same moment can trigger reuse detection and sign both out
+  (documented trade-off of strict rotation).
+
+### Known gaps / follow-ups
+- **First deploy not done**: needs the team's Neon, Render and Vercel accounts
+  (docs/DEPLOYMENT.md). The sprint's DoD ("all three roles log in on the deployed URL") is
+  pending that.
+- Password reset by email is out of scope (BRD); admins can create accounts and reactivate.
+
+### Definition of done
+- [x] lint · format · typecheck · build · i18n keys in sync
+- [x] 93 API tests (21 unit + 72 integration) incl. TC-01, TC-02, TC-15, lockout, rotation,
+      reuse detection, expired/forged tokens, trainer → other batch 403
+- [x] 17 Playwright tests (desktop + mobile), axe clean on login, dashboards and Users
+- [x] openapi.yaml: /auth/*, /users/me*, /admin/users*
+- [ ] Deployed URL with all three roles: waiting on hosting accounts
+
+---
+
 ## Sprint 1 — Full schema, seed, settings and audit kernel (done, 2026-10-19)
 
 ### Built

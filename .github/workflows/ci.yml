@@ -83,6 +83,19 @@ jobs:
     name: Build + browser smoke test
     needs: [unit, integration]
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: vtmp
+          POSTGRES_PASSWORD: vtmp
+          POSTGRES_DB: vtmp_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U vtmp -d vtmp_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -92,6 +105,11 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+      # The browser tests drive the real API: give it config, a schema and seed accounts.
+      # Job-level env (DATABASE_URL etc.) takes precedence over the copied .env values.
+      - run: cp .env.example .env
+      - run: pnpm --filter @vtmp/api db:deploy
+      - run: pnpm db:seed
       - run: pnpm --filter @vtmp/web exec playwright install --with-deps chromium
       - run: pnpm test:e2e
       - uses: actions/upload-artifact@v4
@@ -101,22 +119,32 @@ jobs:
           path: apps/web/playwright-report
           retention-days: 7
 
-  # Enabled in Sprint 2 once hosting is chosen (TAD §11, §14).
-  # deploy:
-  #   name: Deploy (main only)
-  #   needs: build
-  #   if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-  #   runs-on: ubuntu-latest
-  #   environment: production
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: pnpm/action-setup@v4
-  #     - uses: actions/setup-node@v4
-  #       with: { node-version: 20, cache: pnpm }
-  #     - run: pnpm install --frozen-lockfile
-  #     - run: pnpm --filter @vtmp/api db:deploy
-  #       env: { DATABASE_URL: '${{ secrets.DATABASE_URL }}' }
-  #     - run: curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
-  #     - run: npx vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }}
-  #     - run: pnpm test:e2e
-  #       env: { E2E_BASE_URL: '${{ vars.PUBLIC_BASE_URL }}' }
+  # Render and Vercel deploy main themselves (their GitHub integrations; migrations run in the
+  # Render build). This job then checks the live site. It runs only once the repository
+  # variable PUBLIC_BASE_URL is set (docs/DEPLOYMENT.md), and E2E_PASSWORD is a secret.
+  deployed-smoke:
+    name: Smoke test the deployed site
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && vars.PUBLIC_BASE_URL != ''
+    runs-on: ubuntu-latest
+    env:
+      E2E_BASE_URL: ${{ vars.PUBLIC_BASE_URL }}
+      E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Wait for the API (free tier may be asleep)
+        run: |
+          for i in $(seq 1 30); do
+            curl -fsS "$E2E_BASE_URL/api/v1/health" && exit 0
+            sleep 10
+          done
+          exit 1
+      - run: pnpm --filter @vtmp/web exec playwright install --with-deps chromium
+      # Read-only checks only: never create data on the live demo.
+      - run: pnpm --filter @vtmp/web exec playwright test smoke.spec.ts --project=desktop
