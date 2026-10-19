@@ -11,6 +11,16 @@ Passport. Software Engineering project by
 - **API contract:** [apps/api/openapi.yaml](apps/api/openapi.yaml)
 - **Deployment:** [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) (Vercel for web + API, Neon for PostgreSQL)
 
+## Live demo
+
+**https://kiss-vtmp.vercel.app**
+
+Sign in with the [seeded emails](#seed-accounts-local-development-only) (admin, trainers,
+students). The live demo password is shared privately by the team: ask
+[@ShashankSinghhh](https://github.com/ShashankSinghhh) or
+[@ArnavAmbasta-05](https://github.com/ArnavAmbasta-05). `Password@123` works only on a local
+setup.
+
 ## Stack
 
 | Part                       | Technology                                                          |
@@ -34,12 +44,14 @@ pnpm db:seed                # load demo data
 pnpm dev                    # API on :4000, web on :5173
 ```
 
-Open http://localhost:5173. The home page shows whether the API and database are reachable;
+Open http://localhost:5173 and sign in with a seed account below. The admin dashboard shows
+whether the API and database are reachable, and
 `GET http://localhost:4000/api/v1/health` should return `{"status":"ok","db":"ok",…}`.
 
 ### Seed accounts (local development only)
 
-Every seeded account uses the password `Password@123`.
+On a local setup every seeded account uses the password `Password@123`. The live demo uses the
+same emails with a different, private password.
 
 | Role    | Email                                                                          |
 | ------- | ------------------------------------------------------------------------------ |
