@@ -1,14 +1,14 @@
 import { PrismaClient } from '@prisma/client';
+import { runSeed } from '../apps/api/src/seed';
 
-/**
- * Idempotent seed. Sprint 0 only verifies the connection; Sprint 1 adds the admin,
- * trainers, students, courses, cycle and every Setting.
- */
+/** Usage: `pnpm db:seed` (60 students) or `pnpm db:seed --large` (500 students). */
 async function main() {
   const prisma = new PrismaClient();
+  const large = process.argv.includes('--large');
+  const started = Date.now();
   try {
-    const users = await prisma.user.count();
-    console.log(`Seed: database reachable (${users} users). Nothing to seed yet.`);
+    await runSeed(prisma, { large, log: (m) => console.log(`  ${m}`) });
+    console.log(`Seed complete in ${((Date.now() - started) / 1000).toFixed(1)} s`);
   } finally {
     await prisma.$disconnect();
   }
