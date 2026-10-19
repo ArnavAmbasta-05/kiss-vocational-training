@@ -1,0 +1,8 @@
+~$*
+.DS_Store
+Thumbs.db
+node_modules/
+.env
+
+# Local build guidance for Claude (not part of the project)
+guidance/
