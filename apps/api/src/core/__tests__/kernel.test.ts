@@ -175,4 +175,12 @@ describe('CORS allow-list', () => {
     expect(bad.status).toBe(403);
     expect(bad.headers['access-control-allow-origin']).toBeUndefined();
   });
+
+  it('always allows same-origin requests, e.g. a Vercel per-deployment URL', async () => {
+    const res = await request(createApp())
+      .get('/api/v1/nope')
+      .set('Host', 'kiss-vtmp-abc123.vercel.app')
+      .set('Origin', 'https://kiss-vtmp-abc123.vercel.app');
+    expect(res.status).toBe(404);
+  });
 });
