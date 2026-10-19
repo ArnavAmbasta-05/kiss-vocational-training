@@ -2,6 +2,7 @@ export { authenticate, authorize } from './authenticate';
 export {
   canAccessAssessment,
   canAccessBatch,
+  canAccessEnrollment,
   canAccessSession,
   isOwnStudent,
   owns,

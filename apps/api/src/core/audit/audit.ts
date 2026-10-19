@@ -78,4 +78,21 @@ export async function withAudit<T>(
   );
 }
 
-export const audit = { record };
+export interface AuditRow {
+  action: string;
+  userId: string | null;
+  oldValue: unknown;
+  newValue: unknown;
+  createdAt: Date;
+}
+
+/** Read-only: the audit trail of one record, oldest first (status timelines, F19 viewer). */
+async function history(entity: string, entityId: string): Promise<AuditRow[]> {
+  return prisma().auditLog.findMany({
+    where: { entity, entityId },
+    orderBy: { createdAt: 'asc' },
+    select: { action: true, userId: true, oldValue: true, newValue: true, createdAt: true },
+  });
+}
+
+export const audit = { record, history };

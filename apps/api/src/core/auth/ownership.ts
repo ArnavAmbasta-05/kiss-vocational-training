@@ -93,6 +93,19 @@ export async function canAccessAssessment(
   return assessment ? canAccessBatch(user, assessment.batchId) : 'not_found';
 }
 
+/** An application: its own student, that student's trainers, and admins. */
+export async function canAccessEnrollment(
+  user: CurrentUser,
+  enrollmentId: string,
+): Promise<OwnershipResult> {
+  if (!isUuid(enrollmentId)) return 'not_found';
+  const enrollment = await prisma().enrollment.findUnique({
+    where: { id: enrollmentId },
+    select: { studentId: true },
+  });
+  return enrollment ? isOwnStudent(user, enrollment.studentId) : 'not_found';
+}
+
 // ─── Middleware ────────────────────────────────────────────────────────────────
 
 export type Resolver = (req: Request) => Promise<OwnershipResult>;
@@ -136,4 +149,8 @@ export const owns = {
     (name = 'assessmentId'): Resolver =>
     (req) =>
       canAccessAssessment(req.user!, param(req, name)),
+  enrollment:
+    (name = 'enrollmentId'): Resolver =>
+    (req) =>
+      canAccessEnrollment(req.user!, param(req, name)),
 };

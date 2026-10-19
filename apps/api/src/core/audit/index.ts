@@ -1,1 +1,8 @@
-export { audit, withAudit, type Actor, type AuditEntry, type AuditFn } from './audit';
+export {
+  audit,
+  withAudit,
+  type Actor,
+  type AuditEntry,
+  type AuditFn,
+  type AuditRow,
+} from './audit';
