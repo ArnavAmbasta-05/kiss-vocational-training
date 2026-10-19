@@ -128,6 +128,81 @@ export async function setWindow(
   await db.courseOffering.update({ where: { courseId_cycleId: { courseId, cycleId } }, data });
 }
 
+/**
+ * Approved applications created straight in the database (fast, for allocation tests).
+ * prefs[i] are course ids in rank order; submission times are 1 minute apart in array order.
+ */
+export async function createApprovedApplicants(
+  db: PrismaClient,
+  cycleId: string,
+  prefs: string[][],
+  opts: { cgpa?: (i: number) => number; status?: 'APPROVED' | 'WAITLISTED' } = {},
+) {
+  const s = uid();
+  const base = Date.now() - prefs.length * 60_000;
+  const emails = prefs.map((_, i) => `app-${s}-${i}@test.local`);
+  await db.user.createMany({
+    data: emails.map((email, i) => ({
+      email,
+      fullName: `Applicant ${s} ${i}`,
+      role: Role.STUDENT,
+      passwordHash: 'not-a-real-hash',
+    })),
+  });
+  const users = await db.user.findMany({
+    where: { email: { in: emails } },
+    select: { id: true, email: true },
+  });
+  const userId = new Map(users.map((u) => [u.email, u.id]));
+  await db.student.createMany({
+    data: emails.map((email, i) => ({
+      userId: userId.get(email)!,
+      rollNo: `A-${s}-${i}`,
+      cgpa: new Prisma.Decimal((opts.cgpa?.(i) ?? 7).toFixed(2)),
+    })),
+  });
+  const students = await db.student.findMany({
+    where: { rollNo: { startsWith: `A-${s}-` } },
+    select: { id: true, rollNo: true, userId: true },
+  });
+  const byRoll = new Map(students.map((st) => [st.rollNo, st]));
+  const enrollmentIds: string[] = [];
+  for (const [i, courseIds] of prefs.entries()) {
+    const st = byRoll.get(`A-${s}-${i}`)!;
+    const e = await db.enrollment.create({
+      data: {
+        studentId: st.id,
+        cycleId,
+        status: opts.status ?? 'APPROVED',
+        submittedAt: new Date(base + i * 60_000),
+        preferences: { create: courseIds.map((courseId, r) => ({ courseId, rank: r + 1 })) },
+      },
+    });
+    enrollmentIds.push(e.id);
+  }
+  return enrollmentIds;
+}
+
+export async function createBatch(
+  db: PrismaClient,
+  cycleId: string,
+  courseId: string,
+  capacity: number,
+  name = `B-${uid()}`,
+) {
+  return db.batch.create({
+    data: {
+      cycleId,
+      courseId,
+      name,
+      capacity,
+      startDate: new Date('2027-01-04'),
+      endDate: new Date('2027-03-31'),
+      venue: 'Workshop A',
+    },
+  });
+}
+
 export async function createCycleCourseBatch(db: PrismaClient) {
   const s = uid();
   const cycle = await db.trainingCycle.create({

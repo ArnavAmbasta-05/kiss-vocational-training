@@ -10,8 +10,8 @@ import type {
   Paginated,
   ReviewAction,
 } from '@vtmp/shared';
-import { audit, withAudit, type Actor } from '../../core/audit';
-import { prisma } from '../../core/db';
+import { audit, withAudit, type Actor, type AuditFn } from '../../core/audit';
+import { prisma, type Tx } from '../../core/db';
 import { AppError } from '../../core/errors';
 import { paginated, parsePagination } from '../../core/http';
 import { settings } from '../../core/settings';
@@ -430,16 +430,204 @@ export async function review(
 // ─── For the catalogue (courses module asks; it never reads these tables) ──────
 
 /**
- * Indicative seats taken per course in a cycle: approved-or-later applications counted against
- * their first preference. Sprint 4 replaces the allocated part with real batch membership.
+ * Approved applications not yet placed in a batch, counted against their first preference.
+ * The catalogue adds real batch membership (batches module) to get seats taken.
  */
-export async function seatsTaken(cycleId: string): Promise<Map<string, number>> {
+export async function approvedFirstChoice(cycleId: string): Promise<Map<string, number>> {
   const rows = await prisma().$queryRaw<{ course_id: string; taken: number }[]>`
     SELECT p.course_id, COUNT(*)::int AS taken
     FROM enrollments e
     JOIN enrollment_preferences p ON p.enrollment_id = e.id AND p.rank = 1
-    WHERE e.cycle_id = ${cycleId}::uuid
-      AND e.status::text IN ('APPROVED', 'ALLOCATED', 'ACTIVE', 'COMPLETED', 'CERTIFIED')
+    WHERE e.cycle_id = ${cycleId}::uuid AND e.status = 'APPROVED'
     GROUP BY p.course_id`;
   return new Map(rows.map((r) => [r.course_id, Number(r.taken)]));
+}
+
+// ─── For the batches module (allocation, placement) ─────────────────────────────
+// Batches never reads enrollment tables; it asks through these functions (CLAUDE.md rule 5).
+
+export interface AllocationApplicant {
+  enrollmentId: string;
+  studentId: string;
+  userId: string;
+  rollNo: string;
+  fullName: string;
+  cgpa: number;
+  submittedAt: Date;
+  updatedAt: Date;
+  /** Course ids in rank order. */
+  preferences: string[];
+}
+
+/** APPROVED applications in a cycle: the input to the allocation engine. */
+export async function approvedApplicants(cycleId: string): Promise<AllocationApplicant[]> {
+  const rows = await prisma().enrollment.findMany({
+    where: { cycleId, status: 'APPROVED' },
+    select: {
+      id: true,
+      submittedAt: true,
+      updatedAt: true,
+      preferences: { orderBy: { rank: 'asc' }, select: { courseId: true } },
+      student: {
+        select: {
+          id: true,
+          rollNo: true,
+          cgpa: true,
+          user: { select: { id: true, fullName: true } },
+        },
+      },
+    },
+  });
+  return rows.map((r) => ({
+    enrollmentId: r.id,
+    studentId: r.student.id,
+    userId: r.student.user.id,
+    rollNo: r.student.rollNo,
+    fullName: r.student.user.fullName,
+    cgpa: Number(r.student.cgpa),
+    submittedAt: r.submittedAt,
+    updatedAt: r.updatedAt,
+    preferences: r.preferences.map((p) => p.courseId),
+  }));
+}
+
+export interface PlacementFacts {
+  id: string;
+  studentId: string;
+  userId: string;
+  cycleId: string;
+  cycleName: string;
+  status: EnrollmentStatus;
+  preferences: string[];
+  rollNo: string;
+  fullName: string;
+}
+
+export async function placementFacts(enrollmentId: string): Promise<PlacementFacts | null> {
+  const e = await prisma().enrollment.findUnique({
+    where: { id: enrollmentId },
+    select: {
+      id: true,
+      studentId: true,
+      cycleId: true,
+      status: true,
+      cycle: { select: { name: true } },
+      preferences: { orderBy: { rank: 'asc' }, select: { courseId: true } },
+      student: { select: { rollNo: true, user: { select: { id: true, fullName: true } } } },
+    },
+  });
+  if (!e) return null;
+  return {
+    id: e.id,
+    studentId: e.studentId,
+    userId: e.student.user.id,
+    cycleId: e.cycleId,
+    cycleName: e.cycle.name,
+    status: e.status,
+    preferences: e.preferences.map((p) => p.courseId),
+    rollNo: e.student.rollNo,
+    fullName: e.student.user.fullName,
+  };
+}
+
+/** APPROVED or WAITLISTED applicants in a cycle who listed this course (for manual placement). */
+export async function candidatesForCourse(cycleId: string, courseId: string) {
+  const rows = await prisma().enrollment.findMany({
+    where: {
+      cycleId,
+      status: { in: ['APPROVED', 'WAITLISTED'] },
+      preferences: { some: { courseId } },
+    },
+    orderBy: { submittedAt: 'asc' },
+    select: {
+      id: true,
+      status: true,
+      submittedAt: true,
+      preferences: { select: { courseId: true, rank: true } },
+      student: { select: { rollNo: true, cgpa: true, user: { select: { fullName: true } } } },
+    },
+  });
+  return rows.map((r) => ({
+    enrollmentId: r.id,
+    status: r.status,
+    rollNo: r.student.rollNo,
+    fullName: r.student.user.fullName,
+    cgpa: r.student.cgpa.toFixed(2),
+    submittedAt: r.submittedAt.toISOString(),
+    rankForCourse: r.preferences.find((p) => p.courseId === courseId)?.rank ?? 0,
+  }));
+}
+
+export interface StatusChange {
+  enrollmentId: string;
+  from: readonly EnrollmentStatus[];
+  to: EnrollmentStatus;
+  reason?: string | null;
+  /** Optional notification for the student. */
+  notify?: {
+    userId: string;
+    type: NotificationType;
+    title: string;
+    body: string;
+    data: Record<string, string>;
+  };
+}
+
+/**
+ * Status changes requested by the batches module, inside ITS transaction (set-based, so a
+ * 500-student allocation stays a handful of queries). Every row must currently be in one of its
+ * expected `from` statuses; rows are updated with that status as a condition, so a concurrent
+ * change makes the counts disagree and aborts the whole transaction (409 CONCURRENT_UPDATE).
+ * Audit rows and notifications are written in the same transaction.
+ */
+export async function changeStatuses(tx: Tx, log: AuditFn, changes: StatusChange[]): Promise<void> {
+  if (changes.length === 0) return;
+  const before = new Map(
+    (
+      await tx.enrollment.findMany({
+        where: { id: { in: changes.map((c) => c.enrollmentId) } },
+        select: { id: true, status: true, reason: true },
+      })
+    ).map((e) => [e.id, e]),
+  );
+  const stale = () =>
+    AppError.conflict(
+      'CONCURRENT_UPDATE',
+      'An application changed while this action was running. Refresh and try again.',
+    );
+
+  // Group identical updates: same current status, target status and reason.
+  const groups = new Map<string, { from: EnrollmentStatus; c: StatusChange; ids: string[] }>();
+  for (const c of changes) {
+    const b = before.get(c.enrollmentId);
+    if (!b || !c.from.includes(b.status)) throw stale();
+    const key = `${b.status}|${c.to}|${c.reason === undefined ? ' ' : (c.reason ?? '')}`;
+    const g = groups.get(key) ?? { from: b.status, c, ids: [] };
+    g.ids.push(c.enrollmentId);
+    groups.set(key, g);
+  }
+  for (const g of groups.values()) {
+    const updated = await tx.enrollment.updateMany({
+      where: { id: { in: g.ids }, status: g.from },
+      data: { status: g.c.to, ...(g.c.reason !== undefined ? { reason: g.c.reason } : {}) },
+    });
+    if (updated.count !== g.ids.length) throw stale();
+  }
+
+  await log.many(
+    changes.map((c) => {
+      const b = before.get(c.enrollmentId)!;
+      return {
+        action: `ENROLLMENT_${c.to}`,
+        entity: 'Enrollment',
+        entityId: c.enrollmentId,
+        oldValue: { status: b.status, reason: b.reason },
+        newValue: { status: c.to, reason: c.reason === undefined ? b.reason : c.reason },
+      };
+    }),
+  );
+  await notify(
+    tx,
+    changes.flatMap((c) => (c.notify ? [{ ...c.notify, link: '/student' }] : [])),
+  );
 }

@@ -18,6 +18,8 @@ tags:
   - name: enrollments
   - name: admin-enrollments
   - name: notifications
+  - name: batches
+  - name: admin-batches
 paths:
   /health:
     get:
@@ -516,6 +518,272 @@ paths:
       responses:
         { '204': { description: Read }, '404': { $ref: '#/components/responses/NotFound' } }
 
+  # ─── Sprint 4: batches, allocation, trainers, sessions ─────────────────────────
+  /batches/mine:
+    get:
+      tags: [batches]
+      summary: My batches (student - the batch I am in; trainer - assigned batches, BR-05)
+      responses: { '200': { description: Batch summaries with trainers and next session } }
+  /batches/{batchId}:
+    get:
+      tags: [batches]
+      summary: Batch detail (admin any; trainer own; student own - roster hidden, NFR-08)
+      parameters:
+        - { name: batchId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Batch with roster (null for students) }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /batches/{batchId}/sessions:
+    get:
+      tags: [batches]
+      summary: Sessions of a batch, oldest first
+      parameters:
+        - { name: batchId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Sessions
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Session' } }
+
+  /admin/trainers:
+    get:
+      tags: [admin-batches]
+      summary: Active trainers for assignment (Admin)
+      responses: { '200': { description: Trainers } }
+  /admin/batches:
+    get:
+      tags: [admin-batches]
+      summary: Batches (Admin, BRQ-4.1)
+      parameters:
+        - { name: cycleId, in: query, schema: { type: string, format: uuid } }
+        - { name: courseId, in: query, schema: { type: string, format: uuid } }
+        - { name: status, in: query, schema: { type: string, enum: [PLANNED, ACTIVE, CLOSED] } }
+      responses: { '200': { description: Batch summaries } }
+    post:
+      tags: [admin-batches]
+      summary: Create a batch (Admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [courseId, cycleId, name, capacity, startDate, endDate, venue]
+              properties:
+                courseId: { type: string, format: uuid }
+                cycleId: { type: string, format: uuid }
+                name: { type: string }
+                capacity: { type: integer, minimum: 1 }
+                startDate: { type: string, format: date }
+                endDate: { type: string, format: date }
+                venue: { type: string }
+      responses:
+        '201': { description: Created (PLANNED) }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /admin/batches/{batchId}:
+    patch:
+      tags: [admin-batches]
+      summary: Update name, capacity (never below enrolled), dates or venue (Admin)
+      parameters:
+        - { name: batchId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        { '200': { description: Updated }, '409': { $ref: '#/components/responses/Conflict' } }
+  /admin/batches/{batchId}/activate:
+    post:
+      tags: [admin-batches]
+      summary: PLANNED → ACTIVE (needs a trainer); students' applications ALLOCATED → ACTIVE
+      parameters:
+        - { name: batchId, in: path, required: true, schema: { type: string, format: uuid } }
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        { '200': { description: Active }, '409': { $ref: '#/components/responses/Conflict' } }
+  /admin/batches/{batchId}/candidates:
+    get:
+      tags: [admin-batches]
+      summary: APPROVED or WAITLISTED applicants in the cycle who chose this course
+      parameters:
+        - { name: batchId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { '200': { description: Candidates } }
+  /admin/batches/{batchId}/students:
+    post:
+      tags: [admin-batches]
+      summary: Place an approved or waitlisted applicant (capacity checked, BR-03)
+      parameters:
+        - { name: batchId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              {
+                type: object,
+                required: [enrollmentId],
+                properties: { enrollmentId: { type: string, format: uuid } },
+              }
+      responses:
+        '200': { description: Batch detail }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /admin/batches/{batchId}/students/{enrollmentId}:
+    delete:
+      tags: [admin-batches]
+      summary: Remove a student from a planned batch (application back to APPROVED)
+      parameters:
+        - { name: batchId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: enrollmentId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        { '200': { description: Batch detail }, '409': { $ref: '#/components/responses/Conflict' } }
+  /admin/batches/{batchId}/students/{enrollmentId}/move:
+    post:
+      tags: [admin-batches]
+      summary: Move a student to another batch (same cycle, a chosen course, capacity checked)
+      parameters:
+        - { name: batchId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: enrollmentId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              {
+                type: object,
+                required: [toBatchId],
+                properties: { toBatchId: { type: string, format: uuid } },
+              }
+      responses:
+        {
+          '200': { description: Target batch detail },
+          '409': { $ref: '#/components/responses/Conflict' },
+        }
+  /admin/batches/{batchId}/trainers:
+    post:
+      tags: [admin-batches]
+      summary: Assign a trainer (BRQ-4.3)
+      parameters:
+        - { name: batchId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              {
+                type: object,
+                required: [trainerId],
+                properties: { trainerId: { type: string, format: uuid } },
+              }
+      responses: { '200': { description: Batch detail } }
+  /admin/batches/{batchId}/trainers/{trainerId}:
+    delete:
+      tags: [admin-batches]
+      summary: Unassign a trainer (an active batch keeps at least one)
+      parameters:
+        - { name: batchId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: trainerId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { '200': { description: Batch detail } }
+  /admin/batches/{batchId}/sessions:
+    post:
+      tags: [admin-batches]
+      summary: Schedule one session or a weekly recurring plan (institution local time)
+      parameters:
+        - { name: batchId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  required: [kind, startsAt, endsAt]
+                  properties:
+                    kind: { type: string, enum: [single] }
+                    startsAt: { type: string, format: date-time }
+                    endsAt: { type: string, format: date-time }
+                    venue: { type: string }
+                    topic: { type: string }
+                    trainerId: { type: string, format: uuid }
+                - type: object
+                  required: [kind, daysOfWeek, startTime, endTime, from, until]
+                  properties:
+                    kind: { type: string, enum: [recurring] }
+                    daysOfWeek:
+                      {
+                        type: array,
+                        items: { type: string, enum: [SUN, MON, TUE, WED, THU, FRI, SAT] },
+                      }
+                    startTime: { type: string, example: '10:00' }
+                    endTime: { type: string, example: '12:00' }
+                    from: { type: string, format: date }
+                    until: { type: string, format: date }
+                    venue: { type: string }
+                    topic: { type: string }
+                    trainerId: { type: string, format: uuid }
+      responses:
+        '201':
+          description: Created sessions
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Session' } }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /admin/batches/{batchId}/sessions/{sessionId}:
+    patch:
+      tags: [admin-batches]
+      summary: Cancel a scheduled session
+      parameters:
+        - { name: batchId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: sessionId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              {
+                type: object,
+                required: [status],
+                properties: { status: { type: string, enum: [CANCELLED] } },
+              }
+      responses: { '200': { description: Cancelled } }
+
+  /admin/allocations/preview:
+    post:
+      tags: [admin-batches]
+      summary: Run the allocation engine without changing anything (BRQ-4.2)
+      description: |
+        Rank first, then the priority rule (setting allocation.priorityRule); never above capacity
+        (BR-03); overflow waitlisted. Stored for allocation.previewTtlMinutes.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              {
+                type: object,
+                required: [cycleId],
+                properties: { cycleId: { type: string, format: uuid } },
+              }
+      responses:
+        '200': { description: 'previewId, assignments, waitlist, per-batch fill, stats, warnings' }
+  /admin/allocations/confirm:
+    post:
+      tags: [admin-batches]
+      summary: Apply a preview in one transaction
+      description: 409 PREVIEW_STALE if applications or batches changed since the preview; PREVIEW_EXPIRED; PREVIEW_ALREADY_CONFIRMED.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              {
+                type: object,
+                required: [previewId],
+                properties: { previewId: { type: string, format: uuid } },
+              }
+      responses:
+        '200': { description: '{ previewId, allocated, waitlisted }' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
 components:
   securitySchemes:
     bearerAuth:
@@ -713,6 +981,18 @@ components:
               courseId: { type: string, format: uuid }
               courseCode: { type: string }
               courseTitle: { type: string }
+    Session:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        batchId: { type: string, format: uuid }
+        startsAt: { type: string, format: date-time }
+        endsAt: { type: string, format: date-time }
+        venue: { type: string }
+        topic: { type: string, nullable: true }
+        status: { type: string, enum: [SCHEDULED, CONDUCTED, CANCELLED] }
+        trainerId: { type: string, format: uuid, nullable: true }
+        trainerName: { type: string, nullable: true }
   responses:
     TooManyRequests:
       description: Rate limited or account locked

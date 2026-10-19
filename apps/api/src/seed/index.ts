@@ -181,5 +181,37 @@ export async function runSeed(prisma: PrismaClient, opts: SeedOptions = {}) {
   const applications = await seedApplications(prisma, cycle.id, students);
   log(`applications: ${applications} added (students ${APPLICANTS_FROM}+ have one pending)`);
 
+  // One planned batch per course with a matching trainer, ready for an allocation demo.
+  const trainerFor: Record<string, string> = {
+    'ELEC-DOM': TRAINERS[0]!.employeeCode,
+    'SOLAR-PV': TRAINERS[1]!.employeeCode,
+    'TAIL-GMT': TRAINERS[2]!.employeeCode,
+  };
+  let batches = 0;
+  for (const c of COURSES) {
+    const course = await prisma.course.findUniqueOrThrow({ where: { code: c.code } });
+    const exists = await prisma.batch.findUnique({
+      where: { courseId_cycleId_name: { courseId: course.id, cycleId: cycle.id, name: 'Batch A' } },
+    });
+    if (exists) continue;
+    const trainer = await prisma.trainer.findUniqueOrThrow({
+      where: { employeeCode: trainerFor[c.code]! },
+    });
+    await prisma.batch.create({
+      data: {
+        courseId: course.id,
+        cycleId: cycle.id,
+        name: 'Batch A',
+        capacity: 15,
+        startDate: cycle.startsOn,
+        endDate: cycle.endsOn,
+        venue: `${c.title.split(' ')[0]} workshop`,
+        trainers: { create: { trainerId: trainer.id } },
+      },
+    });
+    batches++;
+  }
+  log(`batches: ${batches} added ("Batch A" per course, trainer assigned, no students yet)`);
+
   return { students: students.length, trainers: TRAINERS.length, courses: COURSES.length };
 }

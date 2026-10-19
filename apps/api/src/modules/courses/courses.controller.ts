@@ -8,11 +8,23 @@ import type {
 } from '@vtmp/shared';
 import { AppError } from '../../core/errors';
 import { asyncHandler } from '../../core/http';
-import { seatsTaken } from '../enrollments/enrollments.service';
+import { membersByCourse } from '../batches/batches.service';
+import { approvedFirstChoice } from '../enrollments/enrollments.service';
 import * as service from './courses.service';
 
 const actor = (req: Request) => ({ userId: req.user!.id, ip: req.ip ?? null });
 const cycleIdQuery = (req: Request) => (req.query as { cycleId?: string }).cycleId;
+
+/** Seats taken = students placed in the course's batches + approved first choices not yet placed. */
+async function seatsTaken(cycleId: string): Promise<Map<string, number>> {
+  const [placed, approved] = await Promise.all([
+    membersByCourse(cycleId),
+    approvedFirstChoice(cycleId),
+  ]);
+  const total = new Map(placed);
+  for (const [course, n] of approved) total.set(course, (total.get(course) ?? 0) + n);
+  return total;
+}
 
 export const catalogue = asyncHandler(async (req, res) => {
   res.json(await service.catalogue(cycleIdQuery(req), seatsTaken));
