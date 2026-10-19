@@ -4,16 +4,24 @@ import { AppError, toErrorBody } from '../errors';
 
 interface LimitOptions {
   windowMs: number;
-  limit: number;
+  /** A number, or a function so the limit can come from a Setting at request time. */
+  limit: number | (() => number | Promise<number>);
+  /** Count only failed (4xx/5xx) responses, e.g. for login brute-force protection. */
+  skipSuccessfulRequests?: boolean;
 }
 
 /** Rate limiter that answers with the standard error body (HTTP 429). */
-export function rateLimiter({ windowMs, limit }: LimitOptions): RequestHandler {
+export function rateLimiter({
+  windowMs,
+  limit,
+  skipSuccessfulRequests,
+}: LimitOptions): RequestHandler {
   return rateLimit({
     windowMs,
-    limit,
+    limit: typeof limit === 'function' ? () => limit() : limit,
     standardHeaders: 'draft-7',
     legacyHeaders: false,
+    skipSuccessfulRequests,
     handler: (_req, res) => {
       const err = new AppError(429, 'RATE_LIMITED', 'Too many requests. Please slow down.');
       res.status(429).json(toErrorBody(err));

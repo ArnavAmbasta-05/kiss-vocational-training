@@ -6,6 +6,7 @@ dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
 process.env.NODE_ENV = 'test';
 process.env.LOG_LEVEL = 'silent';
+process.env.BCRYPT_ROUNDS = '4';
 if (process.env.TEST_DATABASE_URL) process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
 process.env.DATABASE_URL ??= 'postgresql://vtmp:vtmp@localhost:5432/vtmp_test?schema=public';
 process.env.JWT_SECRET ??= 'test-access-secret-that-is-at-least-32-chars';

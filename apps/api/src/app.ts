@@ -1,3 +1,4 @@
+import cookieParser from 'cookie-parser';
 import express, { type Express } from 'express';
 import { config } from './core/config';
 import { errorHandler, notFoundHandler } from './core/errors';
@@ -19,14 +20,15 @@ export function createApp(): Express {
   const app = express();
 
   app.disable('x-powered-by');
-  // Free-tier hosts terminate TLS at one proxy; needed for correct client IPs in rate limits.
-  if (env.NODE_ENV === 'production') app.set('trust proxy', 1);
+  // Hosts terminate TLS at proxies; trusting them gives correct client IPs for rate limits.
+  if (env.NODE_ENV === 'production') app.set('trust proxy', env.TRUST_PROXY_HOPS);
 
   app.use(securityHeaders());
   app.use(corsAllowList(env.CORS_ORIGINS));
   app.use(requestLogger());
   app.use(globalRateLimiter());
   app.use(express.json({ limit: '1mb' }));
+  app.use(cookieParser());
 
   // Root-level health for uptime pingers; the same check lives at /api/v1/health.
   app.use('/health', healthRoutes());

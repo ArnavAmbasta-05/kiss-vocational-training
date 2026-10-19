@@ -33,6 +33,32 @@ export async function createAdmin(db: PrismaClient) {
   });
 }
 
+export const TEST_PASSWORD = 'Correct-Horse-1';
+
+/** A user who can actually sign in (real bcrypt hash at test cost). */
+export async function createLoginUser(
+  db: PrismaClient,
+  role: Role,
+  opts: { isActive?: boolean } = {},
+) {
+  const s = uid();
+  const { hashPassword } = await import('../src/core/auth/password');
+  return db.user.create({
+    data: {
+      email: `${role.toLowerCase()}-${s}@test.local`,
+      fullName: `Test ${role} ${s}`,
+      role,
+      isActive: opts.isActive ?? true,
+      passwordHash: await hashPassword(TEST_PASSWORD),
+      ...(role === Role.STUDENT
+        ? { student: { create: { rollNo: `T-${s}`, cgpa: new Prisma.Decimal('8.10') } } }
+        : {}),
+      ...(role === Role.TRAINER ? { trainer: { create: { employeeCode: `E-${s}` } } } : {}),
+    },
+    include: { student: true, trainer: true },
+  });
+}
+
 export async function createCycleCourseBatch(db: PrismaClient) {
   const s = uid();
   const cycle = await db.trainingCycle.create({

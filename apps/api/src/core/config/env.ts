@@ -13,10 +13,15 @@ const optionalString = z
 export const EnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(4000),
+  // Proxies in front of the API in production (host load balancer + web-host rewrite proxy),
+  // so req.ip is the real client for per-IP rate limits. See docs/DEPLOYMENT.md.
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(1),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   DATABASE_URL: z.string().url(),
   JWT_SECRET: z.string().min(32, 'must be at least 32 characters'),
   REFRESH_SECRET: z.string().min(32, 'must be at least 32 characters'),
+  // TAD §9 fixes cost 12; tests lower it for speed. Never below 10 outside tests.
+  BCRYPT_ROUNDS: z.coerce.number().int().min(4).max(15).default(12),
   PUBLIC_BASE_URL: z.string().url(),
   CORS_ORIGINS: z
     .string()
@@ -51,6 +56,9 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     const env = parsed.data;
     if (env.STORAGE_DRIVER === 's3' && !env.STORAGE_BUCKET) {
       problems.push('STORAGE_BUCKET: required when STORAGE_DRIVER=s3');
+    }
+    if (env.NODE_ENV !== 'test' && env.BCRYPT_ROUNDS < 10) {
+      problems.push('BCRYPT_ROUNDS: must be at least 10 outside tests');
     }
     if (env.AI_ENABLED && !env.ANTHROPIC_API_KEY) {
       problems.push('ANTHROPIC_API_KEY: required when AI_ENABLED=true');

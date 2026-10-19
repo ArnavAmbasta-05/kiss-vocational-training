@@ -94,6 +94,11 @@ export const SETTINGS = {
     'Failed logins before the account is locked [TAD §9]',
   ),
   'auth.lockMinutes': define(positiveInt, 15, 'Account lock duration in minutes [TAD §9]'),
+  'auth.ipRateLimitPer15Min': define(
+    positiveInt,
+    50,
+    'Failed sign-in attempts per 15 minutes per IP [TAD §9]',
+  ),
   'public.rateLimitPerMin': define(
     positiveInt,
     30,

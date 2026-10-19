@@ -1,6 +1,7 @@
 /** Deterministic demo data so every developer and CI run gets the same seed. */
 
-export const SEED_PASSWORD = 'Password@123';
+// Override with SEED_PASSWORD when seeding a public demo database.
+export const SEED_PASSWORD = process.env.SEED_PASSWORD ?? 'Password@123';
 export const EMAIL_DOMAIN = 'kiss-vtmp.test';
 
 export const ADMIN = { email: `admin@${EMAIL_DOMAIN}`, fullName: 'Portal Administrator' };
