@@ -50,7 +50,7 @@ Every seeded account uses the password `Password@123`.
 The seed also creates an open training cycle, three courses (Electrician — Domestic, Solar PV
 Installer, Tailoring & Garment Making) with open enrollment windows, and every Setting at its
 default. It is idempotent: run it again any time. `pnpm db:seed --large` adds students up to
-500 for the allocation timing test. Database tables are described in [docs/ER.md](docs/ER.md).
+500 for the allocation timing test. Database tables are described in [docs/ER.md](docs/ER.md). `--reset-passwords` (with `SEED_PASSWORD`) sets a new password on every seeded account.
 
 Sign in at http://localhost:5173 with any seed account: each role lands on its own dashboard
 (`/student`, `/trainer`, `/admin`).

@@ -91,7 +91,20 @@ DATABASE_URL="<neon direct url>" SEED_PASSWORD="<strong demo password>" pnpm db:
 ```
 
 In PowerShell: `$env:DATABASE_URL="…"; $env:SEED_PASSWORD="…"; pnpm db:seed`, then close the
-terminal. The seed is idempotent. Share the demo password only with the team and examiners.
+terminal. The seed is idempotent and never changes existing accounts. Share the demo password
+only with the team and examiners. **Never reuse a real password** (e.g. the database password)
+as the demo password.
+
+To **change the demo password later**, run the same command with `--reset-passwords`. It sets
+`SEED_PASSWORD` on every seeded account (`@kiss-vtmp.test`: admin, trainers, students), clears
+lockouts, signs those accounts out everywhere and audit-logs each change. It refuses the default
+`Password@123`.
+
+```bash
+DATABASE_URL="<neon direct url>" SEED_PASSWORD="<new demo password>" pnpm db:seed --reset-passwords
+```
+
+Afterwards, update the GitHub secret `E2E_PASSWORD` to match.
 
 ### 5. Freeze `PUBLIC_BASE_URL`
 
