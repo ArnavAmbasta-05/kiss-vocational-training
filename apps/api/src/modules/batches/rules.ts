@@ -1,0 +1,106 @@
+import type { AllocationPriorityRule } from '@vtmp/shared';
+
+export interface Applicant {
+  enrollmentId: string;
+  /** Course ids in preference order; index 0 = rank 1. */
+  preferences: readonly string[];
+  submittedAt: Date;
+  cgpa: number;
+}
+
+export interface BatchSlot {
+  batchId: string;
+  courseId: string;
+  name: string;
+  /** Seats still free (capacity minus students already in the batch). */
+  free: number;
+}
+
+export interface AllocationResult {
+  assignments: Array<{ enrollmentId: string; batchId: string; courseId: string; rank: number }>;
+  waitlist: string[];
+  stats: {
+    applicants: number;
+    allocated: number;
+    waitlisted: number;
+    byRank: Record<number, number>;
+  };
+}
+
+/**
+ * Priority order within a preference rank (BR-04): earliest submission first, or highest CGPA
+ * first with earliest submission breaking ties. The enrollment id makes the order total, so
+ * the same input always yields the same allocation.
+ */
+export function compareByPriority(rule: AllocationPriorityRule) {
+  return (a: Applicant, b: Applicant): number => {
+    if (rule === 'CGPA' && a.cgpa !== b.cgpa) return b.cgpa - a.cgpa;
+    const t = a.submittedAt.getTime() - b.submittedAt.getTime();
+    if (t !== 0) return t;
+    return a.enrollmentId < b.enrollmentId ? -1 : a.enrollmentId > b.enrollmentId ? 1 : 0;
+  };
+}
+
+/**
+ * Allocation engine (BRQ-4.2, BR-03, BR-04), O(n log n + n·p):
+ * 1. Sort applicants once by the priority rule.
+ * 2. Pass r = 1..p: each still-unplaced applicant, in priority order, claims a seat in their
+ *    rank-r course, in that course's batch with the most free seats (ties by name), so batches
+ *    of one course fill evenly.
+ * 3. No batch ever exceeds its free seats (BR-03); whoever is left is waitlisted.
+ * Rank comes first: every first choice is considered before any second choice.
+ */
+export function allocate(
+  applicants: readonly Applicant[],
+  batches: readonly BatchSlot[],
+  rule: AllocationPriorityRule,
+): AllocationResult {
+  const ordered = [...applicants].sort(compareByPriority(rule));
+  const free = new Map(batches.map((b) => [b.batchId, Math.max(0, b.free)]));
+  const byCourse = new Map<string, BatchSlot[]>();
+  for (const b of batches) {
+    const list = byCourse.get(b.courseId) ?? [];
+    list.push(b);
+    byCourse.set(b.courseId, list);
+  }
+
+  const placed = new Map<string, { batchId: string; courseId: string; rank: number }>();
+  const maxRank = Math.max(0, ...applicants.map((a) => a.preferences.length));
+
+  for (let r = 0; r < maxRank; r++) {
+    for (const a of ordered) {
+      if (placed.has(a.enrollmentId)) continue;
+      const courseId = a.preferences[r];
+      if (!courseId) continue;
+      let best: BatchSlot | undefined;
+      for (const b of byCourse.get(courseId) ?? []) {
+        const f = free.get(b.batchId)!;
+        if (f <= 0) continue;
+        const bestFree = best ? free.get(best.batchId)! : -1;
+        if (f > bestFree || (f === bestFree && b.name < best!.name)) best = b;
+      }
+      if (best) {
+        free.set(best.batchId, free.get(best.batchId)! - 1);
+        placed.set(a.enrollmentId, { batchId: best.batchId, courseId, rank: r + 1 });
+      }
+    }
+  }
+
+  const assignments = ordered
+    .filter((a) => placed.has(a.enrollmentId))
+    .map((a) => ({ enrollmentId: a.enrollmentId, ...placed.get(a.enrollmentId)! }));
+  const waitlist = ordered.filter((a) => !placed.has(a.enrollmentId)).map((a) => a.enrollmentId);
+  const byRank: Record<number, number> = {};
+  for (const x of assignments) byRank[x.rank] = (byRank[x.rank] ?? 0) + 1;
+
+  return {
+    assignments,
+    waitlist,
+    stats: {
+      applicants: applicants.length,
+      allocated: assignments.length,
+      waitlisted: waitlist.length,
+      byRank,
+    },
+  };
+}
