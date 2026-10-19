@@ -13,6 +13,7 @@ export function authRoutes(): Router {
     windowMs: 15 * 60 * 1000,
     limit: () => settings.get('auth.ipRateLimitPer15Min'),
     skipSuccessfulRequests: true,
+    name: 'login',
   });
   router.post('/login', loginLimiter, validate({ body: LoginSchema }), controller.login);
   router.post('/refresh', controller.refresh);

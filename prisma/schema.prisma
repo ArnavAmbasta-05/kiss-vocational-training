@@ -761,3 +761,16 @@ model InterventionAction {
   @@index([createdById])
   @@map("intervention_actions")
 }
+
+// ─── Infrastructure ────────────────────────────────────────────────────────────
+
+/// Fixed-window rate-limit counters shared by every serverless instance (Vercel has no shared
+/// memory). Keys are hashed (no raw IPs stored); expired rows are pruned opportunistically.
+model RateLimit {
+  key     String   @id
+  hits    Int
+  resetAt DateTime @map("reset_at") @db.Timestamptz(3)
+
+  @@index([resetAt])
+  @@map("rate_limits")
+}

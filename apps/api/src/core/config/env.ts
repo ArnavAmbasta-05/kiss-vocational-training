@@ -16,6 +16,9 @@ export const EnvSchema = z.object({
   // Proxies in front of the API in production (host load balancer + web-host rewrite proxy),
   // so req.ip is the real client for per-IP rate limits. See docs/DEPLOYMENT.md.
   TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(1),
+  // Where named (security) rate limits keep their counts. Serverless instances share no memory,
+  // so production defaults to postgres; local dev and tests default to memory.
+  RATE_LIMIT_STORE: z.enum(['memory', 'postgres']).optional(),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   DATABASE_URL: z.string().url(),
   JWT_SECRET: z.string().min(32, 'must be at least 32 characters'),
@@ -44,7 +47,9 @@ export const EnvSchema = z.object({
   AI_MONTHLY_CAP: z.coerce.number().nonnegative().default(0),
 });
 
-export type Env = z.infer<typeof EnvSchema>;
+export type Env = Omit<z.infer<typeof EnvSchema>, 'RATE_LIMIT_STORE'> & {
+  RATE_LIMIT_STORE: 'memory' | 'postgres';
+};
 
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   const parsed = EnvSchema.safeParse(source);
@@ -63,7 +68,13 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     if (env.AI_ENABLED && !env.ANTHROPIC_API_KEY) {
       problems.push('ANTHROPIC_API_KEY: required when AI_ENABLED=true');
     }
-    if (problems.length === 0) return env;
+    if (problems.length === 0) {
+      return {
+        ...env,
+        RATE_LIMIT_STORE:
+          env.RATE_LIMIT_STORE ?? (env.NODE_ENV === 'production' ? 'postgres' : 'memory'),
+      };
+    }
   }
   // Report variable names and reasons only, never values (they may be secrets).
   throw new Error(

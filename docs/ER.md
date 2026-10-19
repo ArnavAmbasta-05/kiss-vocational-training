@@ -218,7 +218,16 @@ erDiagram
     text title
     timestamptz read_at
   }
+  rate_limits {
+    text key PK "prefix:sha256(ip)"
+    int hits
+    timestamptz reset_at
+  }
 ```
+
+`rate_limits` (infrastructure, added for serverless hosting) holds fixed-window counters for the
+security rate limits, so every Vercel function instance shares one count. Keys are hashed, and
+no raw IPs are stored.
 
 ## Competency, passport and intervention (R2)
 
