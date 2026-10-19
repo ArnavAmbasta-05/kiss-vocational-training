@@ -15,6 +15,92 @@ Read this at the start of every session and update it at the end of every sprint
 
 ---
 
+## Sprint 3 — Courses, electives and enrollment (done, 2026-10-19)
+
+### Built
+- **`modules/courses`**:
+  - **Catalogue** (`GET /courses?cycleId=`, `GET /courses/:id`, `GET /cycles`; any signed-in
+    user): active courses offered in the cycle with description, duration, prerequisites,
+    capacity, indicative seats remaining and window state. The default cycle is the newest one
+    with offerings.
+  - **Admin**: course CRUD with soft deactivate (409 `COURSE_CODE_TAKEN`), cycles
+    (409 `CYCLE_NAME_TAKEN`), and `PUT /admin/cycles/:cycleId/offerings/:courseId` to offer a
+    course and set its window and open/close toggle (BRQ-2.3). Every change is audited.
+  - **Window rule** (`rules.ts windowState`): the window is OPEN only when the toggle is on AND
+    opensAt ≤ now < closesAt. Boundary unit tests cover it.
+- **`modules/enrollments`**:
+  - **Student**: `POST /enrollments` takes 1–3 ranked, distinct courses. It returns 409
+    `ENROLLMENT_WINDOW_CLOSED` if any chosen course is inactive, not offered, toggled off,
+    upcoming or past (BR-02), 409 `DUPLICATE_ENROLLMENT` for BR-01 (the DB partial index's
+    P2002 is mapped to it), and 422 `TOO_MANY_PREFERENCES` above setting
+    `enrollment.maxPreferences`. `PUT /enrollments/:id` and `POST /enrollments/:id/withdraw`
+    work only while PENDING and every window is open. `GET /enrollments/me` returns status,
+    reason and a timeline built from the audit trail.
+  - **Admin review**: `GET /admin/enrollments` (cycle/course/status/search filters, oldest
+    first, paginated) and approve/reject (reason required)/waitlist, single or
+    `POST /admin/enrollments/bulk` (≤ 200).
+    - One transaction for the whole batch: any unknown id (404) or invalid transition (409)
+      rolls it all back.
+    - A conditional update per row aborts the batch on a concurrent change.
+    - Every change writes an audit row and a student notification in the same transaction.
+    - Transitions (`rules.ts canReview`): PENDING → APPROVED/REJECTED/WAITLISTED, and
+      WAITLISTED → APPROVED/REJECTED.
+- **`core/middleware/idempotency`** (reusable): a Postgres-backed Idempotency-Key, scoped per
+  user. The 2xx response is stored before it is sent, and a retry gets it back with
+  `Idempotent-Replayed: true`. The same key with a different request gives 422
+  `IDEMPOTENCY_KEY_REUSED`, and a key still in flight gives 409. On error the key is released.
+  Keys are kept 24 h. Used on submit, approve/reject/waitlist and bulk.
+- **`modules/notifications`**: `notify(tx, …)` inside the business transaction; `GET
+  /notifications/me` (+ unread count), mark one / all read (scoped per user, someone else's →
+  404). Stored as `type` + `data` so the web app renders them through `t()`.
+- **`core/audit.history()`**: read-only audit trail per record (used for the status timeline).
+- **Web**:
+  - **Student**: course catalogue (search, "open only", seats badge, window countdown via
+    `Intl.RelativeTimeFormat`), course detail, and an apply/edit page with up to 3 ranked
+    choices (keyboard-accessible move up/down, not drag-only). My Enrollment has status,
+    reason, timeline, edit and withdraw.
+  - **Admin**: Courses & cycles (course table and form, activate/deactivate, cycle create,
+    per-course window editor with datetime inputs and open toggle) and Enrollments (filters,
+    checkboxes, per-row and bulk actions, reason dialog, fresh Idempotency-Key per action).
+  - **All roles**: a notification bell with unread count, polling every 60 s.
+- **Data**:
+  - Migrations add `WITHDRAWN` and `notifications.data`, and rebuild the BR-01 index so it
+    also ignores WITHDRAWN (a separate migration, because Postgres can't use a new enum
+    value in the same transaction).
+  - The seed adds pending applications for students 031–060. Students 001–030 stay free for
+    demos and e2e.
+- **Docs**: the Word TAD (`docs/KISS_VTMP_TAD_v1.0.docx`) got the same Amendment 1 as
+  `docs/TAD.md`, and passes schema validation. Its only Render/Railway mention is the amendment
+  note.
+
+### Deviations
+- **`WITHDRAWN` status** added, so students can withdraw a pending application and re-apply.
+  It doesn't count as active for BR-01.
+- **Seats remaining is indicative**: capacity minus approved-or-later applications counted
+  against their first preference. Approval isn't tied to a course until allocation, and
+  Sprint 4 switches to real batch membership.
+- **Notifications are polled** (60 s), not pushed, because there's no long-lived connection on
+  serverless hosting.
+- The default review filter is PENDING, so the queue opens on work to do.
+
+### Known gaps / follow-ups
+- No drag-and-drop ranking: up/down buttons cover the same need accessibly.
+- Prerequisites are informational text; nothing checks them automatically (the BRD doesn't
+  define a machine-checkable prerequisite).
+- Main JS bundle is 769 kB (213 kB gzip). That's within NFR-10's 500 kB transferred, but it
+  grows each sprint. Route-level code splitting (planned for Sprint 12) should come earlier if
+  it passes ~300 kB gzip.
+
+### Definition of done
+- [x] A seeded student applies, the admin approves, and the student sees APPROVED at once
+      (Playwright, desktop + mobile, with axe on catalogue, apply, my enrollment and admin pages)
+- [x] TC-03 (window closed: closed/off/upcoming/inactive/not offered), TC-04 (duplicate,
+      re-apply after withdraw), TC-05 (edit after close; bulk rollback on an unknown id and on
+      an invalid transition), audit rows, idempotent replay, notifications
+- [x] lint · format · typecheck · build · i18n keys in sync · openapi.yaml (30 paths)
+
+---
+
 ## Sprint 2 — Auth, RBAC, ownership, role dashboards, first deploy (done, 2026-10-19)
 
 ### Built
