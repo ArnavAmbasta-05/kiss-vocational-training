@@ -1,0 +1,27 @@
+{
+  "greeting": "",
+  "quickLinks": "",
+  "student": {
+    "intro": ""
+  },
+  "trainer": {
+    "intro": ""
+  },
+  "admin": {
+    "intro": ""
+  },
+  "comingSoon": {
+    "title": "",
+    "body": ""
+  },
+  "status": {
+    "title": "",
+    "checking": "",
+    "ok": "",
+    "degraded": "",
+    "down": "",
+    "badgeOk": "",
+    "badgeDegraded": "",
+    "badgeDown": ""
+  }
+}

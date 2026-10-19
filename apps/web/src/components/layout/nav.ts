@@ -1,3 +1,5 @@
+import type { Role } from '@vtmp/shared';
+
 export interface NavItem {
   to: string;
   /** i18n key in the common namespace. */
@@ -5,5 +7,32 @@ export interface NavItem {
   end?: boolean;
 }
 
-/** Sidebar items. Sprint 2 replaces this with one list per role. */
-export const defaultNav: NavItem[] = [{ to: '/', labelKey: 'nav.home', end: true }];
+/**
+ * Sidebar per role. Every core task is one click from the dashboard here, which keeps each
+ * task within three clicks (NFR-04).
+ */
+export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
+  STUDENT: [
+    { to: '/student', labelKey: 'nav.dashboard', end: true },
+    { to: '/student/courses', labelKey: 'nav.student.courses' },
+    { to: '/student/enrollment', labelKey: 'nav.student.enrollment' },
+    { to: '/student/training', labelKey: 'nav.student.training' },
+    { to: '/student/certificates', labelKey: 'nav.student.certificates' },
+  ],
+  TRAINER: [
+    { to: '/trainer', labelKey: 'nav.dashboard', end: true },
+    { to: '/trainer/batches', labelKey: 'nav.trainer.batches' },
+    { to: '/trainer/sessions', labelKey: 'nav.trainer.sessions' },
+    { to: '/trainer/assessments', labelKey: 'nav.trainer.assessments' },
+  ],
+  ADMIN: [
+    { to: '/admin', labelKey: 'nav.dashboard', end: true },
+    { to: '/admin/users', labelKey: 'nav.admin.users' },
+    { to: '/admin/courses', labelKey: 'nav.admin.courses' },
+    { to: '/admin/enrollments', labelKey: 'nav.admin.enrollments' },
+    { to: '/admin/batches', labelKey: 'nav.admin.batches' },
+    { to: '/admin/completions', labelKey: 'nav.admin.completions' },
+    { to: '/admin/certificates', labelKey: 'nav.admin.certificates' },
+    { to: '/admin/reports', labelKey: 'nav.admin.reports' },
+  ],
+};

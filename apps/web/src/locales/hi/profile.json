@@ -1,0 +1,32 @@
+{
+  "title": "",
+  "details": "",
+  "fullName": "",
+  "email": "",
+  "emailHint": "",
+  "role": "",
+  "rollNo": "",
+  "employeeCode": "",
+  "phone": "",
+  "language": "",
+  "save": "",
+  "saved": "",
+  "changePassword": "",
+  "password": {
+    "title": "",
+    "current": "",
+    "new": "",
+    "newHint": "",
+    "confirm": "",
+    "mismatch": "",
+    "tooShort": "",
+    "sameAsCurrent": "",
+    "required": "",
+    "submit": "",
+    "done": ""
+  },
+  "validation": {
+    "fullName": "",
+    "phone": ""
+  }
+}

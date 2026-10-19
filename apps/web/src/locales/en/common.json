@@ -9,17 +9,47 @@
     "or": "ଓଡ଼ିଆ",
     "hi": "हिन्दी"
   },
+  "roles": {
+    "STUDENT": "Student",
+    "TRAINER": "Trainer",
+    "ADMIN": "Administrator"
+  },
   "nav": {
     "label": "Main navigation",
     "home": "Home",
+    "dashboard": "Dashboard",
     "openMenu": "Open menu",
-    "closeMenu": "Close menu"
+    "closeMenu": "Close menu",
+    "userMenu": "Account",
+    "profile": "My profile",
+    "student": {
+      "courses": "Courses",
+      "enrollment": "My enrollment",
+      "training": "My training",
+      "certificates": "Certificates"
+    },
+    "trainer": {
+      "batches": "My batches",
+      "sessions": "Sessions",
+      "assessments": "Assessments"
+    },
+    "admin": {
+      "users": "Users",
+      "courses": "Courses & cycles",
+      "enrollments": "Enrollments",
+      "batches": "Batches",
+      "completions": "Completions",
+      "certificates": "Certificates",
+      "reports": "Reports"
+    }
   },
   "actions": {
     "close": "Close",
+    "cancel": "Cancel",
     "dismiss": "Dismiss notification",
     "retry": "Try again",
-    "goHome": "Go to the home page"
+    "goHome": "Go to the home page",
+    "goDashboard": "Go to my dashboard"
   },
   "table": {
     "empty": "Nothing to show yet."

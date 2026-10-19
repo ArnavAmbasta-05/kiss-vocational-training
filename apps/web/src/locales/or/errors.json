@@ -8,6 +8,24 @@
     "title": "",
     "body": ""
   },
+  "forbidden": {
+    "code": "",
+    "title": "",
+    "body": ""
+  },
   "network": "",
-  "generic": ""
+  "generic": "",
+  "codes": {
+    "INVALID_CREDENTIALS": "",
+    "ACCOUNT_LOCKED": "",
+    "RATE_LIMITED": "",
+    "VALIDATION_FAILED": "",
+    "INVALID_CURRENT_PASSWORD": "",
+    "EMAIL_TAKEN": "",
+    "ROLL_NO_TAKEN": "",
+    "EMPLOYEE_CODE_TAKEN": "",
+    "CANNOT_DEACTIVATE_SELF": "",
+    "FORBIDDEN": "",
+    "NOT_FOUND": ""
+  }
 }

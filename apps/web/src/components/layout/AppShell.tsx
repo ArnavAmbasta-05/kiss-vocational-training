@@ -4,14 +4,18 @@ import { useTranslation } from 'react-i18next';
 import { cn } from '../ui';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { Sidebar } from './Sidebar';
-import { defaultNav, type NavItem } from './nav';
+import { useAuth } from '../../lib/auth';
+import { NAV_BY_ROLE } from './nav';
+import { UserMenu } from './UserMenu';
 
 /**
- * Accessible app shell: skip link → top bar (name, language, menu) → sidebar + main.
+ * Accessible app shell: skip link → top bar (name, language, account) → role sidebar + main.
  * On small screens the sidebar is a toggleable panel; from md up it is always visible.
  */
-export function AppShell({ nav = defaultNav }: { nav?: NavItem[] }) {
+export function AppShell() {
   const { t, i18n } = useTranslation();
+  const { user } = useAuth();
+  const nav = user ? NAV_BY_ROLE[user.role] : [];
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
 
@@ -54,6 +58,7 @@ export function AppShell({ nav = defaultNav }: { nav?: NavItem[] }) {
           </Link>
           <div className="ml-auto flex items-center gap-2">
             <LanguageSwitcher />
+            <UserMenu />
           </div>
         </div>
       </header>

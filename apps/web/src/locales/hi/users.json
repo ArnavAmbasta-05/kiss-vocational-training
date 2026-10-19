@@ -1,0 +1,58 @@
+{
+  "title": "",
+  "intro": "",
+  "search": "",
+  "roleFilter": "",
+  "allRoles": "",
+  "statusFilter": "",
+  "allStatuses": "",
+  "create": "",
+  "caption": "",
+  "empty": "",
+  "columns": {
+    "name": "",
+    "email": "",
+    "role": "",
+    "id": "",
+    "status": "",
+    "actions": ""
+  },
+  "status": {
+    "active": "",
+    "inactive": "",
+    "locked": ""
+  },
+  "deactivate": "",
+  "reactivate": "",
+  "confirmDeactivate": {
+    "title": "",
+    "body": "",
+    "confirm": ""
+  },
+  "deactivated": "",
+  "reactivated": "",
+  "created": "",
+  "pagination": {
+    "label": "",
+    "summary": "",
+    "previous": "",
+    "next": ""
+  },
+  "form": {
+    "title": "",
+    "role": "",
+    "fullName": "",
+    "email": "",
+    "password": "",
+    "passwordHint": "",
+    "locale": "",
+    "rollNo": "",
+    "cgpa": "",
+    "employeeCode": "",
+    "specialization": "",
+    "phone": "",
+    "submit": "",
+    "cancel": "",
+    "invalid": ""
+  }
+}

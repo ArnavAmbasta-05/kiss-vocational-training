@@ -9,17 +9,47 @@
     "or": "",
     "hi": ""
   },
+  "roles": {
+    "STUDENT": "",
+    "TRAINER": "",
+    "ADMIN": ""
+  },
   "nav": {
     "label": "",
     "home": "",
+    "dashboard": "",
     "openMenu": "",
-    "closeMenu": ""
+    "closeMenu": "",
+    "userMenu": "",
+    "profile": "",
+    "student": {
+      "courses": "",
+      "enrollment": "",
+      "training": "",
+      "certificates": ""
+    },
+    "trainer": {
+      "batches": "",
+      "sessions": "",
+      "assessments": ""
+    },
+    "admin": {
+      "users": "",
+      "courses": "",
+      "enrollments": "",
+      "batches": "",
+      "completions": "",
+      "certificates": "",
+      "reports": ""
+    }
   },
   "actions": {
     "close": "",
+    "cancel": "",
     "dismiss": "",
     "retry": "",
-    "goHome": ""
+    "goHome": "",
+    "goDashboard": ""
   },
   "table": {
     "empty": ""

@@ -1,14 +1,53 @@
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, type RouteObject } from 'react-router-dom';
+import type { Role } from '@vtmp/shared';
 import { AppShell } from './components/layout/AppShell';
-import { HomePage } from './pages/HomePage';
+import { NAV_BY_ROLE } from './components/layout/nav';
+import { UsersPage } from './features/admin-users/UsersPage';
+import { ChangePasswordPage } from './features/profile/ChangePasswordPage';
+import { ProfilePage } from './features/profile/ProfilePage';
+import { RequireAuth, RequireRole, RoleHomeRedirect } from './lib/auth';
+import { ComingSoonPage } from './pages/ComingSoonPage';
+import { DashboardPage } from './pages/DashboardPage';
+import { LoginPage } from './pages/LoginPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
+/** Screens that exist today; every other nav item shows a "coming soon" page until built. */
+const BUILT: Record<string, RouteObject['element']> = {
+  '/admin/users': <UsersPage />,
+};
+
+function roleSection(role: Role, base: string): RouteObject {
+  return {
+    path: base.slice(1),
+    element: <RequireRole roles={[role]} />,
+    children: NAV_BY_ROLE[role].map((item) =>
+      item.to === base
+        ? { index: true, element: <DashboardPage /> }
+        : {
+            path: item.to.slice(base.length + 1),
+            element: BUILT[item.to] ?? <ComingSoonPage titleKey={item.labelKey} />,
+          },
+    ),
+  };
+}
+
 const router = createBrowserRouter([
+  { path: '/login', element: <LoginPage /> },
   {
-    element: <AppShell />,
+    element: <RequireAuth />,
     children: [
-      { index: true, element: <HomePage /> },
-      { path: '*', element: <NotFoundPage /> },
+      {
+        element: <AppShell />,
+        children: [
+          { index: true, element: <RoleHomeRedirect /> },
+          roleSection('STUDENT', '/student'),
+          roleSection('TRAINER', '/trainer'),
+          roleSection('ADMIN', '/admin'),
+          { path: 'profile', element: <ProfilePage /> },
+          { path: 'profile/password', element: <ChangePasswordPage /> },
+          { path: '*', element: <NotFoundPage /> },
+        ],
+      },
     ],
   },
 ]);

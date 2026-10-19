@@ -30,11 +30,23 @@ export interface RequestOptions {
   acceptStatus?: number[];
 }
 
-// Auth (Sprint 2) plugs in here: the access token lives in memory, never in storage.
+// The access token lives in memory only (ADR-05), never in localStorage.
 let accessTokenProvider: () => string | null = () => null;
 export function setAccessTokenProvider(fn: () => string | null) {
   accessTokenProvider = fn;
 }
+
+/**
+ * Called once when a request fails with 401; resolves true if it obtained a fresh access
+ * token (via the refresh cookie), in which case the request is retried once.
+ */
+let unauthorizedHandler: () => Promise<boolean> = async () => false;
+export function setUnauthorizedHandler(fn: () => Promise<boolean>) {
+  unauthorizedHandler = fn;
+}
+
+// Auth endpoints answer 401 for wrong credentials; retrying them would be pointless.
+const NO_RETRY_PATHS = ['/auth/login', '/auth/refresh', '/auth/logout'];
 
 let localeProvider: () => string = () => document.documentElement.lang || 'en';
 export function setLocaleProvider(fn: () => string) {
@@ -55,6 +67,17 @@ export async function request<T>(
   path: string,
   opts: RequestOptions = {},
 ): Promise<T> {
+  try {
+    return await send<T>(method, path, opts);
+  } catch (err) {
+    const retryable =
+      err instanceof ApiError && err.status === 401 && !NO_RETRY_PATHS.includes(path);
+    if (retryable && (await unauthorizedHandler())) return send<T>(method, path, opts);
+    throw err;
+  }
+}
+
+async function send<T>(method: HttpMethod, path: string, opts: RequestOptions): Promise<T> {
   const headers: Record<string, string> = {
     Accept: 'application/json',
     'Accept-Language': localeProvider(),

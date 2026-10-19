@@ -7,6 +7,8 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
+  // Keep parallelism modest: every test signs in, and /auth is rate-limited per IP.
+  workers: process.env.CI ? 2 : 3,
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
   use: {
     baseURL,
@@ -14,15 +16,24 @@ export default defineConfig({
   },
   projects: [
     { name: 'desktop', use: { ...devices['Desktop Chrome'] } },
-    { name: 'mobile', use: { ...devices['Pixel 7'] } },
+    { name: 'mobile', use: { ...devices['Pixel 7'] }, testIgnore: /auth\.spec/ },
   ],
-  // Start the web dev server unless testing a deployed URL.
+  // Start API (needs a migrated, seeded database) and web, unless testing a deployed URL.
   webServer: process.env.E2E_BASE_URL
     ? undefined
-    : {
-        command: 'pnpm dev',
-        url: baseURL,
-        reuseExistingServer: !process.env.CI,
-        timeout: 60_000,
-      },
+    : [
+        {
+          command: 'pnpm --filter @vtmp/api dev',
+          cwd: '../..',
+          url: 'http://localhost:4000/health',
+          reuseExistingServer: !process.env.CI,
+          timeout: 60_000,
+        },
+        {
+          command: 'pnpm dev',
+          url: baseURL,
+          reuseExistingServer: !process.env.CI,
+          timeout: 60_000,
+        },
+      ],
 });

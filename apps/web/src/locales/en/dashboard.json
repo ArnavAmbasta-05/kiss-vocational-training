@@ -1,0 +1,27 @@
+{
+  "greeting": "Welcome, {{name}}",
+  "quickLinks": "Quick links",
+  "student": {
+    "intro": "Apply for courses, follow your attendance and results, and download your certificate here."
+  },
+  "trainer": {
+    "intro": "Run your batches: mark attendance, record assessments and evaluate students."
+  },
+  "admin": {
+    "intro": "Manage users, courses, enrollment, batches and certification."
+  },
+  "comingSoon": {
+    "title": "Coming soon",
+    "body": "This part of the portal is being built and will be available in a later release."
+  },
+  "status": {
+    "title": "System status",
+    "checking": "Checking…",
+    "ok": "API and database are running",
+    "degraded": "API is running, but the database cannot be reached",
+    "down": "Cannot reach the API",
+    "badgeOk": "Online",
+    "badgeDegraded": "Degraded",
+    "badgeDown": "Offline"
+  }
+}

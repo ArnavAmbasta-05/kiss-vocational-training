@@ -7,6 +7,7 @@ import { App } from './App';
 import { BootSpinner } from './components/BootSpinner';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ToastProvider } from './components/toast';
+import { AuthProvider } from './lib/auth';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -20,7 +21,9 @@ createRoot(document.getElementById('root')!).render(
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
           <ToastProvider>
-            <App />
+            <AuthProvider>
+              <App />
+            </AuthProvider>
           </ToastProvider>
         </QueryClientProvider>
       </ErrorBoundary>

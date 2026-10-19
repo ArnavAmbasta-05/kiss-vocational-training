@@ -1,0 +1,107 @@
+import { test, expect } from '@playwright/test';
+import { ACCOUNTS, SEED_PASSWORD, expectNoSeriousA11yViolations, signIn } from './helpers';
+
+const DASHBOARD = { ADMIN: '/admin', TRAINER: '/trainer', STUDENT: '/student' } as const;
+
+test.describe('sign in (BRQ-1.1, BRQ-1.2)', () => {
+  for (const role of ['ADMIN', 'TRAINER', 'STUDENT'] as const) {
+    test(`${role.toLowerCase()} lands on their own dashboard`, async ({ page }) => {
+      await signIn(page, ACCOUNTS[role]);
+      await expect(page).toHaveURL(DASHBOARD[role]);
+      await expect(page.getByRole('heading', { level: 1 })).toContainText('Welcome,');
+      await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible();
+      await expectNoSeriousA11yViolations(page);
+    });
+  }
+
+  test('wrong password shows a generic error', async ({ page }) => {
+    await signIn(page, ACCOUNTS.STUDENT, 'not-the-password');
+    await expect(page.getByRole('alert')).toHaveText('Invalid email or password.');
+    await expect(page).toHaveURL(/\/login/);
+  });
+
+  test('empty form shows field errors without calling the API', async ({ page }) => {
+    await page.goto('/login');
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await expect(page.getByText('Enter a valid email address')).toBeVisible();
+    await expect(page.getByText('Enter your password')).toBeVisible();
+  });
+
+  test('a student cannot open admin pages', async ({ page }) => {
+    await signIn(page, ACCOUNTS.STUDENT);
+    await expect(page).toHaveURL('/student');
+    await page.goto('/admin/users');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+      "You don't have access to this page",
+    );
+    await page.getByRole('link', { name: 'Go to my dashboard' }).click();
+    await expect(page).toHaveURL('/student');
+  });
+
+  test('returns to the requested page after signing in', async ({ page }) => {
+    await page.goto('/profile');
+    await expect(page).toHaveURL(/\/login\?next=%2Fprofile/);
+    await page.getByLabel('Email').fill(ACCOUNTS.TRAINER);
+    await page.getByLabel('Password').fill(SEED_PASSWORD);
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await expect(page).toHaveURL('/profile');
+  });
+
+  test('the session survives a reload and ends on sign out', async ({ page }) => {
+    await signIn(page, ACCOUNTS.TRAINER);
+    await expect(page).toHaveURL('/trainer');
+    await page.reload();
+    await expect(page).toHaveURL('/trainer');
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Welcome,');
+
+    await page
+      .getByRole('button', { expanded: false })
+      .filter({ hasText: /Trainer/ })
+      .click();
+    await page.getByRole('button', { name: 'Sign out' }).click();
+    await expect(page).toHaveURL(/\/login/);
+    await page.goto('/trainer');
+    await expect(page).toHaveURL(/\/login/);
+  });
+});
+
+test.describe('admin user management', () => {
+  test('admin creates a student who can then sign in, and deactivates them', async ({
+    page,
+    browser,
+  }) => {
+    const suffix = Date.now().toString(36);
+    const email = `e2e-${suffix}@kiss-vtmp.test`;
+
+    await signIn(page, ACCOUNTS.ADMIN);
+    await page.getByRole('link', { name: 'Users' }).first().click();
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Users');
+    await expectNoSeriousA11yViolations(page);
+
+    await page.getByRole('button', { name: 'Add user' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Add user' });
+    await dialog.getByLabel('Full name').fill('E2E Student');
+    await dialog.getByLabel('Email').fill(email);
+    await dialog.getByLabel('Initial password').fill('E2e-Start-Pass1');
+    await dialog.getByLabel('Roll number').fill(`E2E-${suffix}`);
+    await dialog.getByLabel('CGPA').fill('7.4');
+    await dialog.getByRole('button', { name: 'Create account' }).click();
+    await expect(
+      page.getByRole('status').filter({ hasText: 'E2E Student was added' }),
+    ).toBeVisible();
+
+    // The new account works in a separate browser context.
+    const other = await browser.newContext();
+    const studentPage = await other.newPage();
+    await signIn(studentPage, email, 'E2e-Start-Pass1');
+    await expect(studentPage).toHaveURL('/student');
+    await other.close();
+
+    await page.getByLabel('Search by name, email, roll number or employee code').fill(email);
+    const row = page.getByRole('row', { name: /E2E Student/ });
+    await expect(row).toHaveCount(1);
+    await row.getByRole('button', { name: /Deactivate/ }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Deactivate' }).click();
+    await expect(row.getByText('Inactive')).toBeVisible();
+  });
+});

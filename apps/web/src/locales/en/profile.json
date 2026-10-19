@@ -1,0 +1,32 @@
+{
+  "title": "My profile",
+  "details": "Your details",
+  "fullName": "Full name",
+  "email": "Email",
+  "emailHint": "Contact the training office to change your email.",
+  "role": "Role",
+  "rollNo": "Roll number",
+  "employeeCode": "Employee code",
+  "phone": "Phone",
+  "language": "Preferred language",
+  "save": "Save changes",
+  "saved": "Profile updated",
+  "changePassword": "Change password",
+  "password": {
+    "title": "Change password",
+    "current": "Current password",
+    "new": "New password",
+    "newHint": "At least 8 characters. Other devices will be signed out.",
+    "confirm": "Confirm new password",
+    "mismatch": "Passwords do not match",
+    "tooShort": "Use at least 8 characters",
+    "sameAsCurrent": "Choose a password different from the current one",
+    "required": "This field is required",
+    "submit": "Change password",
+    "done": "Password changed"
+  },
+  "validation": {
+    "fullName": "Enter your full name (at least 2 characters)",
+    "phone": "Enter a valid phone number"
+  }
+}

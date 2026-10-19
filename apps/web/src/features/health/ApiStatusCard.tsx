@@ -11,7 +11,7 @@ const badge: Record<Exclude<State, 'checking'>, { tone: BadgeTone; key: string }
 };
 
 export function ApiStatusCard() {
-  const { t } = useTranslation('home');
+  const { t } = useTranslation('dashboard');
   const { data, isPending, isError } = useHealth();
   const state: State = isPending ? 'checking' : isError ? 'down' : (data?.status ?? 'down');
 

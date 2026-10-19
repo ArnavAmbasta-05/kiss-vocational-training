@@ -1,0 +1,58 @@
+{
+  "title": "Users",
+  "intro": "Create accounts for students, trainers and administrators, and deactivate accounts that should no longer sign in.",
+  "search": "Search by name, email, roll number or employee code",
+  "roleFilter": "Role",
+  "allRoles": "All roles",
+  "statusFilter": "Status",
+  "allStatuses": "Any status",
+  "create": "Add user",
+  "caption": "User accounts",
+  "empty": "No users match these filters.",
+  "columns": {
+    "name": "Name",
+    "email": "Email",
+    "role": "Role",
+    "id": "Roll no / code",
+    "status": "Status",
+    "actions": "Actions"
+  },
+  "status": {
+    "active": "Active",
+    "inactive": "Inactive",
+    "locked": "Locked"
+  },
+  "deactivate": "Deactivate",
+  "reactivate": "Reactivate",
+  "confirmDeactivate": {
+    "title": "Deactivate {{name}}?",
+    "body": "They will be signed out everywhere and will not be able to sign in until reactivated. Their records are kept.",
+    "confirm": "Deactivate"
+  },
+  "deactivated": "{{name}} was deactivated",
+  "reactivated": "{{name}} was reactivated",
+  "created": "{{name}} was added",
+  "pagination": {
+    "label": "Pagination",
+    "summary": "Page {{page}} of {{totalPages}} · {{total}} users",
+    "previous": "Previous page",
+    "next": "Next page"
+  },
+  "form": {
+    "title": "Add user",
+    "role": "Role",
+    "fullName": "Full name",
+    "email": "Email",
+    "password": "Initial password",
+    "passwordHint": "At least 8 characters. Share it with the user privately.",
+    "locale": "Preferred language",
+    "rollNo": "Roll number",
+    "cgpa": "CGPA",
+    "employeeCode": "Employee code",
+    "specialization": "Specialization",
+    "phone": "Phone (optional)",
+    "submit": "Create account",
+    "cancel": "Cancel",
+    "invalid": "Check this field"
+  }
+}
