@@ -1,0 +1,23 @@
+{
+  "bell": "Notifications",
+  "bellUnread_one": "Notifications, {{count}} unread",
+  "bellUnread_other": "Notifications, {{count}} unread",
+  "heading": "Notifications",
+  "empty": "You have no notifications.",
+  "markAllRead": "Mark all as read",
+  "unread": "Unread",
+  "types": {
+    "ENROLLMENT_APPROVED": {
+      "title": "Application approved",
+      "body": "Your application for {{cycleName}} was approved."
+    },
+    "ENROLLMENT_REJECTED": {
+      "title": "Application not approved",
+      "body": "Your application for {{cycleName}} was not approved: {{reason}}"
+    },
+    "ENROLLMENT_WAITLISTED": {
+      "title": "Application waitlisted",
+      "body": "Your application for {{cycleName}} is on the waitlist."
+    }
+  }
+}

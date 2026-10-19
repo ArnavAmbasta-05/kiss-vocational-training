@@ -1,0 +1,23 @@
+{
+  "bell": "",
+  "bellUnread_one": "",
+  "bellUnread_other": "",
+  "heading": "",
+  "empty": "",
+  "markAllRead": "",
+  "unread": "",
+  "types": {
+    "ENROLLMENT_APPROVED": {
+      "title": "",
+      "body": ""
+    },
+    "ENROLLMENT_REJECTED": {
+      "title": "",
+      "body": ""
+    },
+    "ENROLLMENT_WAITLISTED": {
+      "title": "",
+      "body": ""
+    }
+  }
+}

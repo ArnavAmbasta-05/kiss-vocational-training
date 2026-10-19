@@ -1,0 +1,109 @@
+import { test, expect, type APIRequestContext } from '@playwright/test';
+import { ACCOUNTS, SEED_PASSWORD, expectNoSeriousA11yViolations, signIn } from './helpers';
+
+/** Creates a fresh student through the admin API, so the flow can run again and again. */
+async function newStudent(request: APIRequestContext) {
+  const login = await request.post('/api/v1/auth/login', {
+    data: { email: ACCOUNTS.ADMIN, password: SEED_PASSWORD },
+  });
+  expect(login.ok()).toBeTruthy();
+  const { accessToken } = (await login.json()) as { accessToken: string };
+  const s = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const student = {
+    role: 'STUDENT',
+    email: `e2e-apply-${s}@kiss-vtmp.test`,
+    fullName: `Applicant ${s}`,
+    password: 'E2e-Apply-Pass1',
+    rollNo: `E2E-${s}`.slice(0, 40),
+    cgpa: 7.9,
+  };
+  const res = await request.post('/api/v1/admin/users', {
+    data: student,
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  expect(res.status()).toBe(201);
+  return student;
+}
+
+test.describe('Sprint 3: apply → approve → see APPROVED', () => {
+  test('a student applies, the admin approves, the student sees it at once', async ({
+    page,
+    browser,
+    request,
+  }) => {
+    const student = await newStudent(request);
+
+    // Student: browse the catalogue and apply for the first open course.
+    await signIn(page, student.email, student.password);
+    await page.getByRole('link', { name: 'Courses' }).first().click();
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Courses');
+    await expectNoSeriousA11yViolations(page);
+    await page
+      .getByRole('link', { name: /^Apply:/ })
+      .first()
+      .click();
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Apply for training');
+    await expectNoSeriousA11yViolations(page);
+    await page.getByRole('button', { name: 'Submit application' }).click();
+
+    await expect(page).toHaveURL('/student/enrollment');
+    const card = page.getByTestId('enrollment-card');
+    await expect(card.getByText('Pending review').first()).toBeVisible();
+    await expectNoSeriousA11yViolations(page);
+
+    // Admin: find the application and approve it.
+    const adminContext = await browser.newContext();
+    const admin = await adminContext.newPage();
+    await signIn(admin, ACCOUNTS.ADMIN);
+    await admin.getByRole('link', { name: 'Enrollments' }).first().click();
+    await admin.getByLabel('Search by student name, email or roll number').fill(student.rollNo);
+    await admin.getByRole('button', { name: `Approve ${student.fullName}` }).click();
+    await expect(
+      admin.getByRole('status').filter({ hasText: '1 application approved' }),
+    ).toBeVisible();
+    await expectNoSeriousA11yViolations(admin);
+    await adminContext.close();
+
+    // Student: the next page load shows APPROVED (BO-4) and an unread notification.
+    await page.reload();
+    await expect(card.getByText('Approved').first()).toBeVisible();
+    await expect(page.getByTestId('notification-bell')).toContainText('1');
+    await page.getByTestId('notification-bell').click();
+    await expect(page.getByText('Application approved')).toBeVisible();
+  });
+
+  test('the student can change preferences and withdraw while pending', async ({
+    page,
+    request,
+  }) => {
+    const student = await newStudent(request);
+    await signIn(page, student.email, student.password);
+    await page.goto('/student/enrollment/apply');
+    // Nothing chosen yet: submitting must explain why it can't go through.
+    await page.getByRole('button', { name: 'Submit application' }).click();
+    await expect(page.getByRole('alert')).toHaveText('Choose at least one course');
+    await page.getByLabel('Choice 1', { exact: true }).selectOption({ index: 1 });
+    await page.getByRole('button', { name: 'Submit application' }).click();
+    await expect(page).toHaveURL('/student/enrollment');
+
+    await page.getByRole('link', { name: 'Change preferences' }).click();
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Change your preferences');
+    await page.getByRole('button', { name: 'Save preferences' }).click();
+    await expect(page).toHaveURL('/student/enrollment');
+
+    await page.getByRole('button', { name: 'Withdraw application' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Withdraw' }).click();
+    await expect(page.getByTestId('enrollment-card').getByText('Withdrawn').first()).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Apply again' })).toBeVisible();
+  });
+
+  test('admin courses & cycles page is accessible and lists the seeded courses', async ({
+    page,
+  }) => {
+    await signIn(page, ACCOUNTS.ADMIN);
+    await page.goto('/admin/courses');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Courses & cycles');
+    await expect(page.getByRole('cell', { name: 'Solar PV Installer' }).first()).toBeVisible();
+    await expectNoSeriousA11yViolations(page);
+  });
+});

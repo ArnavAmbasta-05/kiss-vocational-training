@@ -6,6 +6,7 @@ import { LanguageSwitcher } from './LanguageSwitcher';
 import { Sidebar } from './Sidebar';
 import { useAuth } from '../../lib/auth';
 import { NAV_BY_ROLE } from './nav';
+import { NotificationBell } from '../../features/notifications/NotificationBell';
 import { UserMenu } from './UserMenu';
 
 /**
@@ -58,6 +59,7 @@ export function AppShell() {
           </Link>
           <div className="ml-auto flex items-center gap-2">
             <LanguageSwitcher />
+            <NotificationBell />
             <UserMenu />
           </div>
         </div>

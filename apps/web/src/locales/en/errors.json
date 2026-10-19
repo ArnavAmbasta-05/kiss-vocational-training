@@ -26,6 +26,18 @@
     "EMPLOYEE_CODE_TAKEN": "This employee code is already in use.",
     "CANNOT_DEACTIVATE_SELF": "You cannot deactivate your own account.",
     "FORBIDDEN": "You do not have permission to do that.",
-    "NOT_FOUND": "That record could not be found."
+    "NOT_FOUND": "That record could not be found.",
+    "ENROLLMENT_WINDOW_CLOSED": "Enrollment for one of these courses is not open right now.",
+    "DUPLICATE_ENROLLMENT": "You already have an active application for this training cycle.",
+    "TOO_MANY_PREFERENCES": "You chose more courses than allowed.",
+    "ENROLLMENT_NOT_EDITABLE": "This application can no longer be changed.",
+    "INVALID_STATUS_TRANSITION": "One or more applications cannot take this action in their current status. Nothing was changed.",
+    "CONCURRENT_UPDATE": "Someone else changed one of these applications. Refresh and try again.",
+    "REASON_REQUIRED": "A reason is required.",
+    "UNKNOWN_COURSE": "One of the chosen courses no longer exists.",
+    "COURSE_CODE_TAKEN": "A course with this code already exists.",
+    "CYCLE_NAME_TAKEN": "A cycle with this name already exists.",
+    "INVALID_DATES": "Check the dates: the end must not be before the start.",
+    "IDEMPOTENCY_IN_PROGRESS": "This action is still being processed. Please wait a moment."
   }
 }

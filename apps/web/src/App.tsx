@@ -2,7 +2,13 @@ import { createBrowserRouter, RouterProvider, type RouteObject } from 'react-rou
 import type { Role } from '@vtmp/shared';
 import { AppShell } from './components/layout/AppShell';
 import { NAV_BY_ROLE } from './components/layout/nav';
+import { AdminCoursesPage } from './features/admin-courses/AdminCoursesPage';
+import { AdminEnrollmentsPage } from './features/admin-enrollments/AdminEnrollmentsPage';
 import { UsersPage } from './features/admin-users/UsersPage';
+import { CataloguePage } from './features/catalogue/CataloguePage';
+import { CourseDetailPage } from './features/catalogue/CourseDetailPage';
+import { ApplyPage } from './features/enrollment/ApplyPage';
+import { MyEnrollmentPage } from './features/enrollment/MyEnrollmentPage';
 import { ChangePasswordPage } from './features/profile/ChangePasswordPage';
 import { ProfilePage } from './features/profile/ProfilePage';
 import { RequireAuth, RequireRole, RoleHomeRedirect } from './lib/auth';
@@ -14,20 +20,35 @@ import { NotFoundPage } from './pages/NotFoundPage';
 /** Screens that exist today; every other nav item shows a "coming soon" page until built. */
 const BUILT: Record<string, RouteObject['element']> = {
   '/admin/users': <UsersPage />,
+  '/admin/courses': <AdminCoursesPage />,
+  '/admin/enrollments': <AdminEnrollmentsPage />,
+  '/student/courses': <CataloguePage />,
+  '/student/enrollment': <MyEnrollmentPage />,
+};
+
+/** Pages reached from inside a section rather than from the sidebar. */
+const EXTRA: Partial<Record<Role, RouteObject[]>> = {
+  STUDENT: [
+    { path: 'courses/:id', element: <CourseDetailPage /> },
+    { path: 'enrollment/apply', element: <ApplyPage /> },
+  ],
 };
 
 function roleSection(role: Role, base: string): RouteObject {
   return {
     path: base.slice(1),
     element: <RequireRole roles={[role]} />,
-    children: NAV_BY_ROLE[role].map((item) =>
-      item.to === base
-        ? { index: true, element: <DashboardPage /> }
-        : {
-            path: item.to.slice(base.length + 1),
-            element: BUILT[item.to] ?? <ComingSoonPage titleKey={item.labelKey} />,
-          },
-    ),
+    children: [
+      ...NAV_BY_ROLE[role].map((item) =>
+        item.to === base
+          ? { index: true, element: <DashboardPage /> }
+          : {
+              path: item.to.slice(base.length + 1),
+              element: BUILT[item.to] ?? <ComingSoonPage titleKey={item.labelKey} />,
+            },
+      ),
+      ...(EXTRA[role] ?? []),
+    ],
   };
 }
 
