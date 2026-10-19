@@ -1,0 +1,33 @@
+{
+  "appName": "",
+  "appFullName": "",
+  "skipToContent": "",
+  "loading": "",
+  "language": {
+    "label": "",
+    "en": "",
+    "or": "",
+    "hi": ""
+  },
+  "nav": {
+    "label": "",
+    "home": "",
+    "openMenu": "",
+    "closeMenu": ""
+  },
+  "actions": {
+    "close": "",
+    "dismiss": "",
+    "retry": "",
+    "goHome": ""
+  },
+  "table": {
+    "empty": ""
+  },
+  "toast": {
+    "regionLabel": ""
+  },
+  "footer": {
+    "institution": ""
+  }
+}

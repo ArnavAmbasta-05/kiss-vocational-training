@@ -1,0 +1,33 @@
+{
+  "appName": "KISS VTMP",
+  "appFullName": "KISS Vocational Training Management Portal",
+  "skipToContent": "Skip to main content",
+  "loading": "Loading…",
+  "language": {
+    "label": "Language",
+    "en": "English",
+    "or": "ଓଡ଼ିଆ",
+    "hi": "हिन्दी"
+  },
+  "nav": {
+    "label": "Main navigation",
+    "home": "Home",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
+  },
+  "actions": {
+    "close": "Close",
+    "dismiss": "Dismiss notification",
+    "retry": "Try again",
+    "goHome": "Go to the home page"
+  },
+  "table": {
+    "empty": "Nothing to show yet."
+  },
+  "toast": {
+    "regionLabel": "Notifications"
+  },
+  "footer": {
+    "institution": "Kalinga Institute of Social Sciences"
+  }
+}

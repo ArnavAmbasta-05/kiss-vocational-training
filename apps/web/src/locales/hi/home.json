@@ -1,0 +1,29 @@
+{
+  "title": "",
+  "intro": "",
+  "status": {
+    "title": "",
+    "checking": "",
+    "ok": "",
+    "degraded": "",
+    "down": "",
+    "badgeOk": "",
+    "badgeDegraded": "",
+    "badgeDown": ""
+  },
+  "roles": {
+    "title": "",
+    "student": {
+      "title": "",
+      "body": ""
+    },
+    "trainer": {
+      "title": "",
+      "body": ""
+    },
+    "admin": {
+      "title": "",
+      "body": ""
+    }
+  }
+}

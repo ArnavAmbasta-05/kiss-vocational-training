@@ -1,0 +1,13 @@
+{
+  "boundary": {
+    "title": "Something went wrong",
+    "body": "This page hit an unexpected problem. Try again, or go back to the home page."
+  },
+  "notFound": {
+    "code": "404",
+    "title": "Page not found",
+    "body": "The page you are looking for does not exist or has moved."
+  },
+  "network": "Cannot reach the server. Check your connection and try again.",
+  "generic": "Something went wrong. Please try again."
+}
