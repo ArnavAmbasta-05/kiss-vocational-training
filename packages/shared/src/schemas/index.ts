@@ -4,3 +4,4 @@ export * from './courses';
 export * from './enrollments';
 export * from './notifications';
 export * from './batches';
+export * from './training';
