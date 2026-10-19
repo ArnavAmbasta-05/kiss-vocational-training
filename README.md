@@ -9,7 +9,7 @@ Passport. Software Engineering project by
 - **Architecture:** [docs/TAD.md](docs/TAD.md)
 - **Sprint log:** [docs/PROGRESS.md](docs/PROGRESS.md)
 - **API contract:** [apps/api/openapi.yaml](apps/api/openapi.yaml)
-- **Deployment:** [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) (Vercel + Render + Neon)
+- **Deployment:** [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) (Vercel for web + API, Neon for PostgreSQL)
 
 ## Stack
 

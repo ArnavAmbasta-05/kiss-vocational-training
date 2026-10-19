@@ -38,7 +38,7 @@ export default tseslint.config(
     languageOptions: { globals: { ...globals.node } },
   },
   {
-    files: ['apps/api/**/*.{js,cjs}'],
+    files: ['apps/api/**/*.{js,cjs}', 'api/**/*.js'],
     rules: { '@typescript-eslint/no-require-imports': 'off' },
     languageOptions: { globals: { ...globals.node }, sourceType: 'commonjs' },
   },

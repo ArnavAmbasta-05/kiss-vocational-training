@@ -1,7 +1,8 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  entry: ['src/server.ts'],
+  // server.ts: long-running server (local, CI). vercel.ts: serverless handler (production).
+  entry: ['src/server.ts', 'src/vercel.ts'],
   format: ['cjs'],
   target: 'node20',
   platform: 'node',

@@ -119,8 +119,8 @@ jobs:
           path: apps/web/playwright-report
           retention-days: 7
 
-  # Render and Vercel deploy main themselves (their GitHub integrations; migrations run in the
-  # Render build). This job then checks the live site. It runs only once the repository
+  # Vercel deploys main itself (GitHub integration; migrations run first in the production build,
+  # scripts/vercel-build.sh). This job then checks the live site. It runs only once the repository
   # variable PUBLIC_BASE_URL is set (docs/DEPLOYMENT.md), and E2E_PASSWORD is a secret.
   deployed-smoke:
     name: Smoke test the deployed site

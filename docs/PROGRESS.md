@@ -15,7 +15,7 @@ Read this at the start of every session and update it at the end of every sprint
 
 ---
 
-## Sprint 2 — Auth, RBAC, ownership, role dashboards (built; deploy pending accounts, 2026-10-19)
+## Sprint 2 — Auth, RBAC, ownership, role dashboards (built; first Vercel deploy pending, 2026-10-19)
 
 ### Built
 - **`core/auth`** (kernel shared by all modules): bcrypt hashing (cost from `BCRYPT_ROUNDS`,
@@ -44,10 +44,15 @@ Read this at the start of every session and update it at the end of every sprint
   soon" pages for later features, profile + change-password pages, admin Users page (search,
   filters, pagination, create modal with role-specific fields, deactivate confirm). Language
   switch is saved to `User.locale` and applied at login.
-- **Deploy prep**: `render.yaml` (API, migrations in build), `apps/web/vercel.json` (SPA +
-  `/api/*` rewrite to Render so the Strict cookie stays same-site), `TRUST_PROXY_HOPS`,
-  `SEED_PASSWORD` override for a public demo, `docs/DEPLOYMENT.md`, CI job that smoke-tests the
-  live site once `PUBLIC_BASE_URL` is configured.
+- **Deploy prep (Vercel + Neon, revised 2026-10-19)**: one Vercel project serves the SPA and
+  runs the Express API as a serverless function. Root `vercel.json` routes `/api/*` and
+  `/health` to `api/index.js` → `apps/api/dist/vercel.js` (bundled `createApp()`), the rest to
+  the SPA, region sin1 next to Neon. `scripts/vercel-build.sh` runs migrations (production only,
+  direct URL), then builds API and web. Failed-login limits now use a Postgres-backed store
+  (`rate_limits` table, hashed keys, `RATE_LIMIT_STORE`, default postgres in production) so all
+  function instances share one count. Also `TRUST_PROXY_HOPS`, `SEED_PASSWORD` override,
+  `docs/DEPLOYMENT.md`, and a CI job that smoke-tests the live site once `PUBLIC_BASE_URL` is set.
+  Locally and in CI the API still runs as a normal server.
 
 ### NFR-04: three clicks from the dashboard
 Every navigation entry is one click from each dashboard (sidebar + quick links). Profile and
@@ -61,21 +66,35 @@ password are two clicks via the account menu.
   since each page load refreshes. New setting `auth.ipRateLimitPer15Min` (50).
 - Locked accounts get 429 `ACCOUNT_LOCKED` rather than the generic 401, so a real user knows to
   wait. This reveals that a locked email exists; accepted for usability.
-- CI does not push deploys itself. Render and Vercel deploy `main` through their GitHub
-  integrations, and CI smoke-tests the live site afterwards.
+- **Hosting: Vercel + Neon only, no Render** (TAD §4/§11 named Render/Railway as examples).
+  Render requires a card, and the team's card was declined. Consequences, carried into the
+  sprint plan:
+  - Rate limits that protect security use the Postgres store (failed logins now; the public
+    router in Sprint 9).
+  - The Sprint 10 nightly risk job runs from Vercel Cron (once a day on Hobby, may run up to
+    ~1 h late), with node-cron kept for local runs.
+  - Certificate PDFs and evidence (Sprint 6, 11) go to an object store, because there is no
+    persistent disk.
+  - Request time is capped at 30 s.
+- CI does not push deploys itself. Vercel deploys `main` through its GitHub integration (and
+  migrates first), and CI smoke-tests the live site afterwards.
 - Refresh in two tabs at the exact same moment can trigger reuse detection and sign both out
   (documented trade-off of strict rotation).
 
 ### Known gaps / follow-ups
-- **First deploy not done**: needs the team's Neon, Render and Vercel accounts
+- **First deploy not done**: the Neon project exists, and the Vercel project is next
   (docs/DEPLOYMENT.md). The sprint's DoD ("all three roles log in on the deployed URL") is
   pending that.
+- The serverless handler was verified locally (built bundle behind a plain Node HTTP server in
+  production mode: health, login, Secure cookie, Postgres rate-limit store). It has not run on
+  Vercel itself yet; the first deploy will show whether the Prisma engine and bcrypt binary are
+  bundled correctly (see the DEPLOYMENT.md troubleshooting table).
 - Password reset by email is out of scope (BRD); admins can create accounts and reactivate.
 
 ### Definition of done
 - [x] lint · format · typecheck · build · i18n keys in sync
-- [x] 93 API tests (21 unit + 72 integration) incl. TC-01, TC-02, TC-15, lockout, rotation,
-      reuse detection, expired/forged tokens, trainer → other batch 403
+- [x] API tests incl. TC-01, TC-02, TC-15, lockout, rotation, reuse detection,
+      expired/forged tokens, trainer → other batch 403, shared Postgres rate-limit store
 - [x] 17 Playwright tests (desktop + mobile), axe clean on login, dashboards and Users
 - [x] openapi.yaml: /auth/*, /users/me*, /admin/users*
 - [ ] Deployed URL with all three roles: waiting on hosting accounts
