@@ -15,6 +15,62 @@ Read this at the start of every session and update it at the end of every sprint
 
 ---
 
+## Sprint 1 — Full schema, seed, settings and audit kernel (done, 2026-10-19)
+
+### Built
+- **Schema** (`prisma/schema.prisma`, migration `*_r1_r2_schema`): all R1 core tables (TAD §6.1)
+  and R2 tables (§6.2) — 31 tables, UUID keys, snake_case, every FK indexed. Additions beyond the
+  prompt list: `users.full_name`, `last_login_at`; `refresh_tokens.family_id` + `replaced_by_id`
+  for rotation/reuse detection; `training_sessions.trainer_id` (for F14 clash checks);
+  `attendance.first_marked_at` (anchors the 48 h window); `risk_flags.clear_since` (BR-17);
+  `passport_shares.view_count`. No R3 tables.
+- **Database-enforced rules** (raw SQL in the migration): BR-01 partial unique index; BR-07
+  marks trigger (plus a guard against lowering `max_marks` below existing results); insert-only
+  `audit_logs` (UPDATE/DELETE/TRUNCATE rejected); one open risk flag per student+batch; one VALID
+  certificate per enrollment; ≥12-char certificate codes; range CHECKs (rank 1–3, levels 1–4,
+  CGPA 0–10, positive capacity/weightage/max marks, ordered dates, `due_on ≥ created`);
+  composite FK keeping `batch_students.student_id` consistent with its enrollment.
+  Summary with mermaid diagrams in `docs/ER.md`.
+- **`core/settings`**: typed registry of 18 thresholds (Zod schema + default + description),
+  `settings.get/getMany/all` with a 60 s cache, `settings.set(actor, key, value)` that validates,
+  writes and audits in one transaction then clears the cache, `seedDefaults()` that never
+  overwrites admin changes. Invalid stored rows fall back to the default with a warning.
+  Added `attendance.lateCountsAsPresent` (default true) now, ahead of Sprint 5.
+- **`core/audit`**: `audit.record(tx, entry)` refuses the root client so audit rows always share
+  the change's transaction; `withAudit(actor, (tx, log) => …)` wraps `prisma.$transaction` with
+  a logger bound to the user and IP. Dates/Decimals/BigInts are stored as plain JSON.
+- **Seed** (`pnpm db:seed`, idempotent): settings, 1 admin, 4 trainers, 60 students (CGPA
+  5.00–9.79, deterministic), one cycle, 3 courses with open windows; `--large` → 500 students.
+  Seed logic lives in `apps/api/src/seed` (so it resolves the API's dependencies);
+  `prisma/seed.ts` is the entry point.
+- **Tests**: 31 new — migrations create every R1/R2 table and no R3 table; audit trigger rejects
+  UPDATE/DELETE/TRUNCATE; BR-01 rejects a second active enrollment and allows one after
+  rejection; marks > max, negative marks, zero weightage, lowering max rejected; rank and level
+  ranges; partial uniques for risk flags and certificates; composite FK; withAudit commit and
+  rollback; settings get/set/audit/cache/invalid values; registry defaults.
+  Integration tests migrate `vtmp_test` automatically (Jest global setup) and run in band.
+
+### Deviations
+- `IdempotencyKey` stores `request_hash`, `response_status` and `response_body` (instead of
+  only a response hash) because Sprint 3 must replay the exact response.
+- Grade bands are one Setting (`grade.bands`) validated as strictly descending, instead of four.
+- Audit writes are explicit `audit.record` calls inside the transaction, not Prisma middleware
+  (deprecated `$use`), as the sprint prompt allows.
+- `Progress.student_id` is optional so a milestone can apply to a whole batch.
+
+### Known gaps / follow-ups
+- The app's DB role still owns `audit_logs`; TAD §6.3 also wants UPDATE/DELETE revoked from it.
+  The triggers already block both; a separate least-privilege role belongs with deployment
+  (Sprint 2).
+- Seed passwords are dev-only and documented in the README.
+
+### Definition of done
+- [x] `pnpm db:migrate && pnpm db:seed` on a fresh DB (seed re-run is a no-op; `--large` works)
+- [x] lint · format · typecheck · 49 API tests (21 unit + 28 integration) pass
+- [x] docs/ER.md · README seed accounts · no new endpoints (openapi unchanged)
+
+---
+
 ## Sprint 0 — Monorepo foundation (done, 2026-10-19)
 
 ### Built

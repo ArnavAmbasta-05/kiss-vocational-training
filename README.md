@@ -36,7 +36,20 @@ pnpm dev                    # API on :4000, web on :5173
 Open http://localhost:5173. The home page shows whether the API and database are reachable;
 `GET http://localhost:4000/api/v1/health` should return `{"status":"ok","db":"ok",…}`.
 
-Seed accounts (dev only) will be listed here from Sprint 1.
+### Seed accounts (local development only)
+
+Every seeded account uses the password `Password@123`.
+
+| Role    | Email                                                                          |
+| ------- | ------------------------------------------------------------------------------ |
+| Admin   | `admin@kiss-vtmp.test`                                                         |
+| Trainer | `trainer1@kiss-vtmp.test` … `trainer4@kiss-vtmp.test`                          |
+| Student | `student001@kiss-vtmp.test` … `student060@kiss-vtmp.test` (500 with `--large`) |
+
+The seed also creates an open training cycle, three courses (Electrician — Domestic, Solar PV
+Installer, Tailoring & Garment Making) with open enrollment windows, and every Setting at its
+default. It is idempotent: run it again any time. `pnpm db:seed --large` adds students up to
+500 for the allocation timing test. Database tables are described in [docs/ER.md](docs/ER.md).
 
 ## Scripts
 

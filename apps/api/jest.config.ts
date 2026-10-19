@@ -20,6 +20,7 @@ const config: Config = {
       ...shared,
       displayName: 'integration',
       testMatch: ['<rootDir>/src/**/__tests__/**/*.int.test.ts'],
+      globalSetup: '<rootDir>/test/global-setup-int.ts',
     },
   ],
 };
