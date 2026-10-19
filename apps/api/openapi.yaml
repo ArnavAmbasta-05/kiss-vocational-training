@@ -10,6 +10,9 @@ servers:
     description: Local development
 tags:
   - name: system
+  - name: auth
+  - name: users
+  - name: admin-users
 paths:
   /health:
     get:
@@ -27,6 +30,178 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Health' }
+
+  /auth/login:
+    post:
+      tags: [auth]
+      summary: Sign in with email and password (BRQ-1.1)
+      description: |
+        Returns a 15-minute access token in the body and sets a 7-day refresh token in the
+        httpOnly `vtmp_rt` cookie (path /api/v1/auth). Wrong email, wrong password and
+        deactivated accounts all return the same 401. After `auth.maxFailedLogins` failures the
+        account is locked for `auth.lockMinutes` (429 ACCOUNT_LOCKED). Rate-limited per IP.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Signed in
+          headers:
+            Set-Cookie: { schema: { type: string }, description: Refresh token cookie }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthSession' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /auth/refresh:
+    post:
+      tags: [auth]
+      summary: Rotate the refresh token and get a new access token
+      description: |
+        Uses the `vtmp_rt` cookie. Every call rotates the token. Presenting an already-rotated
+        token revokes the whole token family (401 REFRESH_TOKEN_REUSED).
+      security: []
+      responses:
+        '200':
+          description: New session
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthSession' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/logout:
+    post:
+      tags: [auth]
+      summary: Revoke the current refresh token family and clear the cookie
+      security: []
+      responses:
+        '204': { description: Signed out }
+  /auth/me:
+    get:
+      tags: [auth]
+      summary: The signed-in user
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Me' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /users/me:
+    patch:
+      tags: [users]
+      summary: Update own profile (BRQ-1.3)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateProfileRequest' }
+      responses:
+        '200':
+          description: Updated profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Me' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /users/me/password:
+    post:
+      tags: [users]
+      summary: Change own password (BRQ-1.3)
+      description: Verifies the current password and signs out every other session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword: { type: string }
+                newPassword: { type: string, minLength: 8, maxLength: 72 }
+      responses:
+        '204': { description: Password changed }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+
+  /admin/users:
+    get:
+      tags: [admin-users]
+      summary: List users (Admin)
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - {
+            name: q,
+            in: query,
+            schema: { type: string },
+            description: Search name,
+            email,
+            roll no or employee code,
+          }
+        - { name: role, in: query, schema: { $ref: '#/components/schemas/Role' } }
+        - { name: isActive, in: query, schema: { type: string, enum: ['true', 'false'] } }
+      responses:
+        '200':
+          description: Page of users
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/UserSummary' } }
+                  meta: { $ref: '#/components/schemas/PageMeta' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [admin-users]
+      summary: Create a student, trainer or admin account (Admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateUserRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserSummary' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /admin/users/{id}:
+    patch:
+      tags: [admin-users]
+      summary: Rename, change locale, deactivate or reactivate a user (Admin)
+      description: Deactivation revokes every session. Admins cannot deactivate themselves (409).
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              properties:
+                fullName: { type: string }
+                isActive: { type: boolean }
+                locale: { $ref: '#/components/schemas/Locale' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserSummary' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
 components:
   securitySchemes:
     bearerAuth:
@@ -86,7 +261,87 @@ components:
         db: { type: string, enum: [ok, error] }
         version: { type: string }
         time: { type: string, format: date-time }
+    Role: { type: string, enum: [STUDENT, TRAINER, ADMIN] }
+    Locale: { type: string, enum: [en, or, hi] }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+    Me:
+      type: object
+      required: [id, email, fullName, role, locale, student, trainer]
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string }
+        fullName: { type: string }
+        role: { $ref: '#/components/schemas/Role' }
+        locale: { $ref: '#/components/schemas/Locale' }
+        student:
+          nullable: true
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            rollNo: { type: string }
+            cgpa: { type: string, example: '7.50' }
+            phone: { type: string, nullable: true }
+        trainer:
+          nullable: true
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            employeeCode: { type: string }
+            phone: { type: string, nullable: true }
+            specialization: { type: string, nullable: true }
+    AuthSession:
+      type: object
+      required: [accessToken, expiresIn, user]
+      properties:
+        accessToken: { type: string }
+        expiresIn: { type: integer, example: 900 }
+        user: { $ref: '#/components/schemas/Me' }
+    UpdateProfileRequest:
+      type: object
+      properties:
+        fullName: { type: string, minLength: 2, maxLength: 120 }
+        locale: { $ref: '#/components/schemas/Locale' }
+        phone: { type: string, nullable: true }
+    CreateUserRequest:
+      type: object
+      required: [role, email, fullName, password]
+      description: STUDENT also requires rollNo and cgpa; TRAINER requires employeeCode.
+      properties:
+        role: { $ref: '#/components/schemas/Role' }
+        email: { type: string, format: email }
+        fullName: { type: string }
+        password: { type: string, minLength: 8, maxLength: 72 }
+        locale: { $ref: '#/components/schemas/Locale' }
+        rollNo: { type: string }
+        cgpa: { type: number, minimum: 0, maximum: 10 }
+        employeeCode: { type: string }
+        specialization: { type: string }
+        phone: { type: string }
+    UserSummary:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string }
+        fullName: { type: string }
+        role: { $ref: '#/components/schemas/Role' }
+        locale: { $ref: '#/components/schemas/Locale' }
+        isActive: { type: boolean }
+        lockedUntil: { type: string, format: date-time, nullable: true }
+        lastLoginAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+        rollNo: { type: string, nullable: true }
+        employeeCode: { type: string, nullable: true }
   responses:
+    TooManyRequests:
+      description: Rate limited or account locked
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
     BadRequest:
       description: Malformed request
       content:
