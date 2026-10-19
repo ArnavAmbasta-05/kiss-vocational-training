@@ -1,0 +1,161 @@
+{
+  "attendanceStatus": {
+    "PRESENT": "Present",
+    "ABSENT": "Absent",
+    "LATE": "Late"
+  },
+  "attendanceShort": {
+    "PRESENT": "P",
+    "ABSENT": "A",
+    "LATE": "L"
+  },
+  "notMarked": "Not marked",
+  "sessions": {
+    "title": "Sessions",
+    "intro": "Your sessions from the last two weeks and the next month. Take attendance once a session has started.",
+    "empty": "No sessions in this period.",
+    "today": "Today",
+    "upcoming": "Upcoming",
+    "past": "Past",
+    "take": "Take attendance",
+    "view": "View attendance",
+    "takeFor": "Take attendance for {{batch}} on {{when}}",
+    "viewFor": "View attendance for {{batch}} on {{when}}",
+    "marked": "{{marked}} of {{total}} marked"
+  },
+  "sheet": {
+    "title": "Attendance",
+    "back": "Back",
+    "markAll": "Mark all present",
+    "save": "Save attendance",
+    "saved": "Attendance saved",
+    "student": "Student",
+    "status": "Attendance",
+    "statusFor": "Attendance for {{name}}",
+    "counts": "Present {{present}} · Late {{late}} · Absent {{absent}} · Not marked {{unmarked}}",
+    "editableFor": "You can change this attendance until {{when}} ({{relative}}).",
+    "locked": {
+      "NOT_STARTED": "Attendance opens when the session starts.",
+      "CANCELLED": "This session was cancelled.",
+      "BATCH_NOT_ACTIVE": "Attendance is taken only once the batch is active.",
+      "WINDOW_CLOSED": "The 48-hour edit window has closed. Only an administrator can change this attendance now."
+    },
+    "override": "You are changing attendance after the edit window. Give a reason; it is recorded in the audit log.",
+    "reason": "Reason for the change",
+    "reasonRequired": "Enter a reason of at least 3 characters",
+    "incomplete": "Mark every student before saving."
+  },
+  "assessments": {
+    "title": "Assessments",
+    "intro": "Create theory and practical assessments for your batches and record marks.",
+    "batch": "Batch",
+    "noBatches": "You have no batches yet.",
+    "add": "Add assessment",
+    "edit": "Edit",
+    "editFor": "Edit {{title}}",
+    "delete": "Delete",
+    "deleteFor": "Delete {{title}}",
+    "deleted": "Assessment deleted",
+    "marks": "Enter marks",
+    "marksFor": "Enter marks for {{title}}",
+    "empty": "No assessments yet.",
+    "caption": "Assessments",
+    "fields": {
+      "title": "Title",
+      "mode": "Type",
+      "maxMarks": "Maximum marks",
+      "weightage": "Weightage",
+      "isMandatory": "Mandatory for completion",
+      "heldOn": "Held on",
+      "recorded": "Marks recorded"
+    },
+    "mode": {
+      "THEORY": "Theory",
+      "PRACTICAL": "Practical"
+    },
+    "mandatory": "Mandatory",
+    "optional": "Optional",
+    "recordedOf": "{{recorded}} of {{total}}",
+    "saved": "Assessment saved",
+    "save": "Save",
+    "cancel": "Cancel",
+    "invalid": "Check this field"
+  },
+  "marks": {
+    "title": "Marks: {{title}}",
+    "outOf": "Out of {{max}}",
+    "marksFor": "Marks for {{name}}",
+    "remarksFor": "Remarks for {{name}}",
+    "marks": "Marks",
+    "remarks": "Remarks",
+    "save": "Save marks",
+    "saved": "Marks saved",
+    "range": "Enter a number from 0 to {{max}}",
+    "nothing": "Enter at least one mark to save."
+  },
+  "summary": {
+    "caption": "Attendance by student",
+    "percent": "Attendance",
+    "attended": "Attended",
+    "conducted": "Conducted",
+    "absences": "Absences",
+    "consecutive": "Absent in a row",
+    "none": "—",
+    "belowMin": "Below {{min}} %"
+  },
+  "progress": {
+    "caption": "Progress notes",
+    "add": "Add note",
+    "student": "Student",
+    "wholeBatch": "Whole batch",
+    "milestone": "Milestone",
+    "note": "Note (optional)",
+    "saved": "Note added",
+    "empty": "No progress notes yet.",
+    "by": "{{who}}, {{when}}"
+  },
+  "evaluation": {
+    "caption": "Final evaluations",
+    "evaluate": "Evaluate",
+    "evaluateFor": "Evaluate {{name}}",
+    "title": "Final evaluation: {{name}}",
+    "remarks": "Remarks",
+    "recommended": "Recommend for completion",
+    "recommendedYes": "Recommended",
+    "recommendedNo": "Not recommended",
+    "pending": "Not evaluated",
+    "saved": "Evaluation saved",
+    "remarksRequired": "Enter remarks of at least 3 characters"
+  },
+  "mine": {
+    "title": "My training",
+    "intro": "Your attendance, results and current grade. Figures update as your trainer records them.",
+    "none": "You will see your training here once you are placed in a batch.",
+    "attendance": "Attendance",
+    "attendanceRing": "Attendance {{percent}} %",
+    "noneYet": "No sessions held yet",
+    "minimum": "Minimum for completion: {{min}} %",
+    "ofSessions": "{{attended}} of {{conducted}} sessions",
+    "sessions": "Session history",
+    "sessionsCaption": "Your sessions",
+    "date": "Date",
+    "time": "Time",
+    "topic": "Topic",
+    "results": "Assessment results",
+    "resultsCaption": "Your assessment results",
+    "assessment": "Assessment",
+    "score": "Score",
+    "notRecorded": "Not recorded yet",
+    "aggregate": "Current aggregate",
+    "projected": "Projected grade",
+    "gradeNote": "Based on assessments recorded so far.",
+    "evaluation": "Trainer's evaluation",
+    "grade": {
+      "A": "A",
+      "B": "B",
+      "C": "C",
+      "D": "D",
+      "NOT_COMPLETED": "Not completed"
+    }
+  }
+}

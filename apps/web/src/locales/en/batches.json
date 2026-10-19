@@ -58,7 +58,11 @@
       "label": "Batch sections",
       "students": "Students",
       "trainers": "Trainers",
-      "sessions": "Sessions"
+      "sessions": "Sessions",
+      "attendance": "Attendance",
+      "assessments": "Assessments",
+      "progress": "Progress",
+      "evaluations": "Evaluations"
     }
   },
   "students": {
@@ -137,7 +141,9 @@
       "THU": "Thursday",
       "FRI": "Friday",
       "SAT": "Saturday"
-    }
+    },
+    "attendance": "Attendance",
+    "attendanceFor": "Attendance for the session on {{when}}"
   },
   "allocation": {
     "title": "Run allocation",

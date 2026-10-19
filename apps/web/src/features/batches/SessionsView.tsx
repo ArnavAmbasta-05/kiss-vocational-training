@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { SessionDto } from '@vtmp/shared';
 import { Badge, Button, EmptyState, cn } from '../../components/ui';
@@ -13,10 +14,13 @@ import {
 export function SessionsView({
   sessions,
   onCancel,
+  attendanceBase,
 }: {
   sessions: SessionDto[];
   /** When given, scheduled sessions get a cancel button (admin). */
   onCancel?: (s: SessionDto) => void;
+  /** Route prefix of the attendance sheet; started sessions link to it. */
+  attendanceBase?: string;
 }) {
   const { t } = useTranslation('batches');
   const [mode, setMode] = useState<'list' | 'calendar'>('list');
@@ -49,7 +53,7 @@ export function SessionsView({
         </div>
       </div>
       {mode === 'list' ? (
-        <SessionList sessions={sessions} onCancel={onCancel} />
+        <SessionList sessions={sessions} onCancel={onCancel} attendanceBase={attendanceBase} />
       ) : (
         <SessionCalendar sessions={sessions} />
       )}
@@ -60,9 +64,11 @@ export function SessionsView({
 function SessionList({
   sessions,
   onCancel,
+  attendanceBase,
 }: {
   sessions: SessionDto[];
   onCancel?: (s: SessionDto) => void;
+  attendanceBase?: string;
 }) {
   const { t, i18n } = useTranslation('batches');
   const lng = i18n.resolvedLanguage ?? 'en';
@@ -105,6 +111,19 @@ function SessionList({
                 >
                   {t(`session.${s.status}`)}
                 </Badge>
+                {attendanceBase &&
+                  s.status !== 'CANCELLED' &&
+                  new Date(s.startsAt) <= new Date() && (
+                    <Link
+                      to={`${attendanceBase}/${s.id}`}
+                      aria-label={t('sessions.attendanceFor', {
+                        when: `${formatSessionDate(s.startsAt, lng)} ${formatSessionTime(s.startsAt, s.endsAt, lng)}`,
+                      })}
+                      className="ml-auto text-sm font-medium text-brand-700 underline hover:text-brand-900"
+                    >
+                      {t('sessions.attendance')}
+                    </Link>
+                  )}
                 {onCancel && s.status === 'SCHEDULED' && new Date(s.startsAt) > new Date() && (
                   <Button
                     size="sm"

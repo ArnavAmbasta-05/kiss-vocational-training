@@ -1,0 +1,161 @@
+{
+  "attendanceStatus": {
+    "PRESENT": "",
+    "ABSENT": "",
+    "LATE": ""
+  },
+  "attendanceShort": {
+    "PRESENT": "",
+    "ABSENT": "",
+    "LATE": ""
+  },
+  "notMarked": "",
+  "sessions": {
+    "title": "",
+    "intro": "",
+    "empty": "",
+    "today": "",
+    "upcoming": "",
+    "past": "",
+    "take": "",
+    "view": "",
+    "takeFor": "",
+    "viewFor": "",
+    "marked": ""
+  },
+  "sheet": {
+    "title": "",
+    "back": "",
+    "markAll": "",
+    "save": "",
+    "saved": "",
+    "student": "",
+    "status": "",
+    "statusFor": "",
+    "counts": "",
+    "editableFor": "",
+    "locked": {
+      "NOT_STARTED": "",
+      "CANCELLED": "",
+      "BATCH_NOT_ACTIVE": "",
+      "WINDOW_CLOSED": ""
+    },
+    "override": "",
+    "reason": "",
+    "reasonRequired": "",
+    "incomplete": ""
+  },
+  "assessments": {
+    "title": "",
+    "intro": "",
+    "batch": "",
+    "noBatches": "",
+    "add": "",
+    "edit": "",
+    "editFor": "",
+    "delete": "",
+    "deleteFor": "",
+    "deleted": "",
+    "marks": "",
+    "marksFor": "",
+    "empty": "",
+    "caption": "",
+    "fields": {
+      "title": "",
+      "mode": "",
+      "maxMarks": "",
+      "weightage": "",
+      "isMandatory": "",
+      "heldOn": "",
+      "recorded": ""
+    },
+    "mode": {
+      "THEORY": "",
+      "PRACTICAL": ""
+    },
+    "mandatory": "",
+    "optional": "",
+    "recordedOf": "",
+    "saved": "",
+    "save": "",
+    "cancel": "",
+    "invalid": ""
+  },
+  "marks": {
+    "title": "",
+    "outOf": "",
+    "marksFor": "",
+    "remarksFor": "",
+    "marks": "",
+    "remarks": "",
+    "save": "",
+    "saved": "",
+    "range": "",
+    "nothing": ""
+  },
+  "summary": {
+    "caption": "",
+    "percent": "",
+    "attended": "",
+    "conducted": "",
+    "absences": "",
+    "consecutive": "",
+    "none": "",
+    "belowMin": ""
+  },
+  "progress": {
+    "caption": "",
+    "add": "",
+    "student": "",
+    "wholeBatch": "",
+    "milestone": "",
+    "note": "",
+    "saved": "",
+    "empty": "",
+    "by": ""
+  },
+  "evaluation": {
+    "caption": "",
+    "evaluate": "",
+    "evaluateFor": "",
+    "title": "",
+    "remarks": "",
+    "recommended": "",
+    "recommendedYes": "",
+    "recommendedNo": "",
+    "pending": "",
+    "saved": "",
+    "remarksRequired": ""
+  },
+  "mine": {
+    "title": "",
+    "intro": "",
+    "none": "",
+    "attendance": "",
+    "attendanceRing": "",
+    "noneYet": "",
+    "minimum": "",
+    "ofSessions": "",
+    "sessions": "",
+    "sessionsCaption": "",
+    "date": "",
+    "time": "",
+    "topic": "",
+    "results": "",
+    "resultsCaption": "",
+    "assessment": "",
+    "score": "",
+    "notRecorded": "",
+    "aggregate": "",
+    "projected": "",
+    "gradeNote": "",
+    "evaluation": "",
+    "grade": {
+      "A": "",
+      "B": "",
+      "C": "",
+      "D": "",
+      "NOT_COMPLETED": ""
+    }
+  }
+}

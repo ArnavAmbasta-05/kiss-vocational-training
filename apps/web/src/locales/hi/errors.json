@@ -62,6 +62,16 @@
     "INVALID_TIMES": "",
     "TRAINER_NOT_ASSIGNED": "",
     "SESSION_NOT_SCHEDULED": "",
-    "SAME_BATCH": ""
+    "SAME_BATCH": "",
+    "SESSION_NOT_STARTED": "",
+    "SESSION_CANCELLED": "",
+    "BATCH_NOT_ACTIVE": "",
+    "EDIT_WINDOW_CLOSED": "",
+    "ROSTER_MISMATCH": "",
+    "MARKS_OUT_OF_RANGE": "",
+    "NOT_IN_BATCH": "",
+    "MAX_BELOW_RESULTS": "",
+    "HAS_RESULTS": "",
+    "NOT_IN_TRAINING": ""
   }
 }

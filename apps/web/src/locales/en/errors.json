@@ -62,6 +62,16 @@
     "INVALID_TIMES": "The session must end after it starts.",
     "TRAINER_NOT_ASSIGNED": "Assign the trainer to the batch first.",
     "SESSION_NOT_SCHEDULED": "Only scheduled sessions can be cancelled.",
-    "SAME_BATCH": "Choose a different batch."
+    "SAME_BATCH": "Choose a different batch.",
+    "SESSION_NOT_STARTED": "Attendance can be marked once the session has started.",
+    "SESSION_CANCELLED": "This session was cancelled.",
+    "BATCH_NOT_ACTIVE": "This batch is not active.",
+    "EDIT_WINDOW_CLOSED": "The edit window has closed. Ask an administrator to make changes.",
+    "ROSTER_MISMATCH": "Mark every student in the batch exactly once.",
+    "MARKS_OUT_OF_RANGE": "Some marks are outside the allowed range. Nothing was saved.",
+    "NOT_IN_BATCH": "This student is not in the batch.",
+    "MAX_BELOW_RESULTS": "Maximum marks cannot be below a mark already recorded.",
+    "HAS_RESULTS": "An assessment with recorded marks cannot be deleted.",
+    "NOT_IN_TRAINING": "Evaluations are recorded while the student is in training."
   }
 }

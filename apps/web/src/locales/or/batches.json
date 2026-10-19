@@ -58,7 +58,11 @@
       "label": "",
       "students": "",
       "trainers": "",
-      "sessions": ""
+      "sessions": "",
+      "attendance": "",
+      "assessments": "",
+      "progress": "",
+      "evaluations": ""
     }
   },
   "students": {
@@ -137,7 +141,9 @@
       "THU": "",
       "FRI": "",
       "SAT": ""
-    }
+    },
+    "attendance": "",
+    "attendanceFor": ""
   },
   "allocation": {
     "title": "",

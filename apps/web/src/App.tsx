@@ -11,6 +11,11 @@ import { BatchDetailPage } from './features/batches/BatchDetailPage';
 import { TrainerBatchesPage } from './features/batches/MyBatches';
 import { CataloguePage } from './features/catalogue/CataloguePage';
 import { CourseDetailPage } from './features/catalogue/CourseDetailPage';
+import { AttendancePage } from './features/training/AttendancePage';
+import { MarksPage } from './features/training/MarksPage';
+import { MyTrainingPage } from './features/training/MyTrainingPage';
+import { TrainerAssessmentsPage } from './features/training/TrainerAssessmentsPage';
+import { TrainerSessionsPage } from './features/training/TrainerSessionsPage';
 import { ApplyPage } from './features/enrollment/ApplyPage';
 import { MyEnrollmentPage } from './features/enrollment/MyEnrollmentPage';
 import { ChangePasswordPage } from './features/profile/ChangePasswordPage';
@@ -28,6 +33,9 @@ const BUILT: Record<string, RouteObject['element']> = {
   '/admin/enrollments': <AdminEnrollmentsPage />,
   '/admin/batches': <AdminBatchesPage />,
   '/trainer/batches': <TrainerBatchesPage />,
+  '/trainer/sessions': <TrainerSessionsPage />,
+  '/trainer/assessments': <TrainerAssessmentsPage />,
+  '/student/training': <MyTrainingPage />,
   '/student/courses': <CataloguePage />,
   '/student/enrollment': <MyEnrollmentPage />,
 };
@@ -41,8 +49,14 @@ const EXTRA: Partial<Record<Role, RouteObject[]>> = {
   ADMIN: [
     { path: 'batches/allocation', element: <AllocationPage /> },
     { path: 'batches/:batchId', element: <BatchDetailPage admin /> },
+    { path: 'sessions/:sessionId', element: <AttendancePage /> },
+    { path: 'assessments/:assessmentId', element: <MarksPage /> },
   ],
-  TRAINER: [{ path: 'batches/:batchId', element: <BatchDetailPage admin={false} /> }],
+  TRAINER: [
+    { path: 'batches/:batchId', element: <BatchDetailPage admin={false} /> },
+    { path: 'sessions/:sessionId', element: <AttendancePage back="/trainer/sessions" /> },
+    { path: 'assessments/:assessmentId', element: <MarksPage back="/trainer/assessments" /> },
+  ],
 };
 
 function roleSection(role: Role, base: string): RouteObject {

@@ -35,6 +35,8 @@ import {
 import { BatchStatusBadge, FillBar } from './bits';
 import { BatchFormModal, ScheduleModal } from './forms';
 import { SessionsView } from './SessionsView';
+import { AssessmentsPanel } from '../training/AssessmentsPanel';
+import { AttendanceSummaryTab, EvaluationsTab, ProgressTab } from '../training/BatchTrainingTabs';
 
 /**
  * One batch: students, trainers and sessions. Admins manage everything; trainers (their own
@@ -121,6 +123,36 @@ export function BatchDetailPage({ admin }: { admin: boolean }) {
             label: t('detail.tabs.sessions'),
             content: <SessionsTab batch={b} admin={admin} />,
           },
+          ...(b.status === 'PLANNED'
+            ? []
+            : [
+                {
+                  id: 'attendance',
+                  label: t('detail.tabs.attendance'),
+                  content: <AttendanceSummaryTab batchId={b.id} />,
+                },
+                {
+                  id: 'assessments',
+                  label: t('detail.tabs.assessments'),
+                  content: (
+                    <AssessmentsPanel
+                      batchId={b.id}
+                      editable={b.status !== 'CLOSED'}
+                      marksBase={admin ? '/admin/assessments' : '/trainer/assessments'}
+                    />
+                  ),
+                },
+                {
+                  id: 'progress',
+                  label: t('detail.tabs.progress'),
+                  content: <ProgressTab batch={b} editable={b.status === 'ACTIVE'} />,
+                },
+                {
+                  id: 'evaluations',
+                  label: t('detail.tabs.evaluations'),
+                  content: <EvaluationsTab batchId={b.id} editable={b.status === 'ACTIVE'} />,
+                },
+              ]),
         ]}
       />
 
@@ -460,6 +492,9 @@ function SessionsTab({ batch, admin }: { batch: BatchDetail; admin: boolean }) {
       ) : (
         <SessionsView
           sessions={sessions.data}
+          attendanceBase={
+            batch.status === 'PLANNED' ? undefined : admin ? '/admin/sessions' : '/trainer/sessions'
+          }
           onCancel={
             admin
               ? (s) =>
