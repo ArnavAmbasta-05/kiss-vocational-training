@@ -15,6 +15,84 @@ Read this at the start of every session and update it at the end of every sprint
 
 ---
 
+## Sprint 5 — Attendance, assessments, progress and evaluations (done, 2026-10-19)
+
+### Built
+- **Pure rules** (unit-tested at the boundaries):
+  - `attendance/rules.ts`: `isAttended` (LATE counts when `attendance.lateCountsAsPresent`),
+    `attendancePercent` (two decimals, null before any conducted session; 74.99 vs 75),
+    `consecutiveAbsences`, `attendanceFigures`, `editWindow` (47 h 59 / 48 h 00 / 48 h 01).
+  - `assessments/rules.ts`: `weightedAggregate` (Σ(marks/max·weight)/Σweight·100),
+    `gradeBand` (inclusive lower bounds from `grade.bands`; 84.99/85, 69.99/70, 54.99/55,
+    39.99/40), `resultPercent`.
+- **Attendance** (`modules/attendance`, BRQ-5.1–5.3, BR-05, BR-06, BR-08):
+  - `GET/PUT /sessions/:id/attendance` (trainer of the batch or admin). The session must have
+    started and not be cancelled, and the batch must be ACTIVE. Entries must match the roster
+    exactly (422 `ROSTER_MISMATCH`).
+  - The trainer can edit for `attendance.editWindowHours` (48) from the first save, then gets
+    409 `EDIT_WINDOW_CLOSED`. An admin can still change it with a reason (422
+    `REASON_REQUIRED`), audited as `ATTENDANCE_OVERRIDDEN`.
+  - One transaction locks the session, writes only new or changed rows, audits each with
+    old/new (`ATTENDANCE_MARKED` / `_EDITED`), and moves the session SCHEDULED → CONDUCTED.
+  - Figures are computed in SQL on read: `GET /batches/:id/attendance-summary`,
+    `GET /students/:id/attendance` (`me` works). `GET /sessions/mine` lists a trainer's
+    sessions with how many students are marked.
+- **Assessments** (`modules/assessments`, BRQ-6.1–6.4, BR-07):
+  - CRUD under `/batches/:id/assessments` and `/assessments/:id`. Max marks can't drop below
+    a recorded mark (409 `MAX_BELOW_RESULTS`); an assessment with marks can't be deleted (409
+    `HAS_RESULTS`).
+  - `GET/PUT /assessments/:id/results`: any subset of the roster in one transaction. All
+    out-of-range rows come back together (422 `MARKS_OUT_OF_RANGE`, student id per row) and
+    nothing is saved. Unchanged rows are skipped; others are audited `RESULT_RECORDED` /
+    `RESULT_UPDATED`.
+  - Progress notes (`/batches/:id/progress`, whole batch or one student) and final
+    evaluations (`GET /batches/:id/evaluations`, `GET/PUT /enrollments/:id/evaluation`; the
+    enrollment must be ACTIVE, else 409 `NOT_IN_TRAINING`). Both are audited.
+- **My training** (`modules/training`): `GET /students/:id/training` composes the batches,
+  attendance and assessments services: attendance figures and minimum, session history,
+  results, weighted aggregate and projected grade (BR-11), and the trainer's evaluation.
+- **Web** (`features/training`):
+  - **Trainer**: Sessions (today / upcoming / past with "Take attendance"); attendance sheet
+    (one radio group per student, "Mark all present", live counts, edit-window notice, lock
+    reasons, admin reason field after the window); Assessments (batch selector, table,
+    add/edit dialog, delete when no marks); marks entry (0..max checked as you type, server
+    errors mapped back to the row).
+  - **Batch detail** (admin and trainer) gains Attendance, Assessments, Progress and
+    Evaluations tabs once the batch is active, and attendance links on started sessions.
+  - **Student**: My training with an attendance ring (red below the minimum), aggregate and
+    projected grade, evaluation, results and session history. These queries are never
+    served from cache (BO-4).
+- **Seed**: "Pilot batch" (Electrician, trainer1) in a "Pilot cycle (demo)" that began four
+  weeks ago. Students 021–030 are ACTIVE in it; past sessions every other day are conducted
+  and marked (the last two students fall below 75 %), two of three assessments have marks,
+  and there are two progress notes. Re-seeding skips it.
+
+### Deviations
+- No new migration: Sprint 1 already created every table and DB check (BR-07 trigger,
+  `first_marked_at`).
+- The BRD (BRQ-5.2) doesn't say when the 48 h start. We count from the session's first save
+  (`first_marked_at`), so a sheet marked late still gets the full window.
+- Trainers save a whole sheet at once, so a partly marked session can't exist. Marks, by
+  contrast, can be saved for any subset of students.
+- Attendance summary does not flag students below the minimum; My training does. The batch
+  view gets risk flags in Sprint 10.
+
+### Known gaps / follow-ups
+- Evaluations aren't yet tied to completion. Sprint 6 uses them with attendance and aggregate
+  for eligibility and certificates.
+- Main JS bundle 904 kB (232 kB gzip); route-level code splitting is getting due.
+
+### Definition of done
+- [x] Trainer marks attendance and enters marks (inline range error first); the student sees
+      100 % attendance, 45 / 50, aggregate 90.00 % and grade A at once (Playwright desktop +
+      mobile, axe on the sheet, marks page and My training)
+- [x] API: TC-08, TC-10, TC-11, TC-12, roster mismatch, window boundaries, admin override with
+      reason, live figures, My training aggregate → grade, 403 for other trainers' sessions
+- [x] 207 API tests · 27 e2e · lint · format · typecheck · build · i18n keys in sync ·
+      openapi.yaml (58 paths)
+
+---
+
 ## Sprint 4 — Batches, allocation engine, trainers, sessions (done, 2026-10-19)
 
 ### Built
