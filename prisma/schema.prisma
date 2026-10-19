@@ -38,6 +38,7 @@ enum EnrollmentStatus {
   COMPLETED
   NOT_COMPLETED
   CERTIFIED
+  WITHDRAWN
 }
 
 enum BatchStatus {
@@ -569,6 +570,8 @@ model Notification {
   title     String
   body      String
   link      String?
+  /// Parameters for the client to render the message in the user's language (type is the i18n key).
+  data      Json?
   readAt    DateTime? @map("read_at") @db.Timestamptz(3)
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
 

@@ -32,14 +32,17 @@ const enrollmentStatus = defineEnum([
   'COMPLETED',
   'NOT_COMPLETED',
   'CERTIFIED',
+  'WITHDRAWN',
 ]);
 export const EnrollmentStatus = enrollmentStatus.obj;
 export type EnrollmentStatus = (typeof enrollmentStatus.values)[number];
 export const EnrollmentStatusSchema = enrollmentStatus.schema;
+export const ENROLLMENT_STATUSES = enrollmentStatus.values;
 /** Statuses that do not count as an active enrollment for BR-01. */
 export const INACTIVE_ENROLLMENT_STATUSES: readonly EnrollmentStatus[] = [
   'REJECTED',
   'NOT_COMPLETED',
+  'WITHDRAWN',
 ];
 
 const batchStatus = defineEnum(['PLANNED', 'ACTIVE', 'CLOSED']);
