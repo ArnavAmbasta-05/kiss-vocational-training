@@ -15,7 +15,7 @@ Read this at the start of every session and update it at the end of every sprint
 
 ---
 
-## Sprint 2 — Auth, RBAC, ownership, role dashboards (built; first Vercel deploy pending, 2026-10-19)
+## Sprint 2 — Auth, RBAC, ownership, role dashboards, first deploy (done, 2026-10-19)
 
 ### Built
 - **`core/auth`** (kernel shared by all modules): bcrypt hashing (cost from `BCRYPT_ROUNDS`,
@@ -81,14 +81,26 @@ password are two clicks via the account menu.
 - Refresh in two tabs at the exact same moment can trigger reuse detection and sign both out
   (documented trade-off of strict rotation).
 
+### First deploy (2026-10-19)
+- Live at **https://kiss-vtmp.vercel.app** (Vercel Hobby, function region sin1; Neon Postgres
+  16, Singapore). Migrations ran in the production build, the demo data was seeded, and admin,
+  trainer and student each signed in to their own dashboard. `PUBLIC_BASE_URL` is now fixed.
+- Issues fixed on the way:
+  - `NODE_ENV` pasted with stray characters failed config validation, so values are now
+    normalised.
+  - The install now keeps dev dependencies when `NODE_ENV=production`
+    (`--production=false`).
+  - CORS rejected same-origin POSTs from Vercel per-deployment URLs, so same-origin requests
+    now always pass.
+- Credentials hygiene:
+  - The Neon password was shared in a chat and also used as the first demo password. The
+    Neon password has been rotated.
+  - All seeded accounts got a new demo password via the new `pnpm db:seed --reset-passwords`
+    (audited, revokes sessions).
+  - GitHub has the variable `PUBLIC_BASE_URL` and the secret `E2E_PASSWORD`, so CI
+    smoke-tests the live site after each push to main.
+
 ### Known gaps / follow-ups
-- **First deploy not done**: the Neon project exists, and the Vercel project is next
-  (docs/DEPLOYMENT.md). The sprint's DoD ("all three roles log in on the deployed URL") is
-  pending that.
-- The serverless handler was verified locally (built bundle behind a plain Node HTTP server in
-  production mode: health, login, Secure cookie, Postgres rate-limit store). It has not run on
-  Vercel itself yet; the first deploy will show whether the Prisma engine and bcrypt binary are
-  bundled correctly (see the DEPLOYMENT.md troubleshooting table).
 - Password reset by email is out of scope (BRD); admins can create accounts and reactivate.
 
 ### Definition of done
@@ -97,7 +109,7 @@ password are two clicks via the account menu.
       expired/forged tokens, trainer → other batch 403, shared Postgres rate-limit store
 - [x] 17 Playwright tests (desktop + mobile), axe clean on login, dashboards and Users
 - [x] openapi.yaml: /auth/*, /users/me*, /admin/users*
-- [ ] Deployed URL with all three roles: waiting on hosting accounts
+- [x] All three roles sign in on the deployed URL (https://kiss-vtmp.vercel.app)
 
 ---
 
