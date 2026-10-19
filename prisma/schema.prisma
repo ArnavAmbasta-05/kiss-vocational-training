@@ -1,5 +1,9 @@
-// KISS VTMP data model. Sprint 0 holds a placeholder User table only;
-// the full R1 + R2 schema (TAD §6) is added in Sprint 1.
+// KISS VTMP data model (TAD §6): every R1 core entity plus the R2 competency, passport and
+// intervention tables. R3 tables (job roles, evidence, AI materials) arrive in Sprint 11/12.
+//
+// Conventions: UUID keys, snake_case tables/columns, every foreign key indexed.
+// Constraints Prisma cannot express (CHECKs, partial unique indexes, triggers) live in the
+// raw SQL at the end of the matching migration; see docs/ER.md.
 
 generator client {
   provider = "prisma-client-js"
@@ -9,6 +13,8 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+// ─── Enums (mirror packages/shared/src/enums) ──────────────────────────────────
 
 enum Role {
   STUDENT
@@ -22,16 +28,736 @@ enum Locale {
   hi
 }
 
+enum EnrollmentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  WAITLISTED
+  ALLOCATED
+  ACTIVE
+  COMPLETED
+  NOT_COMPLETED
+  CERTIFIED
+}
+
+enum BatchStatus {
+  PLANNED
+  ACTIVE
+  CLOSED
+}
+
+enum SessionStatus {
+  SCHEDULED
+  CONDUCTED
+  CANCELLED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+}
+
+enum AssessmentMode {
+  THEORY
+  PRACTICAL
+}
+
+enum CertificateStatus {
+  VALID
+  REVOKED
+  SUPERSEDED
+}
+
+enum Grade {
+  A
+  B
+  C
+  D
+  NOT_COMPLETED
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum InterventionActionType {
+  COUNSELLING
+  EXTRA_SESSION
+  PRACTICE_TASK
+}
+
+enum LearningResourceType {
+  VIDEO
+  DOCUMENT
+  PRACTICE_TASK
+  REMEDIAL_SESSION
+}
+
+// ─── Identity and access ───────────────────────────────────────────────────────
+
 model User {
-  id           String   @id @default(uuid()) @db.Uuid
-  email        String   @unique
-  passwordHash String   @map("password_hash")
-  role         Role
-  locale       Locale   @default(en)
-  isActive     Boolean  @default(true) @map("is_active")
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id               String    @id @default(uuid()) @db.Uuid
+  email            String    @unique
+  passwordHash     String    @map("password_hash")
+  fullName         String    @map("full_name")
+  role             Role
+  locale           Locale    @default(en)
+  isActive         Boolean   @default(true) @map("is_active")
+  failedLoginCount Int       @default(0) @map("failed_login_count")
+  lockedUntil      DateTime? @map("locked_until") @db.Timestamptz(3)
+  lastLoginAt      DateTime? @map("last_login_at") @db.Timestamptz(3)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  student       Student?
+  trainer       Trainer?
+  refreshTokens RefreshToken[]
+  notifications Notification[]
+  auditLogs     AuditLog[]
+  idempotency   IdempotencyKey[]
+
+  enrollmentDecisions  Enrollment[]         @relation("EnrollmentDecidedBy")
+  attendanceMarked     Attendance[]         @relation("AttendanceMarkedBy")
+  progressRecorded     Progress[]           @relation("ProgressRecordedBy")
+  assessmentsCreated   Assessment[]         @relation("AssessmentCreatedBy")
+  resultsRecorded      AssessmentResult[]   @relation("ResultRecordedBy")
+  evaluations          Evaluation[]         @relation("EvaluationBy")
+  certificatesIssued   Certificate[]        @relation("CertificateIssuedBy")
+  reportsGenerated     PerformanceReport[]  @relation("ReportGeneratedBy")
+  settingsUpdated      Setting[]            @relation("SettingUpdatedBy")
+  ratingsGiven         CompetencyRating[]   @relation("RatingRatedBy")
+  ratingsVerified      CompetencyRating[]   @relation("RatingVerifiedBy")
+  ratingsRevoked       CompetencyRating[]   @relation("RatingRevokedBy")
+  resourcesCreated     LearningResource[]   @relation("ResourceCreatedBy")
+  resourcesApproved    LearningResource[]   @relation("ResourceApprovedBy")
+  interventionsOwned   InterventionAction[] @relation("ActionOwner")
+  interventionsCreated InterventionAction[] @relation("ActionCreatedBy")
 
   @@index([role])
   @@map("users")
+}
+
+/// Refresh tokens are stored as SHA-256 hashes only. A family shares one familyId so reuse of
+/// a rotated token can revoke every descendant (Sprint 2).
+model RefreshToken {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  tokenHash    String    @unique @map("token_hash")
+  familyId     String    @map("family_id") @db.Uuid
+  expiresAt    DateTime  @map("expires_at") @db.Timestamptz(3)
+  revokedAt    DateTime? @map("revoked_at") @db.Timestamptz(3)
+  replacedById String?   @unique @map("replaced_by_id") @db.Uuid
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replacedBy RefreshToken? @relation("TokenRotation", fields: [replacedById], references: [id])
+  replaces   RefreshToken? @relation("TokenRotation")
+
+  @@index([userId])
+  @@index([familyId])
+  @@map("refresh_tokens")
+}
+
+model Student {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @unique @map("user_id") @db.Uuid
+  rollNo    String   @unique @map("roll_no")
+  cgpa      Decimal  @db.Decimal(4, 2)
+  phone     String?
+  photoUrl  String?  @map("photo_url")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user              User               @relation(fields: [userId], references: [id], onDelete: Restrict)
+  enrollments       Enrollment[]
+  batchMemberships  BatchStudent[]
+  attendance        Attendance[]
+  progress          Progress[]
+  results           AssessmentResult[]
+  competencyRatings CompetencyRating[]
+  passportShares    PassportShare[]
+  riskFlags         RiskFlag[]
+
+  @@map("students")
+}
+
+model Trainer {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @unique @map("user_id") @db.Uuid
+  employeeCode   String   @unique @map("employee_code")
+  phone          String?
+  specialization String?
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user        User                @relation(fields: [userId], references: [id], onDelete: Restrict)
+  assignments TrainerAssignment[]
+  sessions    TrainingSession[]
+
+  @@map("trainers")
+}
+
+// ─── Courses and enrollment (F2, F3) ───────────────────────────────────────────
+
+model Course {
+  id            String   @id @default(uuid()) @db.Uuid
+  code          String   @unique
+  title         String
+  description   String
+  durationWeeks Int      @map("duration_weeks")
+  prerequisites String?
+  seatCapacity  Int      @map("seat_capacity")
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  offerings    CourseOffering[]
+  preferences  EnrollmentPreference[]
+  batches      Batch[]
+  competencies Competency[]
+
+  @@index([isActive])
+  @@map("courses")
+}
+
+model TrainingCycle {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  startsOn  DateTime @map("starts_on") @db.Date
+  endsOn    DateTime @map("ends_on") @db.Date
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  offerings   CourseOffering[]
+  enrollments Enrollment[]
+  batches     Batch[]
+
+  @@map("training_cycles")
+}
+
+/// A course offered in a cycle, with its elective enrollment window (BRQ-2.3, BR-02).
+model CourseOffering {
+  id                 String   @id @default(uuid()) @db.Uuid
+  courseId           String   @map("course_id") @db.Uuid
+  cycleId            String   @map("cycle_id") @db.Uuid
+  enrollmentOpensAt  DateTime @map("enrollment_opens_at") @db.Timestamptz(3)
+  enrollmentClosesAt DateTime @map("enrollment_closes_at") @db.Timestamptz(3)
+  isOpen             Boolean  @default(false) @map("is_open")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  course Course        @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  cycle  TrainingCycle @relation(fields: [cycleId], references: [id], onDelete: Restrict)
+
+  @@unique([courseId, cycleId])
+  @@index([cycleId])
+  @@map("course_offerings")
+}
+
+/// One application per student per cycle. BR-01 (one *active* enrollment) is a partial unique
+/// index in SQL: rejected and not-completed enrollments do not block a new one.
+model Enrollment {
+  id          String           @id @default(uuid()) @db.Uuid
+  studentId   String           @map("student_id") @db.Uuid
+  cycleId     String           @map("cycle_id") @db.Uuid
+  status      EnrollmentStatus @default(PENDING)
+  reason      String?
+  submittedAt DateTime         @default(now()) @map("submitted_at") @db.Timestamptz(3)
+  decidedAt   DateTime?        @map("decided_at") @db.Timestamptz(3)
+  decidedById String?          @map("decided_by_id") @db.Uuid
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  student            Student                @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  cycle              TrainingCycle          @relation(fields: [cycleId], references: [id], onDelete: Restrict)
+  decidedBy          User?                  @relation("EnrollmentDecidedBy", fields: [decidedById], references: [id])
+  preferences        EnrollmentPreference[]
+  batchMembership    BatchStudent?
+  evaluation         Evaluation?
+  certificates       Certificate[]
+  performanceReports PerformanceReport[]
+
+  // Target for BatchStudent's composite FK, so a membership's student always matches.
+  @@unique([id, studentId])
+  @@index([studentId])
+  @@index([cycleId, status])
+  @@index([decidedById])
+  @@map("enrollments")
+}
+
+model EnrollmentPreference {
+  id           String @id @default(uuid()) @db.Uuid
+  enrollmentId String @map("enrollment_id") @db.Uuid
+  courseId     String @map("course_id") @db.Uuid
+  rank         Int
+
+  enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  course     Course     @relation(fields: [courseId], references: [id], onDelete: Restrict)
+
+  @@unique([enrollmentId, rank])
+  @@unique([enrollmentId, courseId])
+  @@index([courseId])
+  @@map("enrollment_preferences")
+}
+
+// ─── Batches and sessions (F4) ─────────────────────────────────────────────────
+
+model Batch {
+  id        String      @id @default(uuid()) @db.Uuid
+  courseId  String      @map("course_id") @db.Uuid
+  cycleId   String      @map("cycle_id") @db.Uuid
+  name      String
+  capacity  Int
+  startDate DateTime    @map("start_date") @db.Date
+  endDate   DateTime    @map("end_date") @db.Date
+  venue     String
+  status    BatchStatus @default(PLANNED)
+  createdAt DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  course            Course              @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  cycle             TrainingCycle       @relation(fields: [cycleId], references: [id], onDelete: Restrict)
+  students          BatchStudent[]
+  trainers          TrainerAssignment[]
+  sessions          TrainingSession[]
+  assessments       Assessment[]
+  progress          Progress[]
+  competencyRatings CompetencyRating[]
+  riskFlags         RiskFlag[]
+
+  @@unique([courseId, cycleId, name])
+  @@index([cycleId, status])
+  @@map("batches")
+}
+
+/// Allocation of an enrollment to a batch. One batch per enrollment; studentId is carried for
+/// fast roster queries and kept consistent by the composite FK to enrollments(id, student_id).
+model BatchStudent {
+  id           String   @id @default(uuid()) @db.Uuid
+  batchId      String   @map("batch_id") @db.Uuid
+  enrollmentId String   @unique @map("enrollment_id") @db.Uuid
+  studentId    String   @map("student_id") @db.Uuid
+  allocatedAt  DateTime @default(now()) @map("allocated_at") @db.Timestamptz(3)
+
+  batch      Batch      @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  enrollment Enrollment @relation(fields: [enrollmentId, studentId], references: [id, studentId], onDelete: Restrict)
+  student    Student    @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  @@unique([batchId, studentId])
+  @@unique([enrollmentId, studentId])
+  @@index([studentId])
+  @@map("batch_students")
+}
+
+model TrainerAssignment {
+  batchId    String   @map("batch_id") @db.Uuid
+  trainerId  String   @map("trainer_id") @db.Uuid
+  assignedAt DateTime @default(now()) @map("assigned_at") @db.Timestamptz(3)
+
+  batch   Batch   @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  trainer Trainer @relation(fields: [trainerId], references: [id], onDelete: Restrict)
+
+  @@id([batchId, trainerId])
+  @@index([trainerId])
+  @@map("trainer_assignments")
+}
+
+model TrainingSession {
+  id        String        @id @default(uuid()) @db.Uuid
+  batchId   String        @map("batch_id") @db.Uuid
+  trainerId String?       @map("trainer_id") @db.Uuid
+  startsAt  DateTime      @map("starts_at") @db.Timestamptz(3)
+  endsAt    DateTime      @map("ends_at") @db.Timestamptz(3)
+  venue     String
+  topic     String?
+  status    SessionStatus @default(SCHEDULED)
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  batch      Batch        @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  trainer    Trainer?     @relation(fields: [trainerId], references: [id])
+  attendance Attendance[]
+
+  @@index([batchId, startsAt])
+  @@index([trainerId, startsAt])
+  @@index([venue, startsAt])
+  @@map("training_sessions")
+}
+
+// ─── Attendance, assessment, evaluation (F5, F6) ───────────────────────────────
+
+/// firstMarkedAt anchors the 48 h trainer edit window (BR-06); markedAt is the latest edit.
+model Attendance {
+  id            String           @id @default(uuid()) @db.Uuid
+  sessionId     String           @map("session_id") @db.Uuid
+  studentId     String           @map("student_id") @db.Uuid
+  status        AttendanceStatus
+  markedById    String           @map("marked_by_id") @db.Uuid
+  firstMarkedAt DateTime         @default(now()) @map("first_marked_at") @db.Timestamptz(3)
+  markedAt      DateTime         @default(now()) @map("marked_at") @db.Timestamptz(3)
+
+  session  TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+  student  Student         @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  markedBy User            @relation("AttendanceMarkedBy", fields: [markedById], references: [id])
+
+  @@unique([sessionId, studentId])
+  @@index([studentId, sessionId])
+  @@index([markedById])
+  @@map("attendance")
+}
+
+/// Progress milestone for one student in a batch, or for the whole batch when studentId is null.
+model Progress {
+  id           String   @id @default(uuid()) @db.Uuid
+  batchId      String   @map("batch_id") @db.Uuid
+  studentId    String?  @map("student_id") @db.Uuid
+  milestone    String
+  note         String?
+  recordedById String   @map("recorded_by_id") @db.Uuid
+  recordedAt   DateTime @default(now()) @map("recorded_at") @db.Timestamptz(3)
+
+  batch      Batch    @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  student    Student? @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  recordedBy User     @relation("ProgressRecordedBy", fields: [recordedById], references: [id])
+
+  @@index([batchId])
+  @@index([studentId])
+  @@index([recordedById])
+  @@map("progress")
+}
+
+model Assessment {
+  id          String         @id @default(uuid()) @db.Uuid
+  batchId     String         @map("batch_id") @db.Uuid
+  title       String
+  mode        AssessmentMode
+  maxMarks    Decimal        @map("max_marks") @db.Decimal(6, 2)
+  weightage   Decimal        @db.Decimal(6, 2)
+  isMandatory Boolean        @default(false) @map("is_mandatory")
+  heldOn      DateTime?      @map("held_on") @db.Date
+  createdById String         @map("created_by_id") @db.Uuid
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  batch        Batch                  @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  createdBy    User                   @relation("AssessmentCreatedBy", fields: [createdById], references: [id])
+  results      AssessmentResult[]
+  competencies AssessmentCompetency[]
+
+  @@index([batchId])
+  @@index([createdById])
+  @@map("assessments")
+}
+
+/// BR-07: 0 <= marks <= assessments.max_marks, enforced by a trigger.
+model AssessmentResult {
+  id           String   @id @default(uuid()) @db.Uuid
+  assessmentId String   @map("assessment_id") @db.Uuid
+  studentId    String   @map("student_id") @db.Uuid
+  marks        Decimal  @db.Decimal(6, 2)
+  remarks      String?
+  recordedById String   @map("recorded_by_id") @db.Uuid
+  recordedAt   DateTime @default(now()) @map("recorded_at") @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  assessment Assessment @relation(fields: [assessmentId], references: [id], onDelete: Restrict)
+  student    Student    @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  recordedBy User       @relation("ResultRecordedBy", fields: [recordedById], references: [id])
+
+  @@unique([assessmentId, studentId])
+  @@index([studentId])
+  @@index([recordedById])
+  @@map("assessment_results")
+}
+
+/// Final trainer evaluation with the completion recommendation (BR-09).
+model Evaluation {
+  id            String   @id @default(uuid()) @db.Uuid
+  enrollmentId  String   @unique @map("enrollment_id") @db.Uuid
+  remarks       String
+  recommended   Boolean
+  evaluatedById String   @map("evaluated_by_id") @db.Uuid
+  evaluatedAt   DateTime @default(now()) @map("evaluated_at") @db.Timestamptz(3)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  enrollment  Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Restrict)
+  evaluatedBy User       @relation("EvaluationBy", fields: [evaluatedById], references: [id])
+
+  @@index([evaluatedById])
+  @@map("evaluations")
+}
+
+// ─── Certificates and reports (F7, F8, F15) ────────────────────────────────────
+
+/// Snapshots (grade, aggregate, attendance) are frozen at issue. Only one VALID certificate
+/// per enrollment (partial unique index); reissue marks the old one SUPERSEDED.
+model Certificate {
+  id                String            @id @default(uuid()) @db.Uuid
+  enrollmentId      String            @map("enrollment_id") @db.Uuid
+  publicCode        String            @unique @map("public_code")
+  status            CertificateStatus @default(VALID)
+  grade             Grade
+  aggregatePercent  Decimal           @map("aggregate_percent") @db.Decimal(5, 2)
+  attendancePercent Decimal           @map("attendance_percent") @db.Decimal(5, 2)
+  issuedAt          DateTime          @default(now()) @map("issued_at") @db.Timestamptz(3)
+  issuedById        String            @map("issued_by_id") @db.Uuid
+  revokedAt         DateTime?         @map("revoked_at") @db.Timestamptz(3)
+  revokedReason     String?           @map("revoked_reason")
+  supersededById    String?           @unique @map("superseded_by_id") @db.Uuid
+  verificationCount Int               @default(0) @map("verification_count")
+  pdfObjectKey      String?           @map("pdf_object_key")
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  enrollment   Enrollment   @relation(fields: [enrollmentId], references: [id], onDelete: Restrict)
+  issuedBy     User         @relation("CertificateIssuedBy", fields: [issuedById], references: [id])
+  supersededBy Certificate? @relation("CertificateSupersession", fields: [supersededById], references: [id])
+  supersedes   Certificate? @relation("CertificateSupersession")
+
+  @@index([enrollmentId])
+  @@index([status])
+  @@index([issuedById])
+  @@map("certificates")
+}
+
+model PerformanceReport {
+  id            String   @id @default(uuid()) @db.Uuid
+  enrollmentId  String   @map("enrollment_id") @db.Uuid
+  snapshot      Json
+  pdfObjectKey  String?  @map("pdf_object_key")
+  generatedById String   @map("generated_by_id") @db.Uuid
+  generatedAt   DateTime @default(now()) @map("generated_at") @db.Timestamptz(3)
+
+  enrollment  Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Restrict)
+  generatedBy User       @relation("ReportGeneratedBy", fields: [generatedById], references: [id])
+
+  @@index([enrollmentId])
+  @@index([generatedById])
+  @@map("performance_reports")
+}
+
+// ─── Kernel: audit, notifications, idempotency, settings ───────────────────────
+
+/// Insert-only (NFR-06): a trigger rejects UPDATE, DELETE and TRUNCATE. userId is null for
+/// system actions (cron jobs).
+model AuditLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String?  @map("user_id") @db.Uuid
+  action    String
+  entity    String
+  entityId  String   @map("entity_id")
+  oldValue  Json?    @map("old_value")
+  newValue  Json?    @map("new_value")
+  ip        String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([entity, entityId])
+  @@index([userId, createdAt])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model Notification {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  type      String
+  title     String
+  body      String
+  link      String?
+  readAt    DateTime? @map("read_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@map("notifications")
+}
+
+/// Stored response for an Idempotency-Key, replayed when the same user retries the same route.
+model IdempotencyKey {
+  id             String   @id @default(uuid()) @db.Uuid
+  key            String
+  userId         String   @map("user_id") @db.Uuid
+  route          String
+  requestHash    String   @map("request_hash")
+  responseStatus Int      @map("response_status")
+  responseBody   Json     @map("response_body")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@index([createdAt])
+  @@map("idempotency_keys")
+}
+
+/// Configurable thresholds (CLAUDE.md rule 4). Keys and value types are defined in
+/// apps/api/src/core/settings/registry.ts.
+model Setting {
+  key         String   @id
+  value       Json
+  updatedById String?  @map("updated_by_id") @db.Uuid
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  updatedBy User? @relation("SettingUpdatedBy", fields: [updatedById], references: [id])
+
+  @@index([updatedById])
+  @@map("settings")
+}
+
+// ─── R2: competency model, passport, intervention (F10, F11, F12) ──────────────
+
+model Competency {
+  id            String         @id @default(uuid()) @db.Uuid
+  courseId      String         @map("course_id") @db.Uuid
+  code          String
+  title         String
+  description   String?
+  mode          AssessmentMode
+  requiredLevel Int            @map("required_level")
+  isMandatory   Boolean        @default(false) @map("is_mandatory")
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  course      Course                 @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  assessments AssessmentCompetency[]
+  ratings     CompetencyRating[]
+  resources   LearningResource[]
+
+  @@unique([courseId, code])
+  @@map("competencies")
+}
+
+model AssessmentCompetency {
+  assessmentId String @map("assessment_id") @db.Uuid
+  competencyId String @map("competency_id") @db.Uuid
+
+  assessment Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  competency Competency @relation(fields: [competencyId], references: [id], onDelete: Cascade)
+
+  @@id([assessmentId, competencyId])
+  @@index([competencyId])
+  @@map("assessment_competencies")
+}
+
+/// Trainer rating 1–4. Verified when level >= required and an assigned trainer confirms
+/// (BR-13). Verified ratings are never deleted, only revoked with a reason (BR-14).
+model CompetencyRating {
+  id            String    @id @default(uuid()) @db.Uuid
+  studentId     String    @map("student_id") @db.Uuid
+  competencyId  String    @map("competency_id") @db.Uuid
+  batchId       String    @map("batch_id") @db.Uuid
+  level         Int
+  ratedById     String    @map("rated_by_id") @db.Uuid
+  ratedAt       DateTime  @default(now()) @map("rated_at") @db.Timestamptz(3)
+  verifiedAt    DateTime? @map("verified_at") @db.Timestamptz(3)
+  verifiedById  String?   @map("verified_by_id") @db.Uuid
+  revokedAt     DateTime? @map("revoked_at") @db.Timestamptz(3)
+  revokedById   String?   @map("revoked_by_id") @db.Uuid
+  revokedReason String?   @map("revoked_reason")
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  student    Student    @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  competency Competency @relation(fields: [competencyId], references: [id], onDelete: Restrict)
+  batch      Batch      @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  ratedBy    User       @relation("RatingRatedBy", fields: [ratedById], references: [id])
+  verifiedBy User?      @relation("RatingVerifiedBy", fields: [verifiedById], references: [id])
+  revokedBy  User?      @relation("RatingRevokedBy", fields: [revokedById], references: [id])
+
+  @@unique([studentId, competencyId, batchId])
+  @@index([competencyId])
+  @@index([batchId])
+  @@index([ratedById])
+  @@index([verifiedById])
+  @@index([revokedById])
+  @@map("competency_ratings")
+}
+
+model LearningResource {
+  id           String               @id @default(uuid()) @db.Uuid
+  competencyId String               @map("competency_id") @db.Uuid
+  title        String
+  type         LearningResourceType
+  url          String
+  createdById  String               @map("created_by_id") @db.Uuid
+  approvedById String?              @map("approved_by_id") @db.Uuid
+  createdAt    DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  competency Competency @relation(fields: [competencyId], references: [id], onDelete: Cascade)
+  createdBy  User       @relation("ResourceCreatedBy", fields: [createdById], references: [id])
+  approvedBy User?      @relation("ResourceApprovedBy", fields: [approvedById], references: [id])
+
+  @@index([competencyId])
+  @@index([createdById])
+  @@index([approvedById])
+  @@map("learning_resources")
+}
+
+/// Shareable read-only passport link. Only the SHA-256 of the 32-byte token is stored.
+model PassportShare {
+  id           String    @id @default(uuid()) @db.Uuid
+  studentId    String    @map("student_id") @db.Uuid
+  tokenHash    String    @unique @map("token_hash")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  expiresAt    DateTime? @map("expires_at") @db.Timestamptz(3)
+  revokedAt    DateTime? @map("revoked_at") @db.Timestamptz(3)
+  viewCount    Int       @default(0) @map("view_count")
+  lastViewedAt DateTime? @map("last_viewed_at") @db.Timestamptz(3)
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  @@index([studentId])
+  @@map("passport_shares")
+}
+
+/// One open flag per (student, batch) via a partial unique index; closed flags stay as history.
+/// clearSince marks when all triggers last cleared (BR-17 closes after 7 clear days).
+model RiskFlag {
+  id          String    @id @default(uuid()) @db.Uuid
+  studentId   String    @map("student_id") @db.Uuid
+  batchId     String    @map("batch_id") @db.Uuid
+  level       RiskLevel
+  reasons     Json
+  openedAt    DateTime  @default(now()) @map("opened_at") @db.Timestamptz(3)
+  clearSince  DateTime? @map("clear_since") @db.Timestamptz(3)
+  closedAt    DateTime? @map("closed_at") @db.Timestamptz(3)
+  escalatedAt DateTime? @map("escalated_at") @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  student Student              @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  batch   Batch                @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  actions InterventionAction[]
+
+  @@index([studentId])
+  @@index([batchId, level])
+  @@map("risk_flags")
+}
+
+model InterventionAction {
+  id          String                 @id @default(uuid()) @db.Uuid
+  flagId      String                 @map("flag_id") @db.Uuid
+  type        InterventionActionType
+  ownerId     String                 @map("owner_id") @db.Uuid
+  dueOn       DateTime               @map("due_on") @db.Date
+  note        String?
+  outcome     String?
+  completedAt DateTime?              @map("completed_at") @db.Timestamptz(3)
+  createdById String                 @map("created_by_id") @db.Uuid
+  createdAt   DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime               @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  flag      RiskFlag @relation(fields: [flagId], references: [id], onDelete: Restrict)
+  owner     User     @relation("ActionOwner", fields: [ownerId], references: [id])
+  createdBy User     @relation("ActionCreatedBy", fields: [createdById], references: [id])
+
+  @@index([flagId])
+  @@index([ownerId])
+  @@index([createdById])
+  @@map("intervention_actions")
 }
