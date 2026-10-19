@@ -15,6 +15,92 @@ Read this at the start of every session and update it at the end of every sprint
 
 ---
 
+## Sprint 4 — Batches, allocation engine, trainers, sessions (done, 2026-10-19)
+
+### Built
+- **Allocation engine** (`modules/batches/rules.ts allocate`, pure, O(n log n + n·p)):
+  - Applicants are sorted once by `allocation.priorityRule`: submission time, or CGPA desc
+    with submission time and then id breaking ties, so results are deterministic.
+  - It fills rank 1 for everyone, then rank 2 for anyone still unplaced, then rank 3 (BR-04).
+    Each student goes to the batch of that course with the most free seats, so batches fill
+    evenly.
+  - No batch exceeds capacity (BR-03), and the overflow is waitlisted.
+  - Tested for capacity, rank order, both rules, ties, spreading and 500 applicants < 5 s (BO-3).
+- **Preview → confirm** (`allocation.service`):
+  - Preview stores a snapshot in `allocation_previews` (serverless-safe) with a fingerprint of
+    the approved applications (incl. `updatedAt`), batch capacity/status/members and the rule.
+    It expires after setting `allocation.previewTtlMinutes` (30).
+  - Confirm locks the cycle's batches, recomputes the fingerprint (409 `PREVIEW_STALE` on any
+    change) and, in ONE transaction:
+    - bulk-inserts the memberships;
+    - sets APPROVED → ALLOCATED (or ACTIVE if the batch is active), and the overflow →
+      WAITLISTED with a reason;
+    - writes per-application audit rows plus `ALLOCATION_CONFIRMED`, and notifications.
+  - Confirm also handles 409 `PREVIEW_EXPIRED` and `PREVIEW_ALREADY_CONFIRMED`, and accepts an
+    Idempotency-Key (the UI uses `alloc-<previewId>`).
+- **Batches** (`batches.service`):
+  - Admin CRUD. Capacity is never below enrolled (409 `CAPACITY_BELOW_ENROLLED`), and names
+    are unique per course and cycle.
+  - Placement:
+    - Place an APPROVED/WAITLISTED applicant ("promote"). The course must be one they chose,
+      in the same cycle, with capacity left (409 `BATCH_FULL`, TC-06).
+    - Move, with the same checks on the target (TC-07). Batch rows are locked in id order so
+      moves cannot deadlock.
+    - Remove from a planned batch, which returns the application to APPROVED.
+  - Trainers: assign and unassign (an active batch keeps one).
+  - Activate: PLANNED → ACTIVE, which needs a trainer. Students go ALLOCATED → ACTIVE and are
+    notified.
+  - Sessions: single, or weekly recurring (days, HH:MM, from/until) expanded in institution
+    local time (new setting `institution.utcOffsetMinutes` = 330, IST). Sessions must lie within
+    the batch dates (≤ 200 per schedule). Cancel is supported.
+  - Read endpoints `/batches/mine`, `/batches/:id` and `/batches/:id/sessions` are
+    ownership-checked: admin any batch, trainer their own (BR-05), student their own batch with
+    the roster hidden (NFR-08).
+- **Enrollments service exports for batches** (rule 5: batches never touch enrollment tables):
+  - `approvedApplicants`, `placementFacts` and `candidatesForCourse`.
+  - Set-based `changeStatuses(tx, log, …)`: conditional grouped updates, abort on any
+    concurrent change, and bulk audit via the new `log.many()` / `audit.recordMany()`.
+- **Catalogue seats** now = students placed in the course's batches + approved first choices
+  not yet placed.
+- **Web**:
+  - **Admin**: Batches list (filters, fill bars, create), Run allocation (stats, warnings,
+    batch fill with "added now", placements, waitlist, confirm dialog) and Batch detail
+    (accessible tabs: Students with place/move/remove and candidate list, Trainers with
+    assign/unassign, Sessions with list/calendar toggle, schedule dialog and cancel; edit;
+    activate).
+  - **Trainer**: My batches and a read-only batch detail.
+  - **Student**: a dashboard card with batch, trainer, venue and next session.
+  - Session times are always shown in IST.
+- **Seed**: "Batch A" per demo course in the open cycle with its trainer assigned (Electrician →
+  trainer1, Solar → trainer2, Tailoring → trainer3), ready for an allocation demo.
+
+### Deviations
+- **Previews are stored in Postgres**, not in memory, because of serverless hosting.
+- **Moves and placements are limited to courses the student chose**; that rule isn't in the
+  BRD, but it stops placing students in courses they never asked for.
+- **The client shows times in Asia/Kolkata**, a constant that mirrors the server setting; a
+  different institution time zone would need both changed.
+- **Clash and double-booking checks are not here** (Sprint 11, F14).
+
+### Known gaps / follow-ups
+- Main JS bundle is still under NFR-10 but growing. Route-level code splitting should come
+  soon.
+- Removing a student from an ACTIVE batch is blocked; withdrawals mid-training will be handled
+  with attendance/completion (Sprint 5–6).
+
+### Definition of done
+- [x] Approved students allocated via preview → confirm; the trainer sees the roster; the
+      student sees their batch (Playwright desktop + mobile, axe on allocation, batch detail
+      and trainer pages)
+- [x] Unit: allocation (capacity, rank order, both priority rules, ties, spread, 500 < 5 s),
+      recurring schedule (IST, crossing UTC midnight, limits)
+- [x] API: stale/expired/double confirm, idempotent replay, 500 applicants preview < 5 s and
+      confirm, TC-06 batch full, TC-07 move capacity, remove, promote, wrong course, trainer
+      sees only own batches, student without roster, activation rules, sessions
+- [x] lint · format · typecheck · build · i18n keys in sync · openapi.yaml (47 paths)
+
+---
+
 ## Sprint 3 — Courses, electives and enrollment (done, 2026-10-19)
 
 ### Built
