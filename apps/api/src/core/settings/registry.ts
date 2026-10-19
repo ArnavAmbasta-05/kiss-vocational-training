@@ -1,0 +1,121 @@
+import { z } from 'zod';
+import { AllocationPriorityRuleSchema } from '@vtmp/shared';
+
+const percent = z.number().min(0).max(100);
+const positiveInt = z.number().int().positive();
+
+const GradeBandsSchema = z
+  .object({ A: percent, B: percent, C: percent, D: percent })
+  .refine((b) => b.A > b.B && b.B > b.C && b.C > b.D, {
+    message: 'Grade bands must be strictly descending (A > B > C > D)',
+  });
+
+interface SettingDefinition<S extends z.ZodTypeAny> {
+  schema: S;
+  default: z.infer<S>;
+  description: string;
+}
+
+function define<S extends z.ZodTypeAny>(
+  schema: S,
+  defaultValue: z.infer<S>,
+  description: string,
+): SettingDefinition<S> {
+  return { schema, default: schema.parse(defaultValue), description };
+}
+
+/**
+ * Every configurable threshold in the system (CLAUDE.md rule 4). Services read these through
+ * settings.get(key); nothing hard-codes a number that appears here. BRD references in brackets.
+ */
+export const SETTINGS = {
+  'attendance.minPercent': define(percent, 75, 'Minimum attendance % to complete [BR-09]'),
+  'attendance.editWindowHours': define(
+    positiveInt,
+    48,
+    'Hours after first marking during which a trainer may edit attendance [BR-06]',
+  ),
+  'attendance.lateCountsAsPresent': define(
+    z.boolean(),
+    true,
+    'Whether LATE counts as attended in attendance % [BR-08]',
+  ),
+  'aggregate.minPercent': define(percent, 40, 'Minimum weighted aggregate % to complete [BR-09]'),
+  'grade.bands': define(
+    GradeBandsSchema,
+    { A: 85, B: 70, C: 55, D: 40 },
+    'Lower bound % of each grade; below D is Not Completed [BR-11]',
+  ),
+  'allocation.priorityRule': define(
+    AllocationPriorityRuleSchema,
+    'SUBMISSION_TIME',
+    'Tie-break within a preference rank: earliest submission or highest CGPA [BR-04]',
+  ),
+  'enrollment.maxPreferences': define(
+    z.number().int().min(1).max(3),
+    3,
+    'Maximum ranked course preferences per application [BRQ-3.1]',
+  ),
+  'risk.medium.attendanceBelow': define(percent, 80, 'Medium risk below this attendance % [BR-16]'),
+  'risk.medium.consecutiveAbsences': define(
+    positiveInt,
+    3,
+    'Medium risk at this many consecutive absences [BR-16]',
+  ),
+  'risk.medium.assessmentBelow': define(
+    percent,
+    50,
+    'Medium risk when any assessment is below this % [BR-16]',
+  ),
+  'risk.high.attendanceBelow': define(percent, 75, 'High risk below this attendance % [BR-16]'),
+  'risk.high.projectedBelow': define(
+    percent,
+    40,
+    'High risk when projected aggregate is below this % [BR-16]',
+  ),
+  'risk.high.dropPoints': define(
+    percent,
+    15,
+    'High risk on a drop of this many points between consecutive assessments [BR-16]',
+  ),
+  'risk.closeAfterClearDays': define(
+    positiveInt,
+    7,
+    'Close a flag after its triggers stay clear this many days [BR-17]',
+  ),
+  'risk.escalateAfterDays': define(
+    positiveInt,
+    14,
+    'Escalate an unresolved High flag to Admin after this many days [BR-17]',
+  ),
+  'auth.maxFailedLogins': define(
+    positiveInt,
+    5,
+    'Failed logins before the account is locked [TAD §9]',
+  ),
+  'auth.lockMinutes': define(positiveInt, 15, 'Account lock duration in minutes [TAD §9]'),
+  'public.rateLimitPerMin': define(
+    positiveInt,
+    30,
+    'Requests per minute per IP on public endpoints [NFR-09]',
+  ),
+} as const;
+
+export type SettingKey = keyof typeof SETTINGS;
+export type SettingValue<K extends SettingKey> = z.infer<(typeof SETTINGS)[K]['schema']>;
+export type SettingsMap = { [K in SettingKey]: SettingValue<K> };
+
+export const SETTING_KEYS = Object.keys(SETTINGS) as SettingKey[];
+
+export function isSettingKey(key: string): key is SettingKey {
+  return Object.prototype.hasOwnProperty.call(SETTINGS, key);
+}
+
+/** Validates a value for a key; throws ZodError on mismatch. */
+export function parseSetting<K extends SettingKey>(key: K, value: unknown): SettingValue<K> {
+  return SETTINGS[key].schema.parse(value) as SettingValue<K>;
+}
+
+export function defaultSettings(): SettingsMap {
+  return Object.fromEntries(SETTING_KEYS.map((k) => [k, SETTINGS[k].default])) as SettingsMap;
+}

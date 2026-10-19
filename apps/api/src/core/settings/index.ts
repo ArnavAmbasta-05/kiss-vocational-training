@@ -1,2 +1,11 @@
-// Settings registry — settings.get(key) backed by the Setting table — arrives in Sprint 1.
-export {};
+export { settings } from './settings';
+export {
+  SETTINGS,
+  SETTING_KEYS,
+  defaultSettings,
+  isSettingKey,
+  parseSetting,
+  type SettingKey,
+  type SettingValue,
+  type SettingsMap,
+} from './registry';

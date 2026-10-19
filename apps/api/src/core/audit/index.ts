@@ -1,2 +1,1 @@
-// Audit kernel — audit.record(tx, …) and withAudit(userId, fn) — arrives in Sprint 1.
-export {};
+export { audit, withAudit, type Actor, type AuditEntry, type AuditFn } from './audit';
