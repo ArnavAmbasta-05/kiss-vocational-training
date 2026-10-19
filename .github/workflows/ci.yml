@@ -147,4 +147,6 @@ jobs:
           exit 1
       - run: pnpm --filter @vtmp/web exec playwright install --with-deps chromium
       # Read-only checks only: never create data on the live demo.
-      - run: pnpm --filter @vtmp/web exec playwright test smoke.spec.ts --project=desktop
+      # No retries: each retry repeats a sign-in, and a wrong E2E_PASSWORD would then trip the
+      # 5-failure account lockout on the demo student (auth.maxFailedLogins).
+      - run: pnpm --filter @vtmp/web exec playwright test smoke.spec.ts --project=desktop --retries=0
