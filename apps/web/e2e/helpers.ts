@@ -9,11 +9,43 @@ export const ACCOUNTS = {
   STUDENT: 'student001@kiss-vtmp.test',
 } as const;
 
-export async function signIn(page: Page, email: string, password = SEED_PASSWORD) {
+// Against a deployed site, never fall back to the documented default password: every failed
+// attempt counts toward the 5-failure account lockout on the live demo accounts.
+if (process.env.E2E_BASE_URL && !process.env.E2E_PASSWORD) {
+  throw new Error('E2E_PASSWORD must be set when E2E_BASE_URL points at a deployed site');
+}
+
+/**
+ * Signs in through the login form. By default it waits until the app leaves /login and, if the
+ * form shows an error instead, fails with that message (e.g. wrong password vs account locked)
+ * so CI logs say why. The password itself is never printed.
+ */
+export async function signIn(
+  page: Page,
+  email: string,
+  password = SEED_PASSWORD,
+  { expectSuccess = true }: { expectSuccess?: boolean } = {},
+) {
   await page.goto('/login');
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password').fill(password);
   await page.getByRole('button', { name: 'Sign in' }).click();
+  if (!expectSuccess) return;
+
+  // Generous timeout: on the deployed site the first request may hit a cold function.
+  const leftLogin = await page
+    .waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 20_000 })
+    .then(
+      () => true,
+      () => false,
+    );
+  if (!leftLogin) {
+    const alert = page.getByRole('alert');
+    const reason = (await alert.isVisible())
+      ? await alert.innerText()
+      : 'no error shown, still on /login';
+    throw new Error(`Sign-in failed for ${email}: ${reason}`);
+  }
 }
 
 export async function expectNoSeriousA11yViolations(page: Page) {

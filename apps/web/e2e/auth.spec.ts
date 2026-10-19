@@ -15,7 +15,7 @@ test.describe('sign in (BRQ-1.1, BRQ-1.2)', () => {
   }
 
   test('wrong password shows a generic error', async ({ page }) => {
-    await signIn(page, ACCOUNTS.STUDENT, 'not-the-password');
+    await signIn(page, ACCOUNTS.STUDENT, 'not-the-password', { expectSuccess: false });
     await expect(page.getByRole('alert')).toHaveText('Invalid email or password.');
     await expect(page).toHaveURL(/\/login/);
   });
