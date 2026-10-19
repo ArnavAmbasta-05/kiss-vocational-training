@@ -3,6 +3,7 @@ import { Role, type PrismaClient } from '@prisma/client';
 import { audit } from '../core/audit';
 import { SETTINGS, SETTING_KEYS } from '../core/settings/registry';
 import { ADMIN, COURSES, SEED_PASSWORD, TRAINERS, makeStudents } from './data';
+import { seedTraining } from './training';
 
 /**
  * Students from this number on get a pending application, so the admin review screen has data.
@@ -212,6 +213,8 @@ export async function runSeed(prisma: PrismaClient, opts: SeedOptions = {}) {
     batches++;
   }
   log(`batches: ${batches} added ("Batch A" per course, trainer assigned, no students yet)`);
+
+  await seedTraining(prisma, log);
 
   return { students: students.length, trainers: TRAINERS.length, courses: COURSES.length };
 }
