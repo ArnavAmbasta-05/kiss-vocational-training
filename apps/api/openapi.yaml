@@ -20,6 +20,8 @@ tags:
   - name: notifications
   - name: batches
   - name: admin-batches
+  - name: attendance
+  - name: assessments
 paths:
   /health:
     get:
@@ -782,6 +784,218 @@ paths:
               }
       responses:
         '200': { description: '{ previewId, allocated, waitlisted }' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  # ─── Sprint 5: attendance, assessments, progress, evaluations ─────────────────
+  /sessions/mine:
+    get:
+      tags: [attendance]
+      summary: My sessions as a trainer (default 14 days back to 30 ahead)
+      parameters:
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+      responses: { '200': { description: Sessions with batch, roster size and marked count } }
+  /sessions/{sessionId}/attendance:
+    get:
+      tags: [attendance]
+      summary: Attendance sheet (trainer of the batch or admin)
+      description: Includes canEdit, requiresReason (admin after the window), editableUntil and lockedReason.
+      parameters:
+        - { name: sessionId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Sheet }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    put:
+      tags: [attendance]
+      summary: Mark the whole roster (BRQ-5.1, BR-05, BR-06)
+      description: |
+        Session must have started, not be cancelled, batch ACTIVE. Trainers may edit within
+        attendance.editWindowHours of the first marking (409 EDIT_WINDOW_CLOSED after). Admins may
+        edit after the window with a reason (422 REASON_REQUIRED without). Every mark and change is
+        audited. First save sets the session CONDUCTED.
+      parameters:
+        - { name: sessionId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [entries]
+              properties:
+                entries:
+                  type: array
+                  items:
+                    type: object
+                    required: [studentId, status]
+                    properties:
+                      studentId: { type: string, format: uuid }
+                      status: { type: string, enum: [PRESENT, ABSENT, LATE] }
+                reason: { type: string, minLength: 3 }
+      responses:
+        '200': { description: Updated sheet }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /batches/{batchId}/attendance-summary:
+    get:
+      tags: [attendance]
+      summary: Per-student attendance % (two decimals), absences, consecutive absences (BRQ-5.3)
+      parameters:
+        - { name: batchId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { '200': { description: Rows } }
+  /students/{studentId}/attendance:
+    get:
+      tags: [attendance]
+      summary: A student's attendance per batch ("me" for the signed-in student)
+      parameters:
+        - { name: studentId, in: path, required: true, schema: { type: string } }
+      responses:
+        {
+          '200': { description: Figures and own session history },
+          '403': { $ref: '#/components/responses/Forbidden' },
+        }
+  /students/{studentId}/training:
+    get:
+      tags: [assessments]
+      summary: 'My training: attendance, results, weighted aggregate and projected grade (live)'
+      parameters:
+        - { name: studentId, in: path, required: true, schema: { type: string } }
+      responses:
+        {
+          '200': { description: One entry per batch },
+          '403': { $ref: '#/components/responses/Forbidden' },
+        }
+
+  /batches/{batchId}/assessments:
+    get:
+      tags: [assessments]
+      summary: Assessments of a batch (trainer of the batch or admin)
+      parameters:
+        - { name: batchId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { '200': { description: Assessments with recorded count } }
+    post:
+      tags: [assessments]
+      summary: Create an assessment (BRQ-6.1)
+      parameters:
+        - { name: batchId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, mode, maxMarks, weightage, isMandatory]
+              properties:
+                title: { type: string }
+                mode: { type: string, enum: [THEORY, PRACTICAL] }
+                maxMarks: { type: number, exclusiveMinimum: true, minimum: 0 }
+                weightage: { type: number, exclusiveMinimum: true, minimum: 0 }
+                isMandatory: { type: boolean }
+                heldOn: { type: string, format: date, nullable: true }
+      responses:
+        { '201': { description: Created }, '403': { $ref: '#/components/responses/Forbidden' } }
+  /assessments/{assessmentId}:
+    patch:
+      tags: [assessments]
+      summary: Edit (max marks never below a recorded result → 409 MAX_BELOW_RESULTS)
+      parameters:
+        - { name: assessmentId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { '200': { description: Updated } }
+    delete:
+      tags: [assessments]
+      summary: Delete an assessment without results (409 HAS_RESULTS otherwise)
+      parameters:
+        - { name: assessmentId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { '204': { description: Deleted } }
+  /assessments/{assessmentId}/results:
+    get:
+      tags: [assessments]
+      summary: Marks sheet for the roster
+      parameters:
+        - { name: assessmentId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { '200': { description: Sheet } }
+    put:
+      tags: [assessments]
+      summary: Record or correct marks for any subset of the roster (BR-07)
+      description: All values must be 0..maxMarks, else 422 MARKS_OUT_OF_RANGE with per-student details and nothing saved. Changes audited old → new.
+      parameters:
+        - { name: assessmentId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [results]
+              properties:
+                results:
+                  type: array
+                  items:
+                    type: object
+                    required: [studentId, marks]
+                    properties:
+                      studentId: { type: string, format: uuid }
+                      marks: { type: number }
+                      remarks: { type: string, nullable: true }
+      responses:
+        '200': { description: Updated sheet }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /batches/{batchId}/progress:
+    get:
+      tags: [assessments]
+      summary: Progress milestones, newest first
+      parameters:
+        - { name: batchId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { '200': { description: Milestones } }
+    post:
+      tags: [assessments]
+      summary: Record a milestone for the batch or one student (BRQ-6.3)
+      parameters:
+        - { name: batchId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [milestone]
+              properties:
+                studentId: { type: string, format: uuid, nullable: true }
+                milestone: { type: string }
+                note: { type: string, nullable: true }
+      responses: { '201': { description: Created } }
+  /batches/{batchId}/evaluations:
+    get:
+      tags: [assessments]
+      summary: Roster with each student's final evaluation (if any)
+      parameters:
+        - { name: batchId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { '200': { description: Rows } }
+  /enrollments/{enrollmentId}/evaluation:
+    get:
+      tags: [assessments]
+      summary: A student's final evaluation
+      parameters:
+        - { name: enrollmentId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { '200': { description: Evaluation or null } }
+    put:
+      tags: [assessments]
+      summary: Record the final evaluation and completion recommendation (trainer of the batch or admin)
+      parameters:
+        - { name: enrollmentId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [remarks, recommended]
+              properties:
+                remarks: { type: string, minLength: 3 }
+                recommended: { type: boolean }
+      responses:
+        '200': { description: Saved }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '409': { $ref: '#/components/responses/Conflict' }
 
 components:

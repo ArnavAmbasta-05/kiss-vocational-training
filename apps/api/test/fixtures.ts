@@ -203,6 +203,65 @@ export async function createBatch(
   });
 }
 
+/**
+ * An ACTIVE batch with an assigned trainer, `students` placed (enrollments ACTIVE, all able to
+ * sign in) and `sessions` scheduled in the past, one per day, so attendance can be taken.
+ */
+export async function createActiveBatch(
+  db: PrismaClient,
+  opts: { students?: number; sessions?: number } = {},
+) {
+  const { cycle, courses } = await createOpenCycle(db, 1);
+  const batch = await db.batch.create({
+    data: {
+      cycleId: cycle.id,
+      courseId: courses[0]!.id,
+      name: `Active ${uid()}`,
+      capacity: 30,
+      startDate: new Date(Date.now() - 30 * 86_400_000),
+      endDate: new Date(Date.now() + 60 * 86_400_000),
+      venue: 'Workshop C',
+      status: 'ACTIVE',
+    },
+  });
+  const trainer = await createLoginUser(db, Role.TRAINER);
+  await db.trainerAssignment.create({
+    data: { batchId: batch.id, trainerId: trainer.trainer!.id },
+  });
+  const students = [];
+  for (let i = 0; i < (opts.students ?? 3); i++) {
+    const s = await createLoginUser(db, Role.STUDENT);
+    const e = await db.enrollment.create({
+      data: {
+        studentId: s.student!.id,
+        cycleId: cycle.id,
+        status: 'ACTIVE',
+        preferences: { create: { courseId: courses[0]!.id, rank: 1 } },
+      },
+    });
+    await db.batchStudent.create({
+      data: { batchId: batch.id, enrollmentId: e.id, studentId: s.student!.id },
+    });
+    students.push({ user: s, studentId: s.student!.id, enrollmentId: e.id });
+  }
+  const sessions = [];
+  const n = opts.sessions ?? 3;
+  for (let i = 0; i < n; i++) {
+    const startsAt = new Date(Date.now() - (n - i) * 86_400_000);
+    sessions.push(
+      await db.trainingSession.create({
+        data: {
+          batchId: batch.id,
+          startsAt,
+          endsAt: new Date(startsAt.getTime() + 7_200_000),
+          venue: 'Workshop C',
+        },
+      }),
+    );
+  }
+  return { cycle, course: courses[0]!, batch, trainer, students, sessions };
+}
+
 export async function createCycleCourseBatch(db: PrismaClient) {
   const s = uid();
   const cycle = await db.trainingCycle.create({

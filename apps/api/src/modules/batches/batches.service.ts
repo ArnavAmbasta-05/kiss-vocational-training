@@ -647,3 +647,35 @@ export async function cancelSession(
     return toSession(updated);
   });
 }
+
+/** A student's batch placements, newest cycle first (for the training summary). */
+export async function placementsOf(studentId: string) {
+  const rows = await prisma().batchStudent.findMany({
+    where: { studentId },
+    orderBy: { batch: { startDate: 'desc' } },
+    select: {
+      enrollmentId: true,
+      batch: {
+        select: {
+          id: true,
+          name: true,
+          status: true,
+          startDate: true,
+          endDate: true,
+          course: { select: { title: true } },
+        },
+      },
+    },
+  });
+  return rows.map((r) => ({
+    enrollmentId: r.enrollmentId,
+    batch: {
+      id: r.batch.id,
+      name: r.batch.name,
+      status: r.batch.status,
+      courseTitle: r.batch.course.title,
+      startDate: day(r.batch.startDate),
+      endDate: day(r.batch.endDate),
+    },
+  }));
+}
