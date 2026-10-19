@@ -1,0 +1,22 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: vtmp-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: vtmp
+      POSTGRES_PASSWORD: vtmp
+      POSTGRES_DB: vtmp
+    ports:
+      - '5432:5432'
+    volumes:
+      - vtmp-pgdata:/var/lib/postgresql/data
+      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U vtmp -d vtmp']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  vtmp-pgdata:

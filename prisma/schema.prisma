@@ -1,0 +1,37 @@
+// KISS VTMP data model. Sprint 0 holds a placeholder User table only;
+// the full R1 + R2 schema (TAD §6) is added in Sprint 1.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  STUDENT
+  TRAINER
+  ADMIN
+}
+
+enum Locale {
+  en
+  or
+  hi
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         Role
+  locale       Locale   @default(en)
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([role])
+  @@map("users")
+}

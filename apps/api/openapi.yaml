@@ -1,0 +1,121 @@
+openapi: 3.0.3
+info:
+  title: KISS VTMP API
+  version: 0.1.0
+  description: |
+    KISS Vocational Training Management Portal API. All endpoints live under /api/v1 and
+    return JSON. Errors always use the Error schema below.
+servers:
+  - url: http://localhost:4000/api/v1
+    description: Local development
+tags:
+  - name: system
+paths:
+  /health:
+    get:
+      tags: [system]
+      summary: Liveness and database check
+      security: []
+      responses:
+        '200':
+          description: App and database are healthy
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Health' }
+        '503':
+          description: Database unreachable
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Health' }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    PageSize:
+      name: pageSize
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema: { type: string, maxLength: 128 }
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              pattern: '^[A-Z][A-Z0-9_]*$'
+              example: ENROLLMENT_WINDOW_CLOSED
+            message:
+              type: string
+            details:
+              type: array
+              items:
+                type: object
+                required: [path, message]
+                properties:
+                  path: { type: string }
+                  message: { type: string }
+    PageMeta:
+      type: object
+      required: [page, pageSize, total, totalPages]
+      properties:
+        page: { type: integer }
+        pageSize: { type: integer }
+        total: { type: integer }
+        totalPages: { type: integer }
+    Health:
+      type: object
+      required: [status, db, version, time]
+      properties:
+        status: { type: string, enum: [ok, degraded] }
+        db: { type: string, enum: [ok, error] }
+        version: { type: string }
+        time: { type: string, format: date-time }
+  responses:
+    BadRequest:
+      description: Malformed request
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Unauthorized:
+      description: Missing or invalid access token
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Forbidden:
+      description: Role or ownership check failed
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Conflict:
+      description: Business rule conflict
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ValidationFailed:
+      description: Input failed validation
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+security:
+  - bearerAuth: []
