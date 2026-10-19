@@ -51,6 +51,16 @@ export const SETTINGS = {
     'SUBMISSION_TIME',
     'Tie-break within a preference rank: earliest submission or highest CGPA [BR-04]',
   ),
+  'allocation.previewTtlMinutes': define(
+    positiveInt,
+    30,
+    'Minutes an allocation preview can be confirmed before it must be re-run [BRQ-4.2]',
+  ),
+  'institution.utcOffsetMinutes': define(
+    z.number().int().min(-720).max(840),
+    330,
+    'Institution time zone as minutes from UTC (IST = 330); recurring sessions use it',
+  ),
   'enrollment.maxPreferences': define(
     z.number().int().min(1).max(3),
     3,

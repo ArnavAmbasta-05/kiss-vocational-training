@@ -5,6 +5,8 @@ export const NOTIFICATION_TYPES = [
   'ENROLLMENT_APPROVED',
   'ENROLLMENT_REJECTED',
   'ENROLLMENT_WAITLISTED',
+  'ENROLLMENT_ALLOCATED',
+  'BATCH_ACTIVATED',
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 

@@ -50,7 +50,29 @@ async function record(tx: Tx, entry: AuditEntry): Promise<void> {
   });
 }
 
-export type AuditFn = (entry: Omit<AuditEntry, 'userId' | 'ip'>) => Promise<void>;
+/** Writes many audit rows in one insert, inside the caller's transaction (bulk operations). */
+async function recordMany(tx: Tx, entries: AuditEntry[]): Promise<void> {
+  assertTransactionClient(tx);
+  if (entries.length === 0) return;
+  await tx.auditLog.createMany({
+    data: entries.map((entry) => ({
+      userId: entry.userId,
+      action: entry.action,
+      entity: entry.entity,
+      entityId: entry.entityId,
+      oldValue: toJson(entry.oldValue),
+      newValue: toJson(entry.newValue),
+      ip: entry.ip ?? null,
+    })),
+  });
+}
+
+type ActorEntry = Omit<AuditEntry, 'userId' | 'ip'>;
+
+/** Audit logger bound to the acting user: log(entry), or log.many(entries) for bulk changes. */
+export type AuditFn = ((entry: ActorEntry) => Promise<void>) & {
+  many: (entries: ActorEntry[]) => Promise<void>;
+};
 
 export interface Actor {
   userId: string | null;
@@ -73,7 +95,17 @@ export async function withAudit<T>(
   options?: { timeoutMs?: number },
 ): Promise<T> {
   return prisma().$transaction(
-    (tx) => fn(tx, (entry) => record(tx, { ...entry, userId: actor.userId, ip: actor.ip })),
+    (tx) => {
+      const bind = (entry: ActorEntry): AuditEntry => ({
+        ...entry,
+        userId: actor.userId,
+        ip: actor.ip,
+      });
+      const log = Object.assign((entry: ActorEntry) => record(tx, bind(entry)), {
+        many: (entries: ActorEntry[]) => recordMany(tx, entries.map(bind)),
+      });
+      return fn(tx, log);
+    },
     { timeout: options?.timeoutMs ?? 15_000 },
   );
 }
@@ -95,4 +127,4 @@ async function history(entity: string, entityId: string): Promise<AuditRow[]> {
   });
 }
 
-export const audit = { record, history };
+export const audit = { record, recordMany, history };

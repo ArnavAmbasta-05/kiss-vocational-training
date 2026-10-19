@@ -3,3 +3,4 @@ export * from './auth';
 export * from './courses';
 export * from './enrollments';
 export * from './notifications';
+export * from './batches';

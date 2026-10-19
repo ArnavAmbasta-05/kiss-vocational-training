@@ -777,3 +777,20 @@ model RateLimit {
   @@index([resetAt])
   @@map("rate_limits")
 }
+
+/// Allocation preview snapshot (Sprint 4). Kept in the database because serverless instances
+/// share no memory. Confirm recomputes `fingerprint` and refuses if anything changed since.
+model AllocationPreview {
+  id          String    @id @default(uuid()) @db.Uuid
+  cycleId     String    @map("cycle_id") @db.Uuid
+  createdById String    @map("created_by_id") @db.Uuid
+  fingerprint String
+  result      Json
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  expiresAt   DateTime  @map("expires_at") @db.Timestamptz(3)
+  confirmedAt DateTime? @map("confirmed_at") @db.Timestamptz(3)
+
+  @@index([cycleId])
+  @@index([expiresAt])
+  @@map("allocation_previews")
+}

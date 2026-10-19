@@ -49,6 +49,7 @@ const batchStatus = defineEnum(['PLANNED', 'ACTIVE', 'CLOSED']);
 export const BatchStatus = batchStatus.obj;
 export type BatchStatus = (typeof batchStatus.values)[number];
 export const BatchStatusSchema = batchStatus.schema;
+export const BATCH_STATUSES = batchStatus.values;
 
 const sessionStatus = defineEnum(['SCHEDULED', 'CONDUCTED', 'CANCELLED']);
 export const SessionStatus = sessionStatus.obj;
