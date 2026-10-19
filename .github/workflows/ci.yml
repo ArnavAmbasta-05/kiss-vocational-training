@@ -1,0 +1,122 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: 20
+  # Test-only values; real secrets live in the hosting platform.
+  DATABASE_URL: postgresql://vtmp:vtmp@localhost:5432/vtmp_test?schema=public
+  TEST_DATABASE_URL: postgresql://vtmp:vtmp@localhost:5432/vtmp_test?schema=public
+  JWT_SECRET: ci-access-secret-that-is-at-least-32-chars
+  REFRESH_SECRET: ci-refresh-secret-that-is-at-least-32-chars
+  PUBLIC_BASE_URL: http://localhost:5173
+  CORS_ORIGINS: http://localhost:5173
+
+jobs:
+  quality:
+    name: Lint + typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm --filter @vtmp/web i18n:check
+
+  unit:
+    name: Unit tests
+    needs: quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:unit
+
+  integration:
+    name: Integration tests (PostgreSQL)
+    needs: quality
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: vtmp
+          POSTGRES_PASSWORD: vtmp
+          POSTGRES_DB: vtmp_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U vtmp -d vtmp_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply migrations to a clean database
+        run: pnpm --filter @vtmp/api db:deploy
+      - run: pnpm --filter @vtmp/api test:int
+
+  build:
+    name: Build + browser smoke test
+    needs: [unit, integration]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm --filter @vtmp/web exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report
+          retention-days: 7
+
+  # Enabled in Sprint 2 once hosting is chosen (TAD §11, §14).
+  # deploy:
+  #   name: Deploy (main only)
+  #   needs: build
+  #   if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+  #   runs-on: ubuntu-latest
+  #   environment: production
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: pnpm/action-setup@v4
+  #     - uses: actions/setup-node@v4
+  #       with: { node-version: 20, cache: pnpm }
+  #     - run: pnpm install --frozen-lockfile
+  #     - run: pnpm --filter @vtmp/api db:deploy
+  #       env: { DATABASE_URL: '${{ secrets.DATABASE_URL }}' }
+  #     - run: curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
+  #     - run: npx vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }}
+  #     - run: pnpm test:e2e
+  #       env: { E2E_BASE_URL: '${{ vars.PUBLIC_BASE_URL }}' }
