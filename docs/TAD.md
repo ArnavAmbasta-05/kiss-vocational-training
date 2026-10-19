@@ -32,6 +32,26 @@ extended with competency, risk, passport, verification and AI modules.
 Where this TAD and v2.1 differ, this TAD wins for architecture; the BRD
 wins for business rules.
 
+> **Amendment 1 (2026-10-19): hosting is Vercel + Neon only.** The API
+> no longer runs on Render/Railway: Render requires a card, and the
+> team's card was declined. One Vercel project (Hobby, function region
+> sin1) serves the React SPA and runs the unchanged Express app as a
+> serverless function on the same origin. PostgreSQL 16 is on Neon
+> (Singapore). Locally and in CI the API still runs as a normal server.
+> Effects on this document:
+>
+> - Scheduling (ADR-07, §8.2) uses Vercel Cron in production, with
+>   node-cron only for local runs.
+> - Security rate limits share counts in a Postgres table, because
+>   serverless instances share no memory.
+> - Files go to an object store, because functions have no persistent
+>   disk.
+> - The free-tier risks in §15.1 change accordingly.
+>
+> Rows changed by this amendment are marked "(Amendment 1)". Setup and
+> the reasons for each choice are in docs/DEPLOYMENT.md and
+> docs/PROGRESS.md (Sprint 2).
+
 ## 2. Architecture overview
 
 The portal is a modular monolith: one React frontend, one Express API
@@ -107,9 +127,11 @@ weeks.
                     generation (PDFKit)                     documents; one
                     with QR (qrcode)                        template
 
-  ADR-07            In-process scheduler  Separate worker,  Daily batch volume
-                    (node-cron) for risk  message queue     is small; no extra
-                    flags                                   infrastructure
+  ADR-07            Scheduled job for     Separate worker,  Daily batch volume
+                    risk flags: Vercel    message queue     is small; no extra
+                    Cron in production,                     infrastructure
+                    node-cron locally
+                    (Amendment 1)
 
   ADR-08            i18next with JSON     Hard-coded        Odia and Hindi
                     resource files (en,   strings           added without code
@@ -165,12 +187,16 @@ features; all are free and open source except the optional AI API.
   Documents               PDFKit, qrcode          Certificates, reports,
                                                   QR codes (F7, F15)
 
-  Scheduling              node-cron               Daily risk evaluation,
-                                                  flag escalation (F11)
+  Scheduling              Vercel Cron (prod),     Daily risk evaluation,
+                          node-cron (local)       flag escalation (F11)
+                          (Amendment 1)
 
-  File storage            S3-compatible bucket    Evidence uploads (F18),
-                          (e.g. Cloudflare R2 /   stored PDFs
-                          Supabase Storage)       
+  File storage            Private object store    Evidence uploads (F18),
+                          reachable from Vercel   stored PDFs
+                          without a card (Vercel
+                          Blob or Neon object
+                          storage; chosen in
+                          Sprint 6) (Amendment 1)
 
   AI (R3, optional)       Claude API              AI Training Assistant
                           (claude-haiku-5-5 for   (F17)
@@ -186,10 +212,12 @@ features; all are free and open source except the optional AI API.
   Tooling                 GitHub, GitHub Actions, Version control, CI,
                           ESLint, Prettier        code quality
 
-  Hosting                 Vercel / Netlify        Free-tier deployment
-                          (frontend), Render /    
-                          Railway (API), Neon /   
-                          Supabase (PostgreSQL)   
+  Hosting                 Vercel (frontend + API  Free-tier deployment,
+                          as a serverless         no card required
+                          function, region sin1),
+                          Neon (PostgreSQL 16,
+                          Singapore)
+                          (Amendment 1)
   -----------------------------------------------------------------------
 
 ## 5. Module design
@@ -532,8 +560,11 @@ transaction and ends with an audit entry.
 
 ### 8.2 Daily risk evaluation job (F11, F12)
 
-1.  node-cron runs at 02:00 server time; a DB advisory lock stops two
-    instances running at once.
+1.  A daily scheduled job (Vercel Cron in production, calling a
+    secret-protected API route; node-cron at 02:00 locally) starts the
+    run; a DB advisory lock stops two runs at once (Amendment 1). On
+    the Hobby plan the cron fires once a day, possibly up to an hour
+    late, which suits a daily job.
 
 2.  For each student in an Active batch, one SQL query computes
     attendance %, consecutive absences, latest and previous assessment
@@ -676,9 +707,12 @@ other modules.
 
 ## 11. Deployment architecture
 
-The prototype runs on three free-tier services (static host, API host,
-managed PostgreSQL) plus object storage; the AI API is called only when
-F17 is enabled.
+The prototype runs on two free-tier services (Amendment 1): Vercel,
+which serves the SPA and runs the API as a serverless function on the
+same origin, and Neon for managed PostgreSQL. Object storage is added
+in Sprint 6, and the AI API is called only when F17 is enabled.
+Migrations run in the Vercel production build before new code goes
+live.
 
 deployment · 6 nodes
 
@@ -700,8 +734,9 @@ deployment · 6 nodes
 
 Configuration comes only from environment variables: DATABASE_URL,
 JWT_SECRET, REFRESH_SECRET, PUBLIC_BASE_URL, STORAGE\_\*, AI_ENABLED,
-ANTHROPIC_API_KEY, AI_MONTHLY_CAP. Hosting names are examples; any
-equivalent free tier works.
+ANTHROPIC_API_KEY, AI_MONTHLY_CAP, plus DIRECT_DATABASE_URL (migrations),
+TRUST_PROXY_HOPS and RATE_LIMIT_STORE for serverless hosting
+(Amendment 1).
 
 ## 12. Non-functional design
 
@@ -866,16 +901,22 @@ pull requests reviewed by the other member.
   ------------------------------------------------------------------------
   Risk                    Impact                  Mitigation
   ----------------------- ----------------------- ------------------------
-  Free-tier API host      Demo delay; missed risk Uptime pinger keeps it
-  sleeps when idle; first evaluation              awake; on-demand
-  request slow and cron                           evaluation after
-  may not fire                                    attendance save; run a
-                                                  catch-up job at startup
+  Serverless cold start   Slow first request;     Function in sin1 next
+  and once-a-day cron     a missed or late cron   to Neon; on-demand
+  (Amendment 1)           run delays flags        evaluation after
+                                                  attendance save; the job
+                                                  catches up from its last
+                                                  successful run date
 
-  Free-tier DB connection Errors under load       Prisma connection pool
-  limits                                          size 5; pooled
-                                                  connection string
-                                                  (PgBouncer)
+  No shared memory across Per-instance rate       Security rate limits
+  serverless instances    limits are bypassable   counted in a Postgres
+  (Amendment 1)                                   table (rate_limits)
+
+  Free-tier DB connection Errors under load       Neon pooled connection
+  limits                                          string (PgBouncer),
+                                                  connection_limit=1 per
+                                                  function instance
+                                                  (Amendment 1)
 
   Schema drift between    Broken builds           Migrations only through
   members                                         Prisma; schema changes
