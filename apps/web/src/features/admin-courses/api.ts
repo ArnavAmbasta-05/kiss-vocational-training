@@ -10,9 +10,10 @@ import type {
 } from '@vtmp/shared';
 import { api } from '../../lib/api/client';
 
-export function useAdminCourses() {
+export function useAdminCourses(enabled = true) {
   return useQuery({
     queryKey: ['admin-courses'],
+    enabled,
     queryFn: ({ signal }) => api.get<AdminCourse[]>('/admin/courses', { signal }),
   });
 }

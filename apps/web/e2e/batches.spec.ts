@@ -1,0 +1,162 @@
+import { test, expect, type APIRequestContext } from '@playwright/test';
+import { ACCOUNTS, SEED_PASSWORD, expectNoSeriousA11yViolations, signIn } from './helpers';
+
+async function token(request: APIRequestContext, email: string, password: string) {
+  const res = await request.post('/api/v1/auth/login', { data: { email, password } });
+  expect(res.ok()).toBeTruthy();
+  return `Bearer ${((await res.json()) as { accessToken: string }).accessToken}`;
+}
+
+/**
+ * Builds an isolated world through the API: a cycle, a course offered with an open window,
+ * a batch with 2 seats and 3 approved applicants, so allocation places 2 and waitlists 1.
+ */
+async function setup(request: APIRequestContext) {
+  const admin = await token(request, ACCOUNTS.ADMIN, SEED_PASSWORD);
+  const h = { headers: { Authorization: admin } };
+  const s = Date.now().toString(36);
+  const day = (offset: number) =>
+    new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
+
+  const cycle = await (
+    await request.post('/api/v1/admin/cycles', {
+      ...h,
+      data: { name: `E2E cycle ${s}`, startsOn: day(7), endsOn: day(90) },
+    })
+  ).json();
+  const course = await (
+    await request.post('/api/v1/admin/courses', {
+      ...h,
+      data: {
+        code: `E2E-${s}`.slice(0, 20),
+        title: `Welding ${s}`,
+        description: 'Arc welding for e2e tests.',
+        durationWeeks: 8,
+        seatCapacity: 20,
+      },
+    })
+  ).json();
+  await request.put(`/api/v1/admin/cycles/${cycle.id}/offerings/${course.id}`, {
+    ...h,
+    data: {
+      enrollmentOpensAt: new Date(Date.now() - 3_600_000).toISOString(),
+      enrollmentClosesAt: new Date(Date.now() + 86_400_000).toISOString(),
+      isOpen: true,
+    },
+  });
+  const batch = await (
+    await request.post('/api/v1/admin/batches', {
+      ...h,
+      data: {
+        courseId: course.id,
+        cycleId: cycle.id,
+        name: 'Morning',
+        capacity: 2,
+        startDate: day(7),
+        endDate: day(60),
+        venue: 'Workshop B',
+      },
+    })
+  ).json();
+
+  const students = [];
+  for (let i = 0; i < 3; i++) {
+    const student = {
+      email: `e2e-alloc-${s}-${i}@kiss-vtmp.test`,
+      password: 'E2e-Alloc-Pass1',
+      fullName: `Allocatee ${s} ${i}`,
+    };
+    const created = await request.post('/api/v1/admin/users', {
+      ...h,
+      data: { role: 'STUDENT', ...student, rollNo: `AL-${s}-${i}`, cgpa: 7 + i / 10 },
+    });
+    expect(created.status()).toBe(201);
+    const auth = await token(request, student.email, student.password);
+    const applied = await request.post('/api/v1/enrollments', {
+      headers: { Authorization: auth },
+      data: { cycleId: cycle.id, courseIds: [course.id] },
+    });
+    expect(applied.status()).toBe(201);
+    const enrollment = await applied.json();
+    expect(
+      (await request.post(`/api/v1/admin/enrollments/${enrollment.id}/approve`, h)).ok(),
+    ).toBeTruthy();
+    students.push(student);
+  }
+  return { cycle, course, batch, students };
+}
+
+test.describe('Sprint 4: allocate → trainer sees roster', () => {
+  test('admin previews and confirms allocation, sets up and activates the batch; trainer and student see it', async ({
+    page,
+    browser,
+    request,
+  }) => {
+    test.setTimeout(90_000);
+    const { cycle, course, batch, students } = await setup(request);
+
+    // Admin: preview, check numbers, confirm.
+    await signIn(page, ACCOUNTS.ADMIN);
+    await page.goto('/admin/batches/allocation');
+    await page.getByLabel('Cycle').selectOption(cycle.id);
+    await page.getByRole('button', { name: 'Run preview' }).click();
+    await expect(page.getByText('This is a preview: nothing has changed yet.')).toBeVisible();
+    await expect(page.getByTestId('stat-allocated')).toHaveText('2');
+    await expect(page.getByTestId('stat-waitlisted')).toHaveText('1');
+    await expectNoSeriousA11yViolations(page);
+    await page.getByRole('button', { name: 'Confirm allocation' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Confirm allocation' }).click();
+    await expect(
+      page.getByRole('status').filter({ hasText: 'Allocation confirmed: 2 placed, 1 waitlisted' }),
+    ).toBeVisible();
+
+    // Admin: open the batch, assign a trainer, schedule sessions, activate.
+    await page.goto(`/admin/batches/${batch.id}`);
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Morning');
+    await expect(
+      page.getByRole('table', { name: 'Students in this batch' }).getByRole('row'),
+    ).toHaveCount(3);
+    await expectNoSeriousA11yViolations(page);
+
+    await page.getByRole('tab', { name: 'Trainers' }).click();
+    await page
+      .getByLabel('Trainer', { exact: true })
+      .selectOption({ label: 'Sushant Mohanty — Electrical installation' });
+    await page.getByRole('button', { name: 'Assign trainer' }).click();
+    await expect(page.getByRole('status').filter({ hasText: 'Trainer assigned' })).toBeVisible();
+
+    await page.getByRole('tab', { name: 'Sessions' }).click();
+    await page.getByRole('button', { name: 'Schedule sessions' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByRole('status').filter({ hasText: /sessions scheduled/ })).toBeVisible();
+    await page.getByRole('button', { name: 'Calendar' }).click();
+    await expect(page.getByRole('table', { name: /^Sessions:/ })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Activate batch' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Activate batch' }).click();
+    await expect(page.getByRole('status').filter({ hasText: 'Batch activated' })).toBeVisible();
+
+    // Trainer: sees the batch and its roster.
+    const trainerContext = await browser.newContext();
+    const trainer = await trainerContext.newPage();
+    await signIn(trainer, ACCOUNTS.TRAINER);
+    await trainer.getByRole('link', { name: 'My batches' }).first().click();
+    await trainer.getByRole('link', { name: `${course.title} · Morning` }).click();
+    await expect(
+      trainer.getByRole('table', { name: 'Students in this batch' }).getByRole('row'),
+    ).toHaveCount(3);
+    await expectNoSeriousA11yViolations(trainer);
+    await trainerContext.close();
+
+    // A placed student sees their batch on the dashboard.
+    const studentContext = await browser.newContext();
+    const student = await studentContext.newPage();
+    // Default priority rule is submission time, so the first applicant has a seat.
+    await signIn(student, students[0]!.email, students[0]!.password);
+    const card = student.getByTestId('student-batch-card');
+    await expect(card).toContainText(`${course.title} · Morning`);
+    await expect(card).toContainText('Sushant Mohanty');
+    await expect(card).toContainText('Workshop B');
+    await studentContext.close();
+  });
+});

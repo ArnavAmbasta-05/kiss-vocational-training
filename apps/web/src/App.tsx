@@ -5,6 +5,10 @@ import { NAV_BY_ROLE } from './components/layout/nav';
 import { AdminCoursesPage } from './features/admin-courses/AdminCoursesPage';
 import { AdminEnrollmentsPage } from './features/admin-enrollments/AdminEnrollmentsPage';
 import { UsersPage } from './features/admin-users/UsersPage';
+import { AdminBatchesPage } from './features/batches/AdminBatchesPage';
+import { AllocationPage } from './features/batches/AllocationPage';
+import { BatchDetailPage } from './features/batches/BatchDetailPage';
+import { TrainerBatchesPage } from './features/batches/MyBatches';
 import { CataloguePage } from './features/catalogue/CataloguePage';
 import { CourseDetailPage } from './features/catalogue/CourseDetailPage';
 import { ApplyPage } from './features/enrollment/ApplyPage';
@@ -22,6 +26,8 @@ const BUILT: Record<string, RouteObject['element']> = {
   '/admin/users': <UsersPage />,
   '/admin/courses': <AdminCoursesPage />,
   '/admin/enrollments': <AdminEnrollmentsPage />,
+  '/admin/batches': <AdminBatchesPage />,
+  '/trainer/batches': <TrainerBatchesPage />,
   '/student/courses': <CataloguePage />,
   '/student/enrollment': <MyEnrollmentPage />,
 };
@@ -32,6 +38,11 @@ const EXTRA: Partial<Record<Role, RouteObject[]>> = {
     { path: 'courses/:id', element: <CourseDetailPage /> },
     { path: 'enrollment/apply', element: <ApplyPage /> },
   ],
+  ADMIN: [
+    { path: 'batches/allocation', element: <AllocationPage /> },
+    { path: 'batches/:batchId', element: <BatchDetailPage admin /> },
+  ],
+  TRAINER: [{ path: 'batches/:batchId', element: <BatchDetailPage admin={false} /> }],
 };
 
 function roleSection(role: Role, base: string): RouteObject {

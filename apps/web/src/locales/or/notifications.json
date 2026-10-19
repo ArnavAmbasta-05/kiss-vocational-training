@@ -18,6 +18,14 @@
     "ENROLLMENT_WAITLISTED": {
       "title": "",
       "body": ""
+    },
+    "ENROLLMENT_ALLOCATED": {
+      "title": "",
+      "body": ""
+    },
+    "BATCH_ACTIVATED": {
+      "title": "",
+      "body": ""
     }
   }
 }

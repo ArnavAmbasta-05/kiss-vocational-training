@@ -8,3 +8,4 @@ export { Select, type SelectOption, type SelectProps } from './Select';
 export { Spinner } from './Spinner';
 export { Table, type Column, type TableProps } from './Table';
 export { cn } from './cn';
+export { Tabs, type TabItem } from './Tabs';
