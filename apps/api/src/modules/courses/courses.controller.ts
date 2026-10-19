@@ -1,0 +1,65 @@
+import type { Request } from 'express';
+import type {
+  CourseCreateInput,
+  CourseUpdateInput,
+  CycleCreateInput,
+  CycleUpdateInput,
+  OfferingUpsertInput,
+} from '@vtmp/shared';
+import { AppError } from '../../core/errors';
+import { asyncHandler } from '../../core/http';
+import { seatsTaken } from '../enrollments/enrollments.service';
+import * as service from './courses.service';
+
+const actor = (req: Request) => ({ userId: req.user!.id, ip: req.ip ?? null });
+const cycleIdQuery = (req: Request) => (req.query as { cycleId?: string }).cycleId;
+
+export const catalogue = asyncHandler(async (req, res) => {
+  res.json(await service.catalogue(cycleIdQuery(req), seatsTaken));
+});
+
+export const catalogueCourse = asyncHandler(async (req, res) => {
+  const { cycle, courses } = await service.catalogue(cycleIdQuery(req), seatsTaken);
+  const course = courses.find((c) => c.id === req.params.id);
+  if (!course) throw AppError.notFound('Course not found in this cycle');
+  res.json({ cycle, course });
+});
+
+export const cycles = asyncHandler(async (_req, res) => {
+  res.json(await service.listCycles());
+});
+
+export const listCourses = asyncHandler(async (_req, res) => {
+  res.json(await service.listCourses());
+});
+
+export const createCourse = asyncHandler(async (req, res) => {
+  res.status(201).json(await service.createCourse(actor(req), req.body as CourseCreateInput));
+});
+
+export const updateCourse = asyncHandler(async (req, res) => {
+  res.json(await service.updateCourse(actor(req), req.params.id!, req.body as CourseUpdateInput));
+});
+
+export const createCycle = asyncHandler(async (req, res) => {
+  res.status(201).json(await service.createCycle(actor(req), req.body as CycleCreateInput));
+});
+
+export const updateCycle = asyncHandler(async (req, res) => {
+  res.json(await service.updateCycle(actor(req), req.params.id!, req.body as CycleUpdateInput));
+});
+
+export const listOfferings = asyncHandler(async (req, res) => {
+  res.json(await service.listOfferings(req.params.cycleId!));
+});
+
+export const upsertOffering = asyncHandler(async (req, res) => {
+  res.json(
+    await service.upsertOffering(
+      actor(req),
+      req.params.cycleId!,
+      req.params.courseId!,
+      req.body as OfferingUpsertInput,
+    ),
+  );
+});

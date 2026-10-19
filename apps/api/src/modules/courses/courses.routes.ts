@@ -1,0 +1,69 @@
+import { Router } from 'express';
+import { z } from 'zod';
+import {
+  CatalogueQuerySchema,
+  CourseCreateSchema,
+  CourseUpdateSchema,
+  CycleCreateSchema,
+  CycleUpdateSchema,
+  OfferingUpsertSchema,
+} from '@vtmp/shared';
+import { authenticate, authorize } from '../../core/auth';
+import { validate } from '../../core/middleware';
+import * as controller from './courses.controller';
+
+const IdParams = z.object({ id: z.string().uuid() });
+const CycleParams = z.object({ cycleId: z.string().uuid() });
+const OfferingParams = z.object({ cycleId: z.string().uuid(), courseId: z.string().uuid() });
+
+/** Catalogue for any signed-in user (BRQ-2.2): /courses and /cycles. */
+export function catalogueRoutes(): Router {
+  const router = Router();
+  // authenticate per route, not router.use(): this router is mounted at the API root, and a
+  // router-wide guard would turn every unknown path into 401 instead of 404.
+  router.get(
+    '/courses',
+    authenticate,
+    validate({ query: CatalogueQuerySchema }),
+    controller.catalogue,
+  );
+  router.get(
+    '/courses/:id',
+    authenticate,
+    validate({ params: IdParams, query: CatalogueQuerySchema }),
+    controller.catalogueCourse,
+  );
+  router.get('/cycles', authenticate, controller.cycles);
+  return router;
+}
+
+/** Admin management of courses, cycles and enrollment windows (BRQ-2.1, BRQ-2.3). */
+export function adminCourseRoutes(): Router {
+  const router = Router();
+  router.use(authenticate, authorize('ADMIN'));
+  router.get('/courses', controller.listCourses);
+  router.post('/courses', validate({ body: CourseCreateSchema }), controller.createCourse);
+  router.patch(
+    '/courses/:id',
+    validate({ params: IdParams, body: CourseUpdateSchema }),
+    controller.updateCourse,
+  );
+  router.get('/cycles', controller.cycles);
+  router.post('/cycles', validate({ body: CycleCreateSchema }), controller.createCycle);
+  router.patch(
+    '/cycles/:id',
+    validate({ params: IdParams, body: CycleUpdateSchema }),
+    controller.updateCycle,
+  );
+  router.get(
+    '/cycles/:cycleId/offerings',
+    validate({ params: CycleParams }),
+    controller.listOfferings,
+  );
+  router.put(
+    '/cycles/:cycleId/offerings/:courseId',
+    validate({ params: OfferingParams, body: OfferingUpsertSchema }),
+    controller.upsertOffering,
+  );
+  return router;
+}

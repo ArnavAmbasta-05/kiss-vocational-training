@@ -1,0 +1,301 @@
+import { Prisma } from '@prisma/client';
+import type {
+  AdminCourse,
+  CatalogueCourse,
+  CourseCreateInput,
+  CourseUpdateInput,
+  Cycle,
+  CycleCreateInput,
+  CycleUpdateInput,
+  Offering,
+  OfferingUpsertInput,
+} from '@vtmp/shared';
+import { withAudit, type Actor } from '../../core/audit';
+import { prisma } from '../../core/db';
+import { AppError } from '../../core/errors';
+import { windowState } from './rules';
+
+type OfferingRow = Prisma.CourseOfferingGetPayload<object>;
+type CourseRow = Prisma.CourseGetPayload<object>;
+type CycleRow = Prisma.TrainingCycleGetPayload<object>;
+
+const day = (d: Date) => d.toISOString().slice(0, 10);
+
+export function toCycle(c: CycleRow): Cycle {
+  return { id: c.id, name: c.name, startsOn: day(c.startsOn), endsOn: day(c.endsOn) };
+}
+
+export function toOffering(o: OfferingRow, now = new Date()): Offering {
+  return {
+    courseId: o.courseId,
+    cycleId: o.cycleId,
+    enrollmentOpensAt: o.enrollmentOpensAt.toISOString(),
+    enrollmentClosesAt: o.enrollmentClosesAt.toISOString(),
+    isOpen: o.isOpen,
+    windowState: windowState(o, now),
+  };
+}
+
+function toAdminCourse(c: CourseRow): AdminCourse {
+  return {
+    id: c.id,
+    code: c.code,
+    title: c.title,
+    description: c.description,
+    durationWeeks: c.durationWeeks,
+    prerequisites: c.prerequisites,
+    seatCapacity: c.seatCapacity,
+    isActive: c.isActive,
+  };
+}
+
+function uniqueConflict(err: unknown, code: string, message: string): never {
+  if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+    throw AppError.conflict(code, message);
+  }
+  throw err;
+}
+
+// ─── Reads used by other modules (exported service functions, rule 5) ─────────
+
+export interface CourseAvailability {
+  courseId: string;
+  title: string;
+  isActive: boolean;
+  offering: OfferingRow | null;
+}
+
+/** The courses, with their offering in this cycle, that an application may reference. */
+export async function availability(
+  cycleId: string,
+  courseIds: string[],
+): Promise<CourseAvailability[]> {
+  const courses = await prisma().course.findMany({
+    where: { id: { in: courseIds } },
+    include: { offerings: { where: { cycleId } } },
+  });
+  return courses.map((c) => ({
+    courseId: c.id,
+    title: c.title,
+    isActive: c.isActive,
+    offering: c.offerings[0] ?? null,
+  }));
+}
+
+export async function getCycle(cycleId: string): Promise<Cycle> {
+  const cycle = await prisma().trainingCycle.findUnique({ where: { id: cycleId } });
+  if (!cycle) throw AppError.notFound('Training cycle not found');
+  return toCycle(cycle);
+}
+
+/** Cycles that have at least one offering, newest first. The first is the catalogue default. */
+export async function listCycles(): Promise<Cycle[]> {
+  const cycles = await prisma().trainingCycle.findMany({ orderBy: { startsOn: 'desc' } });
+  return cycles.map(toCycle);
+}
+
+async function defaultCycleId(): Promise<string | null> {
+  const cycle = await prisma().trainingCycle.findFirst({
+    where: { offerings: { some: {} } },
+    orderBy: { startsOn: 'desc' },
+    select: { id: true },
+  });
+  return cycle?.id ?? null;
+}
+
+// ─── Catalogue (BRQ-2.2) ──────────────────────────────────────────────────────
+
+/**
+ * Active courses offered in a cycle. Seats taken come from the caller (enrollments service),
+ * so this module never reads another module's tables.
+ */
+export async function catalogue(
+  cycleId: string | undefined,
+  seatsTaken: (cycleId: string) => Promise<Map<string, number>>,
+): Promise<{ cycle: Cycle | null; courses: CatalogueCourse[] }> {
+  const id = cycleId ?? (await defaultCycleId());
+  if (!id) return { cycle: null, courses: [] };
+  const cycle = await getCycle(id);
+  const now = new Date();
+  const [courses, taken] = await Promise.all([
+    prisma().course.findMany({
+      where: { isActive: true, offerings: { some: { cycleId: id } } },
+      include: { offerings: { where: { cycleId: id } } },
+      orderBy: { title: 'asc' },
+    }),
+    seatsTaken(id),
+  ]);
+  return {
+    cycle,
+    courses: courses.map((c) => ({
+      id: c.id,
+      code: c.code,
+      title: c.title,
+      description: c.description,
+      durationWeeks: c.durationWeeks,
+      prerequisites: c.prerequisites,
+      seatCapacity: c.seatCapacity,
+      seatsRemaining: Math.max(0, c.seatCapacity - (taken.get(c.id) ?? 0)),
+      offering: c.offerings[0] ? toOffering(c.offerings[0], now) : null,
+    })),
+  };
+}
+
+// ─── Admin: courses (BRQ-2.1) ─────────────────────────────────────────────────
+
+export async function listCourses(): Promise<AdminCourse[]> {
+  const rows = await prisma().course.findMany({
+    orderBy: [{ isActive: 'desc' }, { title: 'asc' }],
+  });
+  return rows.map(toAdminCourse);
+}
+
+export async function createCourse(actor: Actor, input: CourseCreateInput): Promise<AdminCourse> {
+  try {
+    return await withAudit(actor, async (tx, log) => {
+      const course = await tx.course.create({ data: input });
+      await log({
+        action: 'COURSE_CREATED',
+        entity: 'Course',
+        entityId: course.id,
+        newValue: course,
+      });
+      return toAdminCourse(course);
+    });
+  } catch (err) {
+    uniqueConflict(err, 'COURSE_CODE_TAKEN', 'A course with this code already exists');
+  }
+}
+
+/** Updates fields; isActive=false is the soft delete (records keep pointing at the course). */
+export async function updateCourse(
+  actor: Actor,
+  id: string,
+  input: CourseUpdateInput,
+): Promise<AdminCourse> {
+  return withAudit(actor, async (tx, log) => {
+    const before = await tx.course.findUnique({ where: { id } });
+    if (!before) throw AppError.notFound('Course not found');
+    const course = await tx.course.update({ where: { id }, data: input });
+    const action =
+      input.isActive === false && before.isActive
+        ? 'COURSE_DEACTIVATED'
+        : input.isActive === true && !before.isActive
+          ? 'COURSE_REACTIVATED'
+          : 'COURSE_UPDATED';
+    await log({ action, entity: 'Course', entityId: id, oldValue: before, newValue: course });
+    return toAdminCourse(course);
+  });
+}
+
+// ─── Admin: cycles ────────────────────────────────────────────────────────────
+
+export async function createCycle(actor: Actor, input: CycleCreateInput): Promise<Cycle> {
+  try {
+    return await withAudit(actor, async (tx, log) => {
+      const cycle = await tx.trainingCycle.create({
+        data: {
+          name: input.name,
+          startsOn: new Date(input.startsOn),
+          endsOn: new Date(input.endsOn),
+        },
+      });
+      await log({
+        action: 'CYCLE_CREATED',
+        entity: 'TrainingCycle',
+        entityId: cycle.id,
+        newValue: cycle,
+      });
+      return toCycle(cycle);
+    });
+  } catch (err) {
+    uniqueConflict(err, 'CYCLE_NAME_TAKEN', 'A cycle with this name already exists');
+  }
+}
+
+export async function updateCycle(
+  actor: Actor,
+  id: string,
+  input: CycleUpdateInput,
+): Promise<Cycle> {
+  try {
+    return await withAudit(actor, async (tx, log) => {
+      const before = await tx.trainingCycle.findUnique({ where: { id } });
+      if (!before) throw AppError.notFound('Training cycle not found');
+      const startsOn = input.startsOn ? new Date(input.startsOn) : before.startsOn;
+      const endsOn = input.endsOn ? new Date(input.endsOn) : before.endsOn;
+      if (endsOn < startsOn) {
+        throw AppError.unprocessable('INVALID_DATES', 'The cycle must end on or after its start');
+      }
+      const cycle = await tx.trainingCycle.update({
+        where: { id },
+        data: { name: input.name, startsOn, endsOn },
+      });
+      await log({
+        action: 'CYCLE_UPDATED',
+        entity: 'TrainingCycle',
+        entityId: id,
+        oldValue: before,
+        newValue: cycle,
+      });
+      return toCycle(cycle);
+    });
+  } catch (err) {
+    uniqueConflict(err, 'CYCLE_NAME_TAKEN', 'A cycle with this name already exists');
+  }
+}
+
+// ─── Admin: offerings and enrollment windows (BRQ-2.3) ─────────────────────────
+
+export async function listOfferings(
+  cycleId: string,
+): Promise<Array<{ course: AdminCourse; offering: Offering | null }>> {
+  await getCycle(cycleId);
+  const now = new Date();
+  const courses = await prisma().course.findMany({
+    include: { offerings: { where: { cycleId } } },
+    orderBy: [{ isActive: 'desc' }, { title: 'asc' }],
+  });
+  return courses.map((c) => ({
+    course: toAdminCourse(c),
+    offering: c.offerings[0] ? toOffering(c.offerings[0], now) : null,
+  }));
+}
+
+/** Offers a course in a cycle (or edits its window / open toggle). */
+export async function upsertOffering(
+  actor: Actor,
+  cycleId: string,
+  courseId: string,
+  input: OfferingUpsertInput,
+): Promise<Offering> {
+  return withAudit(actor, async (tx, log) => {
+    const [cycle, course] = await Promise.all([
+      tx.trainingCycle.findUnique({ where: { id: cycleId }, select: { id: true } }),
+      tx.course.findUnique({ where: { id: courseId }, select: { id: true } }),
+    ]);
+    if (!cycle) throw AppError.notFound('Training cycle not found');
+    if (!course) throw AppError.notFound('Course not found');
+    const data = {
+      enrollmentOpensAt: new Date(input.enrollmentOpensAt),
+      enrollmentClosesAt: new Date(input.enrollmentClosesAt),
+      isOpen: input.isOpen,
+    };
+    const before = await tx.courseOffering.findUnique({
+      where: { courseId_cycleId: { courseId, cycleId } },
+    });
+    const offering = await tx.courseOffering.upsert({
+      where: { courseId_cycleId: { courseId, cycleId } },
+      create: { courseId, cycleId, ...data },
+      update: data,
+    });
+    await log({
+      action: before ? 'OFFERING_UPDATED' : 'OFFERING_CREATED',
+      entity: 'CourseOffering',
+      entityId: offering.id,
+      oldValue: before,
+      newValue: offering,
+    });
+    return toOffering(offering);
+  });
+}

@@ -13,6 +13,11 @@ tags:
   - name: auth
   - name: users
   - name: admin-users
+  - name: catalogue
+  - name: admin-courses
+  - name: enrollments
+  - name: admin-enrollments
+  - name: notifications
 paths:
   /health:
     get:
@@ -202,6 +207,315 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+  # ─── Sprint 3: catalogue, courses, cycles, enrollment ─────────────────────────
+  /courses:
+    get:
+      tags: [catalogue]
+      summary: Course catalogue for a cycle (BRQ-2.2)
+      description: Active courses offered in the cycle (default the newest cycle with offerings), with window state and indicative seats remaining.
+      parameters:
+        - { name: cycleId, in: query, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Catalogue
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cycle: { $ref: '#/components/schemas/Cycle' }
+                  courses: { type: array, items: { $ref: '#/components/schemas/CatalogueCourse' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /courses/{id}:
+    get:
+      tags: [catalogue]
+      summary: One catalogue course in a cycle
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: cycleId, in: query, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Course and cycle }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /cycles:
+    get:
+      tags: [catalogue]
+      summary: Training cycles, newest first
+      responses:
+        '200':
+          description: Cycles
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Cycle' } }
+
+  /admin/courses:
+    get:
+      tags: [admin-courses]
+      summary: All courses incl. inactive (Admin)
+      responses:
+        { '200': { description: Courses }, '403': { $ref: '#/components/responses/Forbidden' } }
+    post:
+      tags: [admin-courses]
+      summary: Create a course (Admin, BRQ-2.1)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, title, description, durationWeeks, seatCapacity]
+              properties:
+                code: { type: string, pattern: '^[A-Za-z0-9-]{2,20}$' }
+                title: { type: string }
+                description: { type: string }
+                durationWeeks: { type: integer, minimum: 1 }
+                prerequisites: { type: string, nullable: true }
+                seatCapacity: { type: integer, minimum: 1 }
+      responses:
+        '201': { description: Created }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /admin/courses/{id}:
+    patch:
+      tags: [admin-courses]
+      summary: Update a course; isActive=false is the soft delete (Admin)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        { '200': { description: Updated }, '404': { $ref: '#/components/responses/NotFound' } }
+  /admin/cycles:
+    get:
+      tags: [admin-courses]
+      summary: Training cycles (Admin)
+      responses: { '200': { description: Cycles } }
+    post:
+      tags: [admin-courses]
+      summary: Create a training cycle (Admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, startsOn, endsOn]
+              properties:
+                name: { type: string }
+                startsOn: { type: string, format: date }
+                endsOn: { type: string, format: date }
+      responses:
+        { '201': { description: Created }, '409': { $ref: '#/components/responses/Conflict' } }
+  /admin/cycles/{id}:
+    patch:
+      tags: [admin-courses]
+      summary: Rename or re-date a cycle (Admin)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { '200': { description: Updated } }
+  /admin/cycles/{cycleId}/offerings:
+    get:
+      tags: [admin-courses]
+      summary: Every course with its offering (if any) in the cycle (Admin)
+      parameters:
+        - { name: cycleId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { '200': { description: Course + offering pairs } }
+  /admin/cycles/{cycleId}/offerings/{courseId}:
+    put:
+      tags: [admin-courses]
+      summary: Offer a course in a cycle, set its enrollment window and open/close toggle (BRQ-2.3)
+      parameters:
+        - { name: cycleId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: courseId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enrollmentOpensAt, enrollmentClosesAt, isOpen]
+              properties:
+                enrollmentOpensAt: { type: string, format: date-time }
+                enrollmentClosesAt: { type: string, format: date-time }
+                isOpen: { type: boolean }
+      responses:
+        '200':
+          description: Offering
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Offering' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+
+  /enrollments:
+    post:
+      tags: [enrollments]
+      summary: Apply with 1–3 ranked course preferences (Student, BRQ-3.1)
+      description: |
+        BR-02: every chosen course must be active with its window open now, else 409
+        ENROLLMENT_WINDOW_CLOSED. BR-01: one active application per cycle, else 409
+        DUPLICATE_ENROLLMENT. Preference count is limited by setting enrollment.maxPreferences
+        (422 TOO_MANY_PREFERENCES). Accepts Idempotency-Key.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cycleId, courseIds]
+              properties:
+                cycleId: { type: string, format: uuid }
+                courseIds:
+                  type: array
+                  minItems: 1
+                  maxItems: 3
+                  uniqueItems: true
+                  description: In rank order (first = first preference)
+                  items: { type: string, format: uuid }
+      responses:
+        '201':
+          description: Submitted (PENDING)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Enrollment' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /enrollments/me:
+    get:
+      tags: [enrollments]
+      summary: My applications with status timeline (Student, BRQ-3.4)
+      responses: { '200': { description: Applications, newest first } }
+  /enrollments/{enrollmentId}:
+    put:
+      tags: [enrollments]
+      summary: Replace preferences while PENDING and windows open (Student, own)
+      parameters:
+        - { name: enrollmentId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Updated }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /enrollments/{enrollmentId}/withdraw:
+    post:
+      tags: [enrollments]
+      summary: Withdraw a PENDING application while windows are open (Student, own)
+      parameters:
+        - { name: enrollmentId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: WITHDRAWN }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /admin/enrollments:
+    get:
+      tags: [admin-enrollments]
+      summary: Review queue, oldest first (Admin)
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - { name: cycleId, in: query, schema: { type: string, format: uuid } }
+        - {
+            name: courseId,
+            in: query,
+            schema: { type: string, format: uuid },
+            description: Any preference,
+          }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/EnrollmentStatus' } }
+        - {
+            name: q,
+            in: query,
+            schema: { type: string },
+            description: Student name,
+            email or roll no,
+          }
+      responses: { '200': { description: Page of applications with student details } }
+  /admin/enrollments/{id}/approve:
+    post:
+      tags: [admin-enrollments]
+      summary: Approve (Admin, BRQ-3.3). Audited, notifies the student.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200': { description: APPROVED }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /admin/enrollments/{id}/reject:
+    post:
+      tags: [admin-enrollments]
+      summary: Reject with a required reason (Admin)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              {
+                type: object,
+                required: [reason],
+                properties: { reason: { type: string, minLength: 3 } },
+              }
+      responses:
+        {
+          '200': { description: REJECTED },
+          '422': { $ref: '#/components/responses/ValidationFailed' },
+        }
+  /admin/enrollments/{id}/waitlist:
+    post:
+      tags: [admin-enrollments]
+      summary: Waitlist with an optional reason (Admin)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses: { '200': { description: WAITLISTED } }
+  /admin/enrollments/bulk:
+    post:
+      tags: [admin-enrollments]
+      summary: Approve, reject or waitlist up to 200 applications in one transaction (Admin)
+      description: All-or-nothing; one unknown id (404) or invalid transition (409) rolls back the batch.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ids, action]
+              properties:
+                ids:
+                  { type: array, minItems: 1, maxItems: 200, items: { type: string, format: uuid } }
+                action: { type: string, enum: [APPROVE, REJECT, WAITLIST] }
+                reason: { type: string, description: Required for REJECT }
+      responses:
+        '200': { description: '{ action, count, data }' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /notifications/me:
+    get:
+      tags: [notifications]
+      summary: My in-app notifications and unread count
+      parameters:
+        - { name: unreadOnly, in: query, schema: { type: string, enum: ['true', 'false'] } }
+        - {
+            name: limit,
+            in: query,
+            schema: { type: integer, minimum: 1, maximum: 50, default: 20 },
+          }
+      responses: { '200': { description: '{ data, unreadCount }' } }
+  /notifications/me/read-all:
+    post:
+      tags: [notifications]
+      summary: Mark all my notifications read
+      responses: { '200': { description: '{ updated }' } }
+  /notifications/{id}/read:
+    post:
+      tags: [notifications]
+      summary: Mark one of my notifications read
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        { '204': { description: Read }, '404': { $ref: '#/components/responses/NotFound' } }
+
 components:
   securitySchemes:
     bearerAuth:
@@ -336,6 +650,69 @@ components:
         createdAt: { type: string, format: date-time }
         rollNo: { type: string, nullable: true }
         employeeCode: { type: string, nullable: true }
+    EnrollmentStatus:
+      type: string
+      enum:
+        [
+          PENDING,
+          APPROVED,
+          REJECTED,
+          WAITLISTED,
+          ALLOCATED,
+          ACTIVE,
+          COMPLETED,
+          NOT_COMPLETED,
+          CERTIFIED,
+          WITHDRAWN,
+        ]
+    Cycle:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        startsOn: { type: string, format: date }
+        endsOn: { type: string, format: date }
+    Offering:
+      type: object
+      properties:
+        courseId: { type: string, format: uuid }
+        cycleId: { type: string, format: uuid }
+        enrollmentOpensAt: { type: string, format: date-time }
+        enrollmentClosesAt: { type: string, format: date-time }
+        isOpen: { type: boolean }
+        windowState: { type: string, enum: [NOT_OFFERED, UPCOMING, OPEN, CLOSED] }
+    CatalogueCourse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string }
+        title: { type: string }
+        description: { type: string }
+        durationWeeks: { type: integer }
+        prerequisites: { type: string, nullable: true }
+        seatCapacity: { type: integer }
+        seatsRemaining: { type: integer, description: Indicative }
+        offering: { allOf: [{ $ref: '#/components/schemas/Offering' }], nullable: true }
+    Enrollment:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        cycleId: { type: string, format: uuid }
+        cycleName: { type: string }
+        status: { $ref: '#/components/schemas/EnrollmentStatus' }
+        reason: { type: string, nullable: true }
+        submittedAt: { type: string, format: date-time }
+        decidedAt: { type: string, format: date-time, nullable: true }
+        editable: { type: boolean }
+        preferences:
+          type: array
+          items:
+            type: object
+            properties:
+              rank: { type: integer }
+              courseId: { type: string, format: uuid }
+              courseCode: { type: string }
+              courseTitle: { type: string }
   responses:
     TooManyRequests:
       description: Rate limited or account locked

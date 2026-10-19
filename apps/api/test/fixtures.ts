@@ -59,6 +59,75 @@ export async function createLoginUser(
   });
 }
 
+const HOUR = 60 * 60 * 1000;
+
+/**
+ * A fresh cycle with `count` active courses whose enrollment windows are open now. Each course
+ * also gets a unique code so tests can run against a shared database.
+ */
+export async function createOpenCycle(db: PrismaClient, count = 3) {
+  const s = uid();
+  const cycle = await db.trainingCycle.create({
+    data: { name: `Open ${s}`, startsOn: new Date('2027-01-04'), endsOn: new Date('2027-04-30') },
+  });
+  const courses = [];
+  for (let i = 0; i < count; i++) {
+    courses.push(
+      await db.course.create({
+        data: {
+          code: `O${i}-${s}`,
+          title: `Open course ${i} ${s}`,
+          description: 'Course with an open enrollment window',
+          durationWeeks: 8,
+          seatCapacity: 10,
+          offerings: {
+            create: {
+              cycleId: cycle.id,
+              isOpen: true,
+              enrollmentOpensAt: new Date(Date.now() - HOUR),
+              enrollmentClosesAt: new Date(Date.now() + 24 * HOUR),
+            },
+          },
+        },
+      }),
+    );
+  }
+  return { cycle, courses };
+}
+
+/** Moves a course's window in a cycle: 'closed' (ended an hour ago), 'off' (toggle), 'upcoming'. */
+export async function setWindow(
+  db: PrismaClient,
+  cycleId: string,
+  courseId: string,
+  state: 'closed' | 'off' | 'upcoming' | 'open',
+) {
+  const now = Date.now();
+  const data = {
+    closed: {
+      isOpen: true,
+      enrollmentOpensAt: new Date(now - 2 * HOUR),
+      enrollmentClosesAt: new Date(now - HOUR),
+    },
+    off: {
+      isOpen: false,
+      enrollmentOpensAt: new Date(now - HOUR),
+      enrollmentClosesAt: new Date(now + HOUR),
+    },
+    upcoming: {
+      isOpen: true,
+      enrollmentOpensAt: new Date(now + HOUR),
+      enrollmentClosesAt: new Date(now + 2 * HOUR),
+    },
+    open: {
+      isOpen: true,
+      enrollmentOpensAt: new Date(now - HOUR),
+      enrollmentClosesAt: new Date(now + 24 * HOUR),
+    },
+  }[state];
+  await db.courseOffering.update({ where: { courseId_cycleId: { courseId, cycleId } }, data });
+}
+
 export async function createCycleCourseBatch(db: PrismaClient) {
   const s = uid();
   const cycle = await db.trainingCycle.create({

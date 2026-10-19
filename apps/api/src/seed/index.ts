@@ -1,7 +1,66 @@
 import bcrypt from 'bcrypt';
 import { Role, type PrismaClient } from '@prisma/client';
+import { audit } from '../core/audit';
 import { SETTINGS, SETTING_KEYS } from '../core/settings/registry';
 import { ADMIN, COURSES, SEED_PASSWORD, TRAINERS, makeStudents } from './data';
+
+/**
+ * Students from this number on get a pending application, so the admin review screen has data.
+ * Students before it stay free to apply in demos and end-to-end tests.
+ */
+export const APPLICANTS_FROM = 31;
+
+/**
+ * One pending application per applicant with 1–3 ranked preferences, rotating through the
+ * courses. Skips students who already have an application in the cycle. Each new application
+ * gets its ENROLLMENT_SUBMITTED audit row, like one made through the API.
+ */
+async function seedApplications(
+  prisma: PrismaClient,
+  cycleId: string,
+  students: ReturnType<typeof makeStudents>,
+): Promise<number> {
+  const courses = await prisma.course.findMany({
+    where: { code: { in: COURSES.map((c) => c.code) } },
+    orderBy: { code: 'asc' },
+    select: { id: true },
+  });
+  const applicants = students.filter((s) => s.n >= APPLICANTS_FROM && s.n <= DEFAULT_STUDENTS);
+  const rows = await prisma.student.findMany({
+    where: { rollNo: { in: applicants.map((s) => s.rollNo) } },
+    select: { id: true, rollNo: true, enrollments: { where: { cycleId }, select: { id: true } } },
+  });
+  let created = 0;
+  for (const [i, student] of rows.entries()) {
+    if (student.enrollments.length > 0) continue;
+    const count = (i % 3) + 1;
+    const courseIds = Array.from(
+      { length: count },
+      (_, k) => courses[(i + k) % courses.length]!.id,
+    );
+    await prisma.$transaction(async (tx) => {
+      const e = await tx.enrollment.create({
+        data: {
+          studentId: student.id,
+          cycleId,
+          submittedAt: new Date(Date.now() - (rows.length - i) * 60_000),
+          preferences: {
+            create: courseIds.map((courseId, rank) => ({ courseId, rank: rank + 1 })),
+          },
+        },
+      });
+      await audit.record(tx, {
+        userId: null,
+        action: 'ENROLLMENT_SUBMITTED',
+        entity: 'Enrollment',
+        entityId: e.id,
+        newValue: { status: 'PENDING', courseIds, by: 'seed' },
+      });
+    });
+    created++;
+  }
+  return created;
+}
 
 export const DEFAULT_STUDENTS = 60;
 export const LARGE_STUDENTS = 500;
@@ -118,6 +177,9 @@ export async function runSeed(prisma: PrismaClient, opts: SeedOptions = {}) {
     }
   }
   log(`courses: ${COURSES.length} with open enrollment windows`);
+
+  const applications = await seedApplications(prisma, cycle.id, students);
+  log(`applications: ${applications} added (students ${APPLICANTS_FROM}+ have one pending)`);
 
   return { students: students.length, trainers: TRAINERS.length, courses: COURSES.length };
 }
