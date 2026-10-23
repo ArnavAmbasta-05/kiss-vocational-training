@@ -15,6 +15,154 @@ Read this at the start of every session and update it at the end of every sprint
 
 ---
 
+## Sprint 7 — Reports, dashboards, end-to-end → GATE 1 (built, 2026-10-23; deployed run pending)
+
+### Built
+- **Figures owned by each module, aggregated in SQL** (rule 5: the dashboard and reports call
+  service functions and never read other modules' tables):
+  - `users.activeCounts`, `courses.activeCourseCount`, `batches.statusCounts` and
+    `enrollments.statusCounts(cycleId?)` (group-bys).
+  - `documents.gradeDistribution` / `batchGrades`.
+  - `attendance.weeklyTrend`: one SQL query, weeks start on Monday in institution time, and
+    LATE counts as attended when the setting says so.
+- **Reports** (`modules/reports`, BRQ-8.1, 8.2):
+  - `GET /reports/students/:id.pdf` (`me` works): attendance, results, aggregate and grade
+    (the certificate snapshot once certified, otherwise projected), trainer evaluation and
+    milestones. Only the student or an admin may download it (new resolver
+    `owns.studentSelf`; trainers get 403, per BRD §12.2). Each download stores a
+    `PerformanceReport` snapshot plus an audit row (rule 9).
+  - `GET /reports/batches/:id?format=csv|pdf` (the batch's trainers or an admin): attendance,
+    marks per assessment (CSV), aggregate, grade, status and certificate ID per student.
+  - `GET /reports/courses/:id?format=csv|pdf` (admin): students, in training, completed, not
+    completed, completion rate and grades A–D per batch, plus a total row.
+  - **Completion rate** = completed ÷ (completed + not completed); it's a pure, unit-tested
+    rule.
+  - **CSV**: RFC 4180 with a UTF-8 BOM (so Excel shows Odia and Hindi), and cells starting
+    with `= + - @` are defused against CSV injection.
+  - **PDFs**: shared PDFKit helpers (`documents/pdf.ts`) give paged tables with repeated
+    headers and "page X of Y" footers, using the same embedded Noto fonts as certificates.
+- **Dashboards** (`modules/dashboard`, BRQ-9.1–9.3), each limited to its own role:
+  - `/dashboard/admin` (optional `cycleId`): counts, enrollment funnel, completion, grades,
+    an 8-week attendance trend and the attendance minimum.
+  - `/dashboard/trainer`: active batches and students, today's sessions, sessions still to
+    mark, and students below the minimum.
+  - `/dashboard/student`: application status, live attendance, aggregate and projected
+    grade, next session and certificate.
+- **Web**:
+  - **Admin dashboard**:
+    - Five KPI tiles.
+    - Three Recharts charts, each with one series in the reference-palette blue, which
+      passes the dataviz validator: applications by status (bars), grades on certificates
+      (columns) and weekly attendance (line with the minimum as a reference line).
+    - Each chart has hover tooltips and a "Show as table" alternative; screen readers get
+      the table.
+    - The charts chunk (Recharts, 113 kB gzip) loads only after the figures arrive and only
+      for admins.
+  - **Trainer dashboard**: tiles, today's and pending sessions with "Take attendance", and a
+    low-attendance table.
+  - **Student dashboard**: a "My figures" card with the performance report download (next to
+    the certificate and batch cards).
+  - **Admin Reports page**: batch and course CSV/PDF, plus a performance report per student.
+  - Batch report buttons on batch detail (trainer and admin), and a report button on My
+    training.
+- **Catalogue `?cycle=`**: the catalogue, course detail and apply pages accept a cycle, so
+  students can apply in any open cycle, not only the newest.
+- **Mobile fixes found by the Gate 1 test**:
+  - Absolutely positioned `sr-only` header labels inside table scroll areas widened every
+    page with a table to ~620 px on phones (now `relative`).
+  - Tab rows now scroll sideways.
+  - Dialogs never outgrow the screen (body scrolls, title and buttons stay visible).
+- **Global rate limit configurable**: `GLOBAL_RATE_LIMIT_PER_15MIN` (default 1000, unchanged).
+  The e2e servers use 50 000, because the whole suite comes from one IP and was being
+  refused (429).
+
+### NFR-04: core tasks within three clicks of the dashboard
+| Role | Task | Clicks from the dashboard |
+| --- | --- | --- |
+| Admin | Users, Courses & cycles, Enrollments, Batches, Completion, Certificates, Reports | 1 (sidebar or quick link) |
+| Admin | Open an enrollment window | 2 (Courses & cycles → Edit window) |
+| Admin | Approve an application | 2 (Enrollments → Approve) |
+| Admin | Run allocation | 2 (Batches → Run allocation) |
+| Admin | Approve completion | 2 (Completion → pick batch → Approve: 3) |
+| Admin | Download a batch or course report | 2–3 (Reports → pick → CSV/PDF) |
+| Trainer | Take attendance for a pending session | 1 ("Take attendance" on the dashboard) |
+| Trainer | Enter marks | 2 (Assessments → Enter marks) |
+| Trainer | Final evaluation | 3 (My batches → batch → Evaluations tab; the dialog opens on the 4th click) |
+| Student | Apply for a course | 2 (Courses → Apply) |
+| Student | Track application | 1 (My enrollment) |
+| Student | Attendance, results, grade | 0 (on the dashboard) / 1 (My training) |
+| Student | Download certificate / performance report | 1 (button on the dashboard) |
+
+### GATE 1 checklist
+- [ ] **Full workflow passes on the deployed build.** It passes locally in the browser
+      (`e2e/gate1.spec.ts`, desktop and mobile, axe on the admin dashboard and the student
+      dashboard): admin opens the window → student applies → admin approves → allocation
+      preview/confirm → trainer, sessions, activation → trainer marks every session, marks
+      and evaluation → admin approves completion → student downloads certificate and
+      report. **Not yet run against https://kiss-vtmp.vercel.app**: it writes a test course,
+      cycle, batch and student into the live demo database, so it waits for the team's go.
+- [x] **Every R1 Must BRQ (BRD §8) is ticked with the test that proves it:**
+
+| BRQ | Proved by |
+| --- | --- |
+| 1.1 Log in and out | `auth.int` (TC-01, TC-02, lockout, rotation), `e2e/auth` |
+| 1.2 Own dashboard, server-enforced | `dashboard.int` (each role only its own), `ownership.int`, TC-15 in `completion.int` |
+| 2.1 Course CRUD | `courses.int`, `gate1.int` |
+| 2.2 Course details | `courses.int` (catalogue), `e2e/enrollment` |
+| 2.3 Open and close electives | `courses.int` (window states), `courses/rules` unit, `e2e/gate1` step 1 |
+| 3.1 Up to three ranked choices | `enrollments.int`, `e2e/enrollment`, `e2e/gate1` |
+| 3.2 One active enrollment, window only | `enrollments.int` (TC-03, TC-04), `constraints.int` (BR-01 index) |
+| 3.3 Approve, reject, waitlist (bulk) | `enrollments.int` (TC-05, bulk rollback), `e2e/gate1` |
+| 3.4 Status and reasons | `e2e/enrollment` (status, notification), `enrollments.int` timeline |
+| 4.1 Batches | `batches.int`, `e2e/batches` |
+| 4.2 Allocation with preview | `allocation.int`, `batches/rules` unit, `e2e/batches`, `e2e/gate1` |
+| 4.3 Trainers and sessions | `batches.int`, `e2e/gate1` |
+| 4.4 Capacity and waitlist | `batches/rules` unit (capacity), `batches.int` (TC-06, TC-07), `allocation.int` |
+| 5.1 Mark own batches only | `attendance.int` (TC-08), `e2e/training`, `e2e/gate1` |
+| 5.2 48 h edit window, admin override | `attendance/rules` unit (47:59/48:00/48:01), `attendance.int` (override with reason) |
+| 5.3 Attendance % and absenteeism | `attendance/rules` unit (74.99/75), `attendance.int`, `dashboard.int` (low attendance) |
+| 6.1 Assessments | `assessments.int` |
+| 6.2 Marks 0..max | `assessments.int` (TC-10, nothing saved on error), `constraints.int` (DB trigger), `e2e/training` |
+| 6.3 Milestones and evaluation | `assessments.int`, `e2e/gate1` |
+| 6.4 Weighted aggregate and grade | `assessments/rules` unit (band boundaries), `e2e/training` (90 % → A) |
+| 7.1 Eligibility | `completion/rules` unit (TC-13, TC-14, 39.99/40), `completion.int` |
+| 7.2 Certificate after approval, random ID, PDF | `completion.int` (TC-16, TC-17, idempotent, retry), `documents` unit, `e2e/completion`, `e2e/gate1` |
+| 7.3 Register of certificates | `completion.int` (register search), `e2e/completion` |
+| 8.1 Student report PDF | `reports.int` (snapshot, access), `e2e/gate1` (student download) |
+| 9.1 Admin counts | `dashboard.int`, `e2e/gate1` |
+| 9.3 Role dashboards | `dashboard.int` (trainer, student) |
+| 9.4 Completion queue with eligibility | `completion.int` (queue with checks) |
+
+  The Shoulds are built too: 1.3 (`users.int`), 8.2 (`reports.int`) and 9.2 (charts).
+- [x] **Audit rows for every attendance, marks, enrollment and completion change.**
+      `gate1.int.test` runs the workflow through the API and finds ENROLLMENT_SUBMITTED →
+      APPROVED → ALLOCATED → ACTIVE, ATTENDANCE_MARKED per session, RESULT_RECORDED,
+      EVALUATION_RECORDED, ENROLLMENT_COMPLETED, CERTIFICATE_ISSUED/RENDERED and
+      ENROLLMENT_CERTIFIED, each with the acting user.
+- [x] **No R2 work started.**
+
+### Deviations
+- **Trainers can't download a student's performance report** (BRD §12.2 lists Student and
+  Admin); they have the batch report.
+- **Dashboard windows (8-week trend, 14-day pending lookback) are display choices, not
+  business thresholds**, so they are constants rather than Settings.
+- **Completion rate leaves students in training out**, so an unfinished batch isn't shown as
+  failing.
+- **Report PDFs are not stored**, only their snapshot; each download re-renders from live
+  data, while certificates keep their stored PDF.
+
+### Known gaps / follow-ups
+- Gate 1 on the deployed build (above).
+- Charts are light-only (the app has no dark theme yet).
+- The batch report PDF shows a count of recorded assessments, not each mark (those are in the
+  CSV), to stay readable with many assessments.
+
+### Definition of done
+- [x] 242 API tests (31 suites) · 31 e2e (desktop + mobile, axe) · lint · format ·
+      typecheck · build · i18n keys in sync · openapi.yaml (72 paths)
+
+---
+
 ## Between Sprints 6 and 7 — Leftovers (done, 2026-10-23)
 
 ### Built
