@@ -208,3 +208,89 @@ function absent(student: number, session: number) {
   if (student >= 8) return (session + student) % 3 === 0;
   return (session * 5 + student * 7) % 12 === 0;
 }
+
+/**
+ * Makes the pilot batch ready for the completion demo (Sprint 6): the final paper gets marks
+ * and the trainer's final evaluations are recorded. Students 021–028 then meet every BR-09
+ * rule; 029–030 miss on attendance and are not recommended. Only fills in what is missing, and
+ * never touches a student who has already completed.
+ */
+export async function seedCompletionReadiness(prisma: PrismaClient, log: (m: string) => void) {
+  const batch = await prisma.batch.findFirst({
+    where: { name: PILOT_BATCH, cycle: { name: PILOT_CYCLE } },
+    include: {
+      students: {
+        orderBy: { student: { rollNo: 'asc' } },
+        select: { studentId: true, enrollmentId: true, enrollment: { select: { status: true } } },
+      },
+      trainers: { select: { trainer: { select: { userId: true } } } },
+    },
+  });
+  if (!batch) return;
+  const trainerUserId = batch.trainers[0]!.trainer.userId;
+  const active = batch.students.filter((s) => s.enrollment.status === 'ACTIVE');
+  const final = await prisma.assessment.findFirst({
+    where: { batchId: batch.id, title: 'Final theory paper' },
+    include: { results: { select: { studentId: true } } },
+  });
+
+  await prisma.$transaction(async (tx) => {
+    let marks = 0;
+    if (final) {
+      const recorded = new Set(final.results.map((r) => r.studentId));
+      if (!final.heldOn) {
+        await tx.assessment.update({
+          where: { id: final.id },
+          data: { heldOn: new Date(batch.startDate.getTime() + 26 * DAY_MS) },
+        });
+      }
+      const missing = active.filter((s) => !recorded.has(s.studentId));
+      await tx.assessmentResult.createMany({
+        data: missing.map((s) => {
+          const i = batch.students.indexOf(s);
+          return {
+            assessmentId: final.id,
+            studentId: s.studentId,
+            marks: 52 + ((i * 29) % 44),
+            recordedById: trainerUserId,
+          };
+        }),
+      });
+      marks = missing.length;
+    }
+    const evaluated = new Set(
+      (
+        await tx.evaluation.findMany({
+          where: { enrollmentId: { in: active.map((s) => s.enrollmentId) } },
+          select: { enrollmentId: true },
+        })
+      ).map((e) => e.enrollmentId),
+    );
+    const toEvaluate = active.filter((s) => !evaluated.has(s.enrollmentId));
+    await tx.evaluation.createMany({
+      data: toEvaluate.map((s) => {
+        const recommended = batch.students.indexOf(s) < 8;
+        return {
+          enrollmentId: s.enrollmentId,
+          remarks: recommended
+            ? 'Works safely and completes wiring tasks independently.'
+            : 'Missed too many sessions to cover the practical modules.',
+          recommended,
+          evaluatedById: trainerUserId,
+        };
+      }),
+    });
+    if (marks || toEvaluate.length) {
+      await audit.record(tx, {
+        userId: null,
+        action: 'SEED_COMPLETION_READY',
+        entity: 'Batch',
+        entityId: batch.id,
+        newValue: { finalMarks: marks, evaluations: toEvaluate.length, by: 'seed' },
+      });
+    }
+    log(
+      `completion: ${marks} final marks and ${toEvaluate.length} evaluations added (students 021–028 eligible)`,
+    );
+  });
+}
