@@ -15,6 +15,31 @@ Read this at the start of every session and update it at the end of every sprint
 
 ---
 
+## Between Sprints 6 and 7 — Leftovers (done, 2026-10-23)
+
+### Built
+- **Word TAD** (`docs/KISS_VTMP_TAD_v1.0.docx`) now names the storage chosen in Sprint 6: a
+  private Vercel Blob store, in Amendment 1, the technology table (File storage), §11
+  Deployment architecture and the environment-variable list (`BLOB_READ_WRITE_TOKEN`,
+  `STORAGE_DRIVER`). `docs/TAD.md` got the same two missing sentences. The file passes schema
+  validation and keeps all 633 paragraphs.
+- **Route-level code splitting (NFR-10)**:
+  - Every page is a `React.lazy` chunk, loaded when first opened. The shell, login and 404
+    stay in the main bundle, and `AppShell` shows a spinner while a page loads.
+  - Libraries go into separate long-cached chunks (`vendor-react`, `vendor-forms`,
+    `vendor-i18n`, `vendor-query`), so a release only re-downloads the app chunk.
+  - Before: one 932 kB main file. After: app 69 kB (16 kB gzip) + vendor 602 kB
+    (184 kB gzip, cached between releases) + each page 3–44 kB.
+  - Sprint 7's chart library (Recharts) will load only on the dashboard and report pages.
+
+### Deviations
+- Code splitting was planned for Sprint 12 and was done now, before Sprint 7 adds charts.
+
+### Definition of done
+- [x] 29 e2e (desktop + mobile, axe) · lint · format · typecheck · build · i18n keys in sync
+
+---
+
 ## Sprint 6 — Completion engine and certificates (done, 2026-10-23)
 
 ### Built
