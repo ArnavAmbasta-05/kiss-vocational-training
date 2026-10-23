@@ -1,0 +1,32 @@
+{
+  "title": "Reports",
+  "intro": "Download batch and course reports as CSV for spreadsheets or PDF for printing, and a performance report for any student.",
+  "batch": {
+    "heading": "Batch report",
+    "desc": "Attendance, marks, aggregate, grade, completion status and certificate per student.",
+    "cycle": "Cycle",
+    "batch": "Batch",
+    "choose": "— Choose a batch —",
+    "students": "Student performance reports",
+    "studentsCaption": "Students in this batch",
+    "student": "Student",
+    "status": "Status",
+    "report": "Report PDF",
+    "reportFor": "Download the performance report of {{name}}"
+  },
+  "course": {
+    "heading": "Course report",
+    "desc": "Completion rate and grade distribution across all batches of a course.",
+    "course": "Course",
+    "choose": "— Choose a course —"
+  },
+  "csv": "Download CSV",
+  "pdf": "Download PDF",
+  "csvFor": "Download {{name}} as CSV",
+  "pdfFor": "Download {{name}} as PDF",
+  "downloading": "Preparing the file…",
+  "failed": "The report could not be downloaded",
+  "batchReport": "Batch report",
+  "batchReportCsv": "CSV",
+  "batchReportPdf": "PDF"
+}

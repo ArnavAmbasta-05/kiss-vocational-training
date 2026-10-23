@@ -1,0 +1,32 @@
+{
+  "title": "",
+  "intro": "",
+  "batch": {
+    "heading": "",
+    "desc": "",
+    "cycle": "",
+    "batch": "",
+    "choose": "",
+    "students": "",
+    "studentsCaption": "",
+    "student": "",
+    "status": "",
+    "report": "",
+    "reportFor": ""
+  },
+  "course": {
+    "heading": "",
+    "desc": "",
+    "course": "",
+    "choose": ""
+  },
+  "csv": "",
+  "pdf": "",
+  "csvFor": "",
+  "pdfFor": "",
+  "downloading": "",
+  "failed": "",
+  "batchReport": "",
+  "batchReportCsv": "",
+  "batchReportPdf": ""
+}

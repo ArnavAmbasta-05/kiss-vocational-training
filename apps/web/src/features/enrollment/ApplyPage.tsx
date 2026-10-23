@@ -24,7 +24,7 @@ export function ApplyPage() {
   const editId = params.get('edit');
   const preselect = params.get('courseId');
 
-  const catalogue = useCatalogue();
+  const catalogue = useCatalogue(params.get('cycle') ?? undefined);
   const mine = useMyEnrollments();
   const submit = useSubmitEnrollment();
   const update = useUpdateEnrollment();

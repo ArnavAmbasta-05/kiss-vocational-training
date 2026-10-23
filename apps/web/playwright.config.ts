@@ -25,6 +25,8 @@ export default defineConfig({
         {
           command: 'pnpm --filter @vtmp/api dev',
           cwd: '../..',
+          // The whole suite runs from one IP; the per-IP flood limiter would start refusing it.
+          env: { GLOBAL_RATE_LIMIT_PER_15MIN: '50000' },
           url: 'http://localhost:4000/health',
           reuseExistingServer: !process.env.CI,
           timeout: 60_000,

@@ -1,0 +1,45 @@
+name: Gate 1 on the live site
+
+# Runs the full Release 1 journey (e2e/gate1.spec.ts) against the deployed site. It CREATES data
+# there (a cycle, a course, a batch, a student, attendance, marks, a certificate), so it never
+# runs on push: start it by hand from the Actions tab, or `gh workflow run gate1-live.yml`.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: gate1-live
+  cancel-in-progress: false
+
+jobs:
+  gate1:
+    name: Gate 1 against PUBLIC_BASE_URL
+    if: vars.PUBLIC_BASE_URL != ''
+    runs-on: ubuntu-latest
+    env:
+      E2E_BASE_URL: ${{ vars.PUBLIC_BASE_URL }}
+      E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Wait for the API (free tier may be asleep)
+        run: |
+          for i in $(seq 1 30); do
+            curl -fsS "$E2E_BASE_URL/api/v1/health" && exit 0
+            sleep 10
+          done
+          exit 1
+      - run: pnpm --filter @vtmp/web exec playwright install --with-deps chromium
+      # Desktop only and no retries: a retry would repeat sign-ins and create a second set of
+      # test data on the live demo.
+      - run: pnpm --filter @vtmp/web exec playwright test gate1.spec.ts --project=desktop --retries=0
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: gate1-live-report
+          path: apps/web/playwright-report
+          retention-days: 7

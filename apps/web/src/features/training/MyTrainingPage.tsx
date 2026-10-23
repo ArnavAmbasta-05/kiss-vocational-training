@@ -1,7 +1,11 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { StudentResult, StudentSessionRecord, StudentTraining } from '@vtmp/shared';
-import { Badge, Card, EmptyState, Spinner, Table, type Column } from '../../components/ui';
+import { Badge, Button, Card, EmptyState, Spinner, Table, type Column } from '../../components/ui';
+import { useToast } from '../../components/toast';
 import { useErrorMessage } from '../../lib/api/useErrorMessage';
+import { useAuth } from '../../lib/auth';
+import { downloadStudentReport } from '../reports/api';
 import { formatDate, formatDay, formatSessionDate, formatSessionTime } from '../../lib/format';
 import { useMyTraining } from './api';
 
@@ -30,10 +34,24 @@ export function MyTrainingPage() {
 }
 
 function BatchTraining({ training: tr }: { training: StudentTraining }) {
-  const { t, i18n } = useTranslation(['training', 'batches']);
+  const { t, i18n } = useTranslation(['training', 'batches', 'dashboard']);
   const lng = i18n.resolvedLanguage ?? 'en';
   const a = tr.attendance;
   const below = a.percent !== null && a.percent < tr.minAttendancePercent;
+  const { user } = useAuth();
+  const toast = useToast();
+  const errorMessage = useErrorMessage();
+  const [busy, setBusy] = useState(false);
+  const onReport = async () => {
+    setBusy(true);
+    try {
+      await downloadStudentReport('me', user?.student?.rollNo ?? 'me', tr.enrollmentId);
+    } catch (err) {
+      toast.show({ tone: 'error', title: errorMessage(err) });
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const sessionCols: Column<StudentSessionRecord>[] = [
     { key: 'date', header: t('mine.date'), render: (s) => formatSessionDate(s.startsAt, lng) },
@@ -96,9 +114,14 @@ function BatchTraining({ training: tr }: { training: StudentTraining }) {
 
   return (
     <section aria-labelledby={`training-${tr.batch.id}`} className="flex flex-col gap-4">
-      <h2 id={`training-${tr.batch.id}`} className="text-lg font-semibold text-slate-900">
-        {`${tr.batch.courseTitle} · ${tr.batch.name}`}
-      </h2>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 id={`training-${tr.batch.id}`} className="text-lg font-semibold text-slate-900">
+          {`${tr.batch.courseTitle} · ${tr.batch.name}`}
+        </h2>
+        <Button variant="secondary" size="sm" loading={busy} onClick={() => void onReport()}>
+          {t('dashboard:studentHome.report')}
+        </Button>
+      </div>
       <div className="grid gap-4 md:grid-cols-3">
         <Card title={t('mine.attendance')} headingLevel={3}>
           <div className="flex items-center gap-4">

@@ -4,12 +4,16 @@ import { Card } from '../components/ui';
 import { NAV_BY_ROLE } from '../components/layout/nav';
 import { StudentBatchCard } from '../features/batches/MyBatches';
 import { StudentCertificateCard } from '../features/completion/MyCertificates';
+import { AdminHome, StudentHome, TrainerHome } from '../features/dashboard/RoleDashboards';
 import { ApiStatusCard } from '../features/health/ApiStatusCard';
 import { useAuth } from '../lib/auth';
 
 const INTRO_KEY = { STUDENT: 'student.intro', TRAINER: 'trainer.intro', ADMIN: 'admin.intro' };
 
-/** Role dashboard shell (BRQ-9.3). Key figures per role arrive with their features (Sprint 7). */
+/**
+ * Role dashboards (BRQ-9.1–9.3): each role's own figures, then quick links to every core task
+ * (one click, NFR-04).
+ */
 export function DashboardPage() {
   const { t } = useTranslation(['dashboard', 'common']);
   const { user } = useAuth();
@@ -24,6 +28,10 @@ export function DashboardPage() {
         </h1>
         <p className="mt-2 max-w-2xl text-slate-700">{t(INTRO_KEY[user.role])}</p>
       </div>
+
+      {user.role === 'ADMIN' && <AdminHome />}
+      {user.role === 'TRAINER' && <TrainerHome />}
+      {user.role === 'STUDENT' && <StudentHome />}
 
       <section aria-labelledby="quick-links">
         <h2 id="quick-links" className="mb-3 text-lg font-semibold text-slate-900">

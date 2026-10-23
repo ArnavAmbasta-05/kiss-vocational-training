@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Badge, Card, EmptyState, Input, Spinner } from '../../components/ui';
 import { useErrorMessage } from '../../lib/api/useErrorMessage';
@@ -10,7 +10,10 @@ import { WindowBadge } from './WindowBadge';
 export function CataloguePage() {
   const { t } = useTranslation('courses');
   const errorMessage = useErrorMessage();
-  const { data, isPending, isError, error } = useCatalogue();
+  // ?cycle= picks another open cycle; without it the newest cycle with offerings is shown.
+  const [params] = useSearchParams();
+  const { data, isPending, isError, error } = useCatalogue(params.get('cycle') ?? undefined);
+  const inCycle = data?.cycle ? `cycle=${data.cycle.id}` : '';
   const [search, setSearch] = useState('');
   const [openOnly, setOpenOnly] = useState(false);
 
@@ -100,7 +103,7 @@ export function CataloguePage() {
                 </div>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Link
-                    to={`/student/courses/${c.id}`}
+                    to={`/student/courses/${c.id}?${inCycle}`}
                     className="inline-flex h-9 items-center rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-800 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600"
                     aria-label={`${t('catalogue.viewDetails')}: ${c.title}`}
                   >
@@ -108,7 +111,7 @@ export function CataloguePage() {
                   </Link>
                   {c.offering?.windowState === 'OPEN' && (
                     <Link
-                      to={`/student/enrollment/apply?courseId=${c.id}`}
+                      to={`/student/enrollment/apply?courseId=${c.id}&${inCycle}`}
                       className="inline-flex h-9 items-center rounded-md bg-brand-700 px-3 text-sm font-medium text-white hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
                       aria-label={`${t('catalogue.applyNow')}: ${c.title}`}
                     >

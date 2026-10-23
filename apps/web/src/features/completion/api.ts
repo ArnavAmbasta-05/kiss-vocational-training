@@ -7,6 +7,7 @@ import type {
   Paginated,
 } from '@vtmp/shared';
 import { api } from '../../lib/api/client';
+import { downloadFile } from '../../lib/download';
 
 export const useCompletionQueue = (batchId: string | undefined) =>
   useQuery({
@@ -72,15 +73,6 @@ export const useRetryRender = () =>
     api.post<ApproveResult>(`/certificates/${certificateId}/render`),
   );
 
-/** Fetches the PDF with the user's token and hands it to the browser as a download. */
-export async function downloadCertificate(id: string, publicCode: string) {
-  const blob = await api.blob(`/certificates/${id}/download`);
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `certificate-${publicCode}.pdf`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 10_000);
-}
+/** Downloads the certificate PDF (owner student or admin). */
+export const downloadCertificate = (id: string, publicCode: string) =>
+  downloadFile(`/certificates/${id}/download`, `certificate-${publicCode}.pdf`);

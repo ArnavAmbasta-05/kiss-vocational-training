@@ -1,4 +1,4 @@
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Card, EmptyState, Spinner } from '../../components/ui';
 import { useErrorMessage } from '../../lib/api/useErrorMessage';
@@ -10,7 +10,9 @@ export function CourseDetailPage() {
   const { id = '' } = useParams();
   const { t, i18n } = useTranslation('courses');
   const errorMessage = useErrorMessage();
-  const { data, isPending, isError, error } = useCatalogueCourse(id);
+  const [params] = useSearchParams();
+  const cycleId = params.get('cycle') ?? undefined;
+  const { data, isPending, isError, error } = useCatalogueCourse(id, cycleId);
   const lng = i18n.resolvedLanguage ?? 'en';
 
   const back = (
@@ -81,7 +83,7 @@ export function CourseDetailPage() {
         </dl>
         {course.offering?.windowState === 'OPEN' && (
           <Link
-            to={`/student/enrollment/apply?courseId=${course.id}`}
+            to={`/student/enrollment/apply?courseId=${course.id}${cycleId ? `&cycle=${cycleId}` : ''}`}
             className="mt-6 inline-flex h-10 items-center rounded-md bg-brand-700 px-4 text-sm font-medium text-white hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
           >
             {t('catalogue.applyNow')}

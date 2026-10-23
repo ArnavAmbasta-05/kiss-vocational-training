@@ -85,6 +85,10 @@ const DashboardPage = lazy(() =>
   import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })),
 );
 
+const ReportsPage = lazy(() =>
+  import('./features/reports/ReportsPage').then((m) => ({ default: m.ReportsPage })),
+);
+
 /** Screens that exist today; every other nav item shows a "coming soon" page until built. */
 const BUILT: Record<string, RouteObject['element']> = {
   '/admin/users': <UsersPage />,
@@ -93,6 +97,7 @@ const BUILT: Record<string, RouteObject['element']> = {
   '/admin/batches': <AdminBatchesPage />,
   '/admin/completions': <CompletionPage />,
   '/admin/certificates': <CertificatesPage />,
+  '/admin/reports': <ReportsPage />,
   '/trainer/batches': <TrainerBatchesPage />,
   '/trainer/sessions': <TrainerSessionsPage />,
   '/trainer/assessments': <TrainerAssessmentsPage />,

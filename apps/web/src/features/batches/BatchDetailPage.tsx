@@ -35,6 +35,8 @@ import {
 import { BatchStatusBadge, FillBar } from './bits';
 import { BatchFormModal, ScheduleModal } from './forms';
 import { SessionsView } from './SessionsView';
+import { downloadBatchReport } from '../reports/api';
+import { ReportButtons } from '../reports/ReportButtons';
 import { AssessmentsPanel } from '../training/AssessmentsPanel';
 import { AttendanceSummaryTab, EvaluationsTab, ProgressTab } from '../training/BatchTrainingTabs';
 
@@ -44,7 +46,7 @@ import { AttendanceSummaryTab, EvaluationsTab, ProgressTab } from '../training/B
  */
 export function BatchDetailPage({ admin }: { admin: boolean }) {
   const { batchId = '' } = useParams();
-  const { t, i18n } = useTranslation('batches');
+  const { t, i18n } = useTranslation(['batches', 'reports']);
   const lng = i18n.resolvedLanguage ?? 'en';
   const errorMessage = useErrorMessage();
   const toast = useToast();
@@ -110,6 +112,17 @@ export function BatchDetailPage({ admin }: { admin: boolean }) {
           </div>
         )}
       </div>
+
+      {b.status !== 'PLANNED' && (
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-sm font-medium text-slate-800">{t('reports:batchReport')}</span>
+          <ReportButtons
+            size="sm"
+            name={`${b.courseTitle} · ${b.name}`}
+            download={(format) => downloadBatchReport(b.id, `${b.courseCode}-${b.name}`, format)}
+          />
+        </div>
+      )}
 
       <Tabs
         label={t('detail.tabs.label')}
