@@ -15,7 +15,7 @@ Read this at the start of every session and update it at the end of every sprint
 
 ---
 
-## Sprint 7 — Reports, dashboards, end-to-end → GATE 1 (built, 2026-10-23; deployed run pending)
+## Sprint 7 — Reports, dashboards, end-to-end → GATE 1 (done, gate passed, 2026-10-23)
 
 ### Built
 - **Figures owned by each module, aggregated in SQL** (rule 5: the dashboard and reports call
@@ -94,13 +94,15 @@ Read this at the start of every session and update it at the end of every sprint
 | Student | Download certificate / performance report | 1 (button on the dashboard) |
 
 ### GATE 1 checklist
-- [ ] **Full workflow passes on the deployed build.** It passes locally in the browser
-      (`e2e/gate1.spec.ts`, desktop and mobile, axe on the admin dashboard and the student
-      dashboard): admin opens the window → student applies → admin approves → allocation
-      preview/confirm → trainer, sessions, activation → trainer marks every session, marks
-      and evaluation → admin approves completion → student downloads certificate and
-      report. **Not yet run against https://kiss-vtmp.vercel.app**: it writes a test course,
-      cycle, batch and student into the live demo database, so it waits for the team's go.
+- [x] **Full workflow passes on the deployed build.** `e2e/gate1.spec.ts` passed against
+      https://kiss-vtmp.vercel.app on 2026-10-23 in 45.7 s (GitHub Actions workflow "Gate 1 on
+      the live site", run 39934353358, started by hand). It also passes locally on desktop and
+      mobile, with axe on the admin and student dashboards. The journey: admin opens the
+      window → student applies → admin approves → allocation preview/confirm → trainer,
+      sessions, activation → trainer marks every session, marks and evaluation → admin
+      approves completion → student downloads certificate and report. The run left its test
+      data on the live demo: a "Gate 1 …" cycle, a "Motor rewinding …" course, its batch and
+      one certified test student (`e2e-gate-…@kiss-vtmp.test`).
 - [x] **Every R1 Must BRQ (BRD §8) is ticked with the test that proves it:**
 
 | BRQ | Proved by |
@@ -152,7 +154,7 @@ Read this at the start of every session and update it at the end of every sprint
   data, while certificates keep their stored PDF.
 
 ### Known gaps / follow-ups
-- Gate 1 on the deployed build (above).
+- Each live Gate 1 run adds a set of test data to the demo; run it only when needed.
 - Charts are light-only (the app has no dark theme yet).
 - The batch report PDF shows a count of recorded assessments, not each mark (those are in the
   CSV), to stay readable with many assessments.
