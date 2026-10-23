@@ -44,5 +44,5 @@ export function rateLimiter({
  * requests never wait on the database. Security limits are named and shared instead.
  */
 export function globalRateLimiter(): RequestHandler {
-  return rateLimiter({ windowMs: 15 * 60 * 1000, limit: 1000 });
+  return rateLimiter({ windowMs: 15 * 60 * 1000, limit: config().GLOBAL_RATE_LIMIT_PER_15MIN });
 }

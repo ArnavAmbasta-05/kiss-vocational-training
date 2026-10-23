@@ -29,6 +29,9 @@ export const EnvSchema = z.object({
   // Where named (security) rate limits keep their counts. Serverless instances share no memory,
   // so production defaults to postgres; local dev and tests default to memory.
   RATE_LIMIT_STORE: z.enum(['memory', 'postgres']).optional(),
+  // Per-IP flood protection for the whole API (in memory, per instance). A school lab shares
+  // one public IP, so keep it generous; the end-to-end suite raises it further.
+  GLOBAL_RATE_LIMIT_PER_15MIN: z.coerce.number().int().min(100).default(1000),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   DATABASE_URL: z.string().url(),
   JWT_SECRET: z.string().min(32, 'must be at least 32 characters'),
