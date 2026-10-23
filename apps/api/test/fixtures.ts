@@ -262,6 +262,65 @@ export async function createActiveBatch(
   return { cycle, course: courses[0]!, batch, trainer, students, sessions };
 }
 
+/**
+ * createActiveBatch plus conducted sessions, one mandatory assessment out of 50, and per student
+ * an attendance count, marks and a recommendation (undefined = not recorded).
+ */
+export async function createTrainedBatch(
+  db: PrismaClient,
+  plan: Array<{ attended: number; marks?: number; recommended?: boolean }>,
+  sessions = 4,
+) {
+  const w = await createActiveBatch(db, { students: plan.length, sessions });
+  await db.trainingSession.updateMany({
+    where: { id: { in: w.sessions.map((s) => s.id) } },
+    data: { status: 'CONDUCTED' },
+  });
+  const assessment = await db.assessment.create({
+    data: {
+      batchId: w.batch.id,
+      title: 'Final practical',
+      mode: 'PRACTICAL',
+      maxMarks: 50,
+      weightage: 1,
+      isMandatory: true,
+      createdById: w.trainer.id,
+    },
+  });
+  for (const [i, o] of plan.entries()) {
+    const s = w.students[i]!;
+    await db.attendance.createMany({
+      data: w.sessions.map((session, k) => ({
+        sessionId: session.id,
+        studentId: s.studentId,
+        status: k < o.attended ? ('PRESENT' as const) : ('ABSENT' as const),
+        markedById: w.trainer.id,
+      })),
+    });
+    if (o.marks !== undefined) {
+      await db.assessmentResult.create({
+        data: {
+          assessmentId: assessment.id,
+          studentId: s.studentId,
+          marks: o.marks,
+          recordedById: w.trainer.id,
+        },
+      });
+    }
+    if (o.recommended !== undefined) {
+      await db.evaluation.create({
+        data: {
+          enrollmentId: s.enrollmentId,
+          remarks: 'Final evaluation',
+          recommended: o.recommended,
+          evaluatedById: w.trainer.id,
+        },
+      });
+    }
+  }
+  return { ...w, assessment };
+}
+
 export async function createCycleCourseBatch(db: PrismaClient) {
   const s = uid();
   const cycle = await db.trainingCycle.create({

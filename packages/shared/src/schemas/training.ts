@@ -218,6 +218,8 @@ export interface StudentResult {
 }
 
 export interface StudentTraining {
+  /** The application this training belongs to (performance report, BRQ-8.1). */
+  enrollmentId: string;
   batch: {
     id: string;
     name: string;

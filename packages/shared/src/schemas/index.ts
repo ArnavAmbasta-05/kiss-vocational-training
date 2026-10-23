@@ -6,3 +6,4 @@ export * from './notifications';
 export * from './batches';
 export * from './training';
 export * from './completion';
+export * from './reports';

@@ -6,6 +6,7 @@ export {
   canAccessEnrollment,
   canAccessSession,
   isOwnStudent,
+  isStudentSelfOrAdmin,
   owns,
   requireOwnership,
   trainerOwnsBatch,

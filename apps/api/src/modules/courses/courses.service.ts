@@ -299,3 +299,8 @@ export async function upsertOffering(
     return toOffering(offering);
   });
 }
+
+/** Active courses (admin dashboard, BRQ-9.1). */
+export async function activeCourseCount(): Promise<number> {
+  return prisma().course.count({ where: { isActive: true } });
+}

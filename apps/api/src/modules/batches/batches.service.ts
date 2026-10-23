@@ -711,3 +711,11 @@ export async function placementOf(enrollmentId: string) {
     },
   };
 }
+
+/** Batches per status (admin dashboard, BRQ-9.1). */
+export async function statusCounts(): Promise<Record<BatchStatus, number>> {
+  const rows = await prisma().batch.groupBy({ by: ['status'], _count: { _all: true } });
+  const counts: Record<BatchStatus, number> = { PLANNED: 0, ACTIVE: 0, CLOSED: 0 };
+  for (const r of rows) counts[r.status] = r._count._all;
+  return counts;
+}

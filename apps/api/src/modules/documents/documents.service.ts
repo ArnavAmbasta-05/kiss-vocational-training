@@ -248,3 +248,59 @@ export async function enrollmentOf(certificateId: string): Promise<string | null
   });
   return c?.enrollmentId ?? null;
 }
+
+/** Grades on valid certificates, optionally for one course (dashboard, course report). */
+export async function gradeDistribution(courseId?: string): Promise<Map<string, number>> {
+  const rows = await prisma().certificate.groupBy({
+    by: ['grade'],
+    where: {
+      status: 'VALID',
+      ...(courseId ? { enrollment: { batchMembership: { batch: { courseId } } } } : {}),
+    },
+    _count: { _all: true },
+  });
+  return new Map(rows.map((r) => [r.grade, r._count._all]));
+}
+
+// ─── Reports (F8, BRD §12.2) ───────────────────────────────────────────────────
+
+export { renderStudentReport, renderTableReport } from './reports.pdf';
+export { pdfDay } from './pdf';
+export type { StudentReportContent, TableReportContent } from './reports.pdf';
+
+/**
+ * Keeps the figures a student report was generated from (BRQ-8.1, rule 9: report snapshots
+ * are stored, live figures are not). The PDF itself is re-generated on request.
+ */
+export async function savePerformanceReport(
+  actor: Actor,
+  enrollmentId: string,
+  snapshot: unknown,
+): Promise<string> {
+  return withAudit(actor, async (tx, log) => {
+    const r = await tx.performanceReport.create({
+      data: {
+        enrollmentId,
+        snapshot: JSON.parse(JSON.stringify(snapshot)) as Prisma.InputJsonValue,
+        generatedById: actor.userId!,
+      },
+    });
+    await log({
+      action: 'PERFORMANCE_REPORT_GENERATED',
+      entity: 'PerformanceReport',
+      entityId: r.id,
+      newValue: { enrollmentId },
+    });
+    return r.id;
+  });
+}
+
+/** Grades on valid certificates of one batch (course report). */
+export async function batchGrades(batchId: string): Promise<Map<string, number>> {
+  const rows = await prisma().certificate.groupBy({
+    by: ['grade'],
+    where: { status: 'VALID', enrollment: { batchMembership: { batchId } } },
+    _count: { _all: true },
+  });
+  return new Map(rows.map((r) => [r.grade, r._count._all]));
+}

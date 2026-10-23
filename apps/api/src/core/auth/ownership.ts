@@ -123,6 +123,16 @@ export async function canAccessCertificate(
     : 'forbidden';
 }
 
+/** Documents about one student (performance report): that student or an admin only. */
+export async function isStudentSelfOrAdmin(
+  user: CurrentUser,
+  studentId: string,
+): Promise<OwnershipResult> {
+  const result = await isOwnStudent(user, studentId);
+  if (result !== 'allow') return result;
+  return user.role === 'TRAINER' ? 'forbidden' : 'allow';
+}
+
 // ─── Middleware ────────────────────────────────────────────────────────────────
 
 export type Resolver = (req: Request) => Promise<OwnershipResult>;
@@ -170,6 +180,14 @@ export const owns = {
     (name = 'enrollmentId'): Resolver =>
     (req) =>
       canAccessEnrollment(req.user!, param(req, name)),
+  /** Accepts "me"; trainers are refused even for their own students. */
+  studentSelf:
+    (name = 'studentId'): Resolver =>
+    (req) => {
+      const value = param(req, name);
+      const id = value === 'me' ? (req.user!.studentId ?? '') : value;
+      return isStudentSelfOrAdmin(req.user!, id);
+    },
   certificate:
     (name = 'certificateId'): Resolver =>
     (req) =>

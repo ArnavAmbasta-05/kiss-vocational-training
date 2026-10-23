@@ -10,9 +10,11 @@ import { authRoutes } from './modules/auth/auth.routes';
 import { adminBatchRoutes, batchRoutes } from './modules/batches/batches.routes';
 import { adminCourseRoutes, catalogueRoutes } from './modules/courses/courses.routes';
 import { adminEnrollmentRoutes, enrollmentRoutes } from './modules/enrollments/enrollments.routes';
+import { dashboardRoutes } from './modules/dashboard/dashboard.routes';
 import { certificateRoutes, studentCertificateRoutes } from './modules/documents/documents.routes';
 import { healthRoutes } from './modules/health/health.routes';
 import { notificationRoutes } from './modules/notifications/notifications.routes';
+import { reportRoutes } from './modules/reports/reports.routes';
 import { studentTrainingRoutes } from './modules/training/training.routes';
 import { adminUserRoutes, meRoutes } from './modules/users/users.routes';
 
@@ -36,6 +38,8 @@ export function v1Routes(): Router {
   router.use('/completions', completionRoutes());
   router.use('/certificates', certificateRenderRoutes());
   router.use('/certificates', certificateRoutes());
+  router.use('/reports', reportRoutes());
+  router.use('/dashboard', dashboardRoutes());
   router.use('/admin/users', adminUserRoutes());
   router.use('/admin/enrollments', adminEnrollmentRoutes());
   router.use('/admin', adminBatchRoutes());

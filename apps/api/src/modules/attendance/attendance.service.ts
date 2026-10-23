@@ -348,3 +348,35 @@ export async function mySessions(
     rosterSize: s.batch._count.students,
   }));
 }
+
+/**
+ * Attendance % per week over the last `weeks` weeks of conducted sessions, all batches
+ * (admin dashboard trend). Weeks start on Monday in institution time; LATE counts as attended
+ * when the setting says so (BR-08). Aggregated in SQL.
+ */
+export async function weeklyTrend(
+  weeks: number,
+  now = new Date(),
+): Promise<Array<{ weekStart: string; attended: number; marks: number }>> {
+  const [late, offset] = await Promise.all([
+    settings.get('attendance.lateCountsAsPresent'),
+    settings.get('institution.utcOffsetMinutes'),
+  ]);
+  const since = new Date(now.getTime() - weeks * 7 * 86_400_000);
+  const rows = await prisma().$queryRaw<
+    Array<{ week_start: Date; attended: bigint; marks: bigint }>
+  >`
+    SELECT date_trunc('week', ts.starts_at + make_interval(mins => ${offset}::int))::date AS week_start,
+      count(*) FILTER (WHERE a.status = 'PRESENT' OR (${late}::boolean AND a.status = 'LATE')) AS attended,
+      count(*) AS marks
+    FROM attendance a
+    JOIN training_sessions ts ON ts.id = a.session_id
+    WHERE ts.status = 'CONDUCTED' AND ts.starts_at >= ${since} AND ts.starts_at <= ${now}
+    GROUP BY 1
+    ORDER BY 1`;
+  return rows.map((r) => ({
+    weekStart: r.week_start.toISOString().slice(0, 10),
+    attended: Number(r.attended),
+    marks: Number(r.marks),
+  }));
+}

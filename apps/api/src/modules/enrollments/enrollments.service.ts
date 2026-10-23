@@ -645,3 +645,13 @@ export async function changeStatuses(tx: Tx, log: AuditFn, changes: StatusChange
     changes.flatMap((c) => (c.notify ? [{ ...c.notify, link: '/student' }] : [])),
   );
 }
+
+/** Applications per status (dashboard funnel), optionally for one cycle. */
+export async function statusCounts(cycleId?: string): Promise<Map<EnrollmentStatus, number>> {
+  const rows = await prisma().enrollment.groupBy({
+    by: ['status'],
+    where: cycleId ? { cycleId } : {},
+    _count: { _all: true },
+  });
+  return new Map(rows.map((r) => [r.status, r._count._all]));
+}

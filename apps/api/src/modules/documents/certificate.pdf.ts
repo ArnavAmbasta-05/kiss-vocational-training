@@ -1,8 +1,8 @@
-import { existsSync } from 'node:fs';
 import path from 'node:path';
 import PDFDocument from 'pdfkit';
 import QRCode from 'qrcode';
 import type { Grade } from '@vtmp/shared';
+import { fontsDir } from './pdf';
 
 export interface CertificateContent {
   institution: string;
@@ -19,19 +19,6 @@ export interface CertificateContent {
   issuedAt: Date;
   publicCode: string;
   verifyUrl: string;
-}
-
-/** Fonts ship in apps/api/assets/fonts: next to src/ in dev, next to dist/ when bundled. */
-function fontsDir(): string {
-  const candidates = [
-    path.resolve(__dirname, '../../../assets/fonts'),
-    path.resolve(__dirname, '../assets/fonts'),
-    path.resolve(process.cwd(), 'apps/api/assets/fonts'),
-    path.resolve(process.cwd(), 'assets/fonts'),
-  ];
-  const dir = candidates.find((d) => existsSync(path.join(d, 'noto-sans-latin-400-normal.woff')));
-  if (!dir) throw new Error('Certificate fonts not found');
-  return dir;
 }
 
 const ODIA = /[଀-୿]/;

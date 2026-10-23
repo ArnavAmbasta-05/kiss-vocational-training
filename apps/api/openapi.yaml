@@ -24,6 +24,8 @@ tags:
   - name: assessments
   - name: completion
   - name: certificates
+  - name: reports
+  - name: dashboard
 paths:
   /health:
     get:
@@ -1131,6 +1133,103 @@ paths:
           content:
             application/json:
               schema: { type: array, items: { $ref: '#/components/schemas/Certificate' } }
+  /reports/students/{studentId}.pdf:
+    get:
+      tags: [reports]
+      summary: Student performance report PDF (BRQ-8.1)
+      description: Attendance, results, aggregate, grade (the certificate snapshot once certified, otherwise projected), trainer evaluation and milestones. The student ("me") or an admin only; trainers get 403. Each download stores a PerformanceReport snapshot and an audit row. 404 when the student has no training yet.
+      parameters:
+        - {
+            name: studentId,
+            in: path,
+            required: true,
+            schema: { type: string },
+            description: Student id or "me",
+          }
+        - {
+            name: enrollmentId,
+            in: query,
+            schema: { type: string, format: uuid },
+            description: Which training; defaults to the latest,
+          }
+      responses:
+        '200':
+          description: PDF file
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /reports/batches/{batchId}:
+    get:
+      tags: [reports]
+      summary: Batch report as CSV or PDF (BRQ-8.2)
+      description: Per student attendance, marks per assessment (CSV), aggregate, grade, completion status and certificate ID. The batch's trainers and admins.
+      parameters:
+        - { name: batchId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: format, in: query, schema: { type: string, enum: [csv, pdf], default: csv } }
+      responses:
+        '200':
+          description: Report file
+          content:
+            text/csv:
+              schema: { type: string }
+            application/pdf:
+              schema: { type: string, format: binary }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /reports/courses/{courseId}:
+    get:
+      tags: [reports]
+      summary: Course report as CSV or PDF (BRQ-8.2), admin only
+      description: Per batch students, in training, completed, not completed, completion rate (completed ÷ finished) and grade distribution of valid certificates, plus a total row.
+      parameters:
+        - { name: courseId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: format, in: query, schema: { type: string, enum: [csv, pdf], default: csv } }
+      responses:
+        '200':
+          description: Report file
+          content:
+            text/csv:
+              schema: { type: string }
+            application/pdf:
+              schema: { type: string, format: binary }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /dashboard/admin:
+    get:
+      tags: [dashboard]
+      summary: Admin figures (BRQ-9.1, BRQ-9.2), aggregated in SQL
+      parameters:
+        - {
+            name: cycleId,
+            in: query,
+            schema: { type: string, format: uuid },
+            description: Enrollment funnel for one cycle (default all),
+          }
+      responses:
+        '200':
+          description: Counts, enrollment funnel, completion, grades, weekly attendance trend
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminDashboard' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /dashboard/trainer:
+    get:
+      tags: [dashboard]
+      summary: Trainer figures (BRQ-9.3)
+      description: Active batches and students, today's sessions, sessions still needing attendance, students below the attendance minimum.
+      responses:
+        '200': { description: Trainer dashboard }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /dashboard/student:
+    get:
+      tags: [dashboard]
+      summary: Student figures (BRQ-9.3)
+      description: Latest application, live attendance/aggregate/projected grade, next session and certificate.
+      responses:
+        '200': { description: Student dashboard }
+        '403': { $ref: '#/components/responses/Forbidden' }
 components:
   securitySchemes:
     bearerAuth:
@@ -1392,6 +1491,51 @@ components:
         enrollmentId: { type: string, format: uuid }
         status: { type: string, enum: [COMPLETED, CERTIFIED] }
         certificate: { $ref: '#/components/schemas/CertificateSummary' }
+    AdminDashboard:
+      type: object
+      properties:
+        counts:
+          type: object
+          properties:
+            students: { type: integer }
+            courses: { type: integer }
+            trainers: { type: integer }
+            batches:
+              type: object
+              properties:
+                PLANNED: { type: integer }
+                ACTIVE: { type: integer }
+                CLOSED: { type: integer }
+        enrollmentFunnel:
+          type: array
+          items:
+            type: object
+            properties:
+              status: { type: string }
+              count: { type: integer }
+        completion:
+          type: object
+          properties:
+            completed: { type: integer }
+            notCompleted: { type: integer }
+            inTraining: { type: integer }
+            ratePercent: { type: number, nullable: true }
+        grades:
+          type: array
+          items:
+            type: object
+            properties:
+              grade: { type: string, enum: [A, B, C, D] }
+              count: { type: integer }
+        attendanceTrend:
+          type: array
+          items:
+            type: object
+            properties:
+              weekStart: { type: string, format: date }
+              percent: { type: number, nullable: true }
+              marks: { type: integer }
+        minAttendancePercent: { type: number }
   responses:
     TooManyRequests:
       description: Rate limited or account locked

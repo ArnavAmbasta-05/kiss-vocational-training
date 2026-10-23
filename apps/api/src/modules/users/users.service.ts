@@ -241,3 +241,14 @@ export async function updateUser(
     return toSummary(user);
   });
 }
+
+/** Active accounts per role (admin dashboard, BRQ-9.1). */
+export async function activeCounts(): Promise<{ students: number; trainers: number }> {
+  const rows = await prisma().user.groupBy({
+    by: ['role'],
+    where: { isActive: true },
+    _count: { _all: true },
+  });
+  const of = (role: string) => rows.find((r) => r.role === role)?._count._all ?? 0;
+  return { students: of('STUDENT'), trainers: of('TRAINER') };
+}

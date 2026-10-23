@@ -30,6 +30,7 @@ export async function forStudent(studentId: string): Promise<StudentTraining[]> 
           .map((r) => ({ marks: r.marks!, maxMarks: r.maxMarks, weightage: r.weightage })),
       );
       return {
+        enrollmentId: p.enrollmentId,
         batch: p.batch,
         attendance: figures,
         minAttendancePercent: minAttendance,
