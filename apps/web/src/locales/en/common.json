@@ -26,12 +26,14 @@
       "courses": "Courses",
       "enrollment": "My enrollment",
       "training": "My training",
-      "certificates": "Certificates"
+      "certificates": "Certificates",
+      "skills": "My skill gaps"
     },
     "trainer": {
       "batches": "My batches",
       "sessions": "Sessions",
-      "assessments": "Assessments"
+      "assessments": "Assessments",
+      "competencies": "Competencies"
     },
     "admin": {
       "users": "Users",
@@ -40,7 +42,8 @@
       "batches": "Batches",
       "completions": "Completions",
       "certificates": "Certificates",
-      "reports": "Reports"
+      "reports": "Reports",
+      "competencies": "Competencies"
     }
   },
   "actions": {

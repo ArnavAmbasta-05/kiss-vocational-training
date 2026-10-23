@@ -76,6 +76,13 @@
     "NOT_ELIGIBLE": "This student does not meet the completion rules yet.",
     "ALREADY_COMPLETED": "This student has already completed training.",
     "CERTIFICATE_NOT_RENDERED": "The certificate PDF is not ready yet.",
-    "CERTIFICATE_NOT_VALID": "This certificate is no longer valid."
+    "CERTIFICATE_NOT_VALID": "This certificate is no longer valid.",
+    "COMPETENCY_CODE_TAKEN": "This code is already used in the course.",
+    "ASSESSMENT_NOT_IN_COURSE": "Linked assessments must belong to a batch of this course.",
+    "HAS_RATINGS": "Students have been rated on this competency, so it can't be deleted.",
+    "BELOW_REQUIRED_LEVEL": "A competency can be verified only at or above its required level.",
+    "VERIFIED_LOCKED": "A verified competency cannot be rated below its required level.",
+    "COMPETENCY_NOT_IN_COURSE": "Some competencies don't belong to this batch's course.",
+    "COMPETENCY_NOT_FOUND": "That competency no longer exists."
   }
 }

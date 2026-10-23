@@ -17,6 +17,7 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
     { to: '/student/courses', labelKey: 'nav.student.courses' },
     { to: '/student/enrollment', labelKey: 'nav.student.enrollment' },
     { to: '/student/training', labelKey: 'nav.student.training' },
+    { to: '/student/skills', labelKey: 'nav.student.skills' },
     { to: '/student/certificates', labelKey: 'nav.student.certificates' },
   ],
   TRAINER: [
@@ -24,6 +25,7 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
     { to: '/trainer/batches', labelKey: 'nav.trainer.batches' },
     { to: '/trainer/sessions', labelKey: 'nav.trainer.sessions' },
     { to: '/trainer/assessments', labelKey: 'nav.trainer.assessments' },
+    { to: '/trainer/competencies', labelKey: 'nav.trainer.competencies' },
   ],
   ADMIN: [
     { to: '/admin', labelKey: 'nav.dashboard', end: true },
@@ -31,6 +33,7 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
     { to: '/admin/courses', labelKey: 'nav.admin.courses' },
     { to: '/admin/enrollments', labelKey: 'nav.admin.enrollments' },
     { to: '/admin/batches', labelKey: 'nav.admin.batches' },
+    { to: '/admin/competencies', labelKey: 'nav.admin.competencies' },
     { to: '/admin/completions', labelKey: 'nav.admin.completions' },
     { to: '/admin/certificates', labelKey: 'nav.admin.certificates' },
     { to: '/admin/reports', labelKey: 'nav.admin.reports' },

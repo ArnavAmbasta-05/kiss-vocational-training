@@ -89,6 +89,20 @@ const ReportsPage = lazy(() =>
   import('./features/reports/ReportsPage').then((m) => ({ default: m.ReportsPage })),
 );
 
+const AdminCompetenciesPage = lazy(() =>
+  import('./features/competency/AdminCompetenciesPage').then((m) => ({
+    default: m.AdminCompetenciesPage,
+  })),
+);
+const TrainerCompetenciesPage = lazy(() =>
+  import('./features/competency/TrainerCompetenciesPage').then((m) => ({
+    default: m.TrainerCompetenciesPage,
+  })),
+);
+const MySkillGapsPage = lazy(() =>
+  import('./features/competency/MySkillGapsPage').then((m) => ({ default: m.MySkillGapsPage })),
+);
+
 /** Screens that exist today; every other nav item shows a "coming soon" page until built. */
 const BUILT: Record<string, RouteObject['element']> = {
   '/admin/users': <UsersPage />,
@@ -98,6 +112,9 @@ const BUILT: Record<string, RouteObject['element']> = {
   '/admin/completions': <CompletionPage />,
   '/admin/certificates': <CertificatesPage />,
   '/admin/reports': <ReportsPage />,
+  '/admin/competencies': <AdminCompetenciesPage />,
+  '/trainer/competencies': <TrainerCompetenciesPage />,
+  '/student/skills': <MySkillGapsPage />,
   '/trainer/batches': <TrainerBatchesPage />,
   '/trainer/sessions': <TrainerSessionsPage />,
   '/trainer/assessments': <TrainerAssessmentsPage />,

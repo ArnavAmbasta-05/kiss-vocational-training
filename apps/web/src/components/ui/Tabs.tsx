@@ -57,7 +57,7 @@ export function Tabs({
       <div
         role="tablist"
         aria-label={label}
-        className="flex gap-1 overflow-x-auto border-b border-slate-200"
+        className="flex gap-1 overflow-x-auto overflow-y-hidden border-b border-slate-200"
       >
         {items.map((t, i) => (
           <button
