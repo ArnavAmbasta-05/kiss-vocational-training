@@ -66,6 +66,13 @@ export const SETTINGS = {
     'Kalinga Institute of Social Sciences (KISS)',
     'Institution name printed on certificates [BRQ-7.2]',
   ),
+  'competency.provisionalBands': define(
+    z.object({ L2: percent, L3: percent, L4: percent }).refine((b) => b.L2 < b.L3 && b.L3 < b.L4, {
+      message: 'Bands must be ascending (L2 < L3 < L4)',
+    }),
+    { L2: 40, L3: 60, L4: 85 },
+    'Provisional level from linked assessment %: below L2 → 1, L2+ → 2, L3+ → 3, L4+ → 4 [F12]',
+  ),
   'enrollment.maxPreferences': define(
     z.number().int().min(1).max(3),
     3,

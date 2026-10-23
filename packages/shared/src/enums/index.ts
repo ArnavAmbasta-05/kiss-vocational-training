@@ -91,6 +91,7 @@ const learningResourceType = defineEnum(['VIDEO', 'DOCUMENT', 'PRACTICE_TASK', '
 export const LearningResourceType = learningResourceType.obj;
 export type LearningResourceType = (typeof learningResourceType.values)[number];
 export const LearningResourceTypeSchema = learningResourceType.schema;
+export const LEARNING_RESOURCE_TYPES = learningResourceType.values;
 
 const allocationPriorityRule = defineEnum(['SUBMISSION_TIME', 'CGPA']);
 export const AllocationPriorityRule = allocationPriorityRule.obj;
