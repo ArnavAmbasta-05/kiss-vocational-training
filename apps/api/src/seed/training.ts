@@ -234,63 +234,66 @@ export async function seedCompletionReadiness(prisma: PrismaClient, log: (m: str
     include: { results: { select: { studentId: true } } },
   });
 
-  await prisma.$transaction(async (tx) => {
-    let marks = 0;
-    if (final) {
-      const recorded = new Set(final.results.map((r) => r.studentId));
-      if (!final.heldOn) {
-        await tx.assessment.update({
-          where: { id: final.id },
-          data: { heldOn: new Date(batch.startDate.getTime() + 26 * DAY_MS) },
+  await prisma.$transaction(
+    async (tx) => {
+      let marks = 0;
+      if (final) {
+        const recorded = new Set(final.results.map((r) => r.studentId));
+        if (!final.heldOn) {
+          await tx.assessment.update({
+            where: { id: final.id },
+            data: { heldOn: new Date(batch.startDate.getTime() + 26 * DAY_MS) },
+          });
+        }
+        const missing = active.filter((s) => !recorded.has(s.studentId));
+        await tx.assessmentResult.createMany({
+          data: missing.map((s) => {
+            const i = batch.students.indexOf(s);
+            return {
+              assessmentId: final.id,
+              studentId: s.studentId,
+              marks: 52 + ((i * 29) % 44),
+              recordedById: trainerUserId,
+            };
+          }),
         });
+        marks = missing.length;
       }
-      const missing = active.filter((s) => !recorded.has(s.studentId));
-      await tx.assessmentResult.createMany({
-        data: missing.map((s) => {
-          const i = batch.students.indexOf(s);
+      const evaluated = new Set(
+        (
+          await tx.evaluation.findMany({
+            where: { enrollmentId: { in: active.map((s) => s.enrollmentId) } },
+            select: { enrollmentId: true },
+          })
+        ).map((e) => e.enrollmentId),
+      );
+      const toEvaluate = active.filter((s) => !evaluated.has(s.enrollmentId));
+      await tx.evaluation.createMany({
+        data: toEvaluate.map((s) => {
+          const recommended = batch.students.indexOf(s) < 8;
           return {
-            assessmentId: final.id,
-            studentId: s.studentId,
-            marks: 52 + ((i * 29) % 44),
-            recordedById: trainerUserId,
+            enrollmentId: s.enrollmentId,
+            remarks: recommended
+              ? 'Works safely and completes wiring tasks independently.'
+              : 'Missed too many sessions to cover the practical modules.',
+            recommended,
+            evaluatedById: trainerUserId,
           };
         }),
       });
-      marks = missing.length;
-    }
-    const evaluated = new Set(
-      (
-        await tx.evaluation.findMany({
-          where: { enrollmentId: { in: active.map((s) => s.enrollmentId) } },
-          select: { enrollmentId: true },
-        })
-      ).map((e) => e.enrollmentId),
-    );
-    const toEvaluate = active.filter((s) => !evaluated.has(s.enrollmentId));
-    await tx.evaluation.createMany({
-      data: toEvaluate.map((s) => {
-        const recommended = batch.students.indexOf(s) < 8;
-        return {
-          enrollmentId: s.enrollmentId,
-          remarks: recommended
-            ? 'Works safely and completes wiring tasks independently.'
-            : 'Missed too many sessions to cover the practical modules.',
-          recommended,
-          evaluatedById: trainerUserId,
-        };
-      }),
-    });
-    if (marks || toEvaluate.length) {
-      await audit.record(tx, {
-        userId: null,
-        action: 'SEED_COMPLETION_READY',
-        entity: 'Batch',
-        entityId: batch.id,
-        newValue: { finalMarks: marks, evaluations: toEvaluate.length, by: 'seed' },
-      });
-    }
-    log(
-      `completion: ${marks} final marks and ${toEvaluate.length} evaluations added (students 021–028 eligible)`,
-    );
-  });
+      if (marks || toEvaluate.length) {
+        await audit.record(tx, {
+          userId: null,
+          action: 'SEED_COMPLETION_READY',
+          entity: 'Batch',
+          entityId: batch.id,
+          newValue: { finalMarks: marks, evaluations: toEvaluate.length, by: 'seed' },
+        });
+      }
+      log(
+        `completion: ${marks} final marks and ${toEvaluate.length} evaluations added (students 021–028 eligible)`,
+      );
+    },
+    { timeout: 60_000, maxWait: 20_000 },
+  );
 }

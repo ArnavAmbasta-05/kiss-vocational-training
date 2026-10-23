@@ -15,6 +15,12 @@ interface SeedCompetency {
   reading?: { title: string; url: string; type?: LearningResourceType };
 }
 
+/**
+ * Seeding a remote database (Neon, Singapore) from a laptop makes every query a round trip, so
+ * Prisma's default 5 s per transaction is too short. Generous, but still bounded.
+ */
+const SEED_TX = { timeout: 60_000, maxWait: 20_000 };
+
 const wiki = (page: string) => `https://en.wikipedia.org/wiki/${page}`;
 const video = (q: string) =>
   `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`;
@@ -341,7 +347,7 @@ export async function seedCompetencies(prisma: PrismaClient, log: (m: string) =>
           entityId: row.id,
           newValue: { code: c.code, courseCode: code, by: 'seed' },
         });
-      });
+      }, SEED_TX);
       created++;
     }
   }
@@ -399,6 +405,6 @@ export async function seedCompetencies(prisma: PrismaClient, log: (m: string) =>
       entityId: batch.id,
       newValue: { ratings: rows.length, by: 'seed' },
     });
-  });
+  }, SEED_TX);
   log(`competency ratings: ${rows.length} added in "${PILOT_BATCH}" (student 030 has a gap of 2)`);
 }
