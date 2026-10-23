@@ -3,6 +3,7 @@ import { Role, type PrismaClient } from '@prisma/client';
 import { audit } from '../core/audit';
 import { SETTINGS, SETTING_KEYS } from '../core/settings/registry';
 import { ADMIN, COURSES, SEED_PASSWORD, TRAINERS, makeStudents } from './data';
+import { seedCompetencies } from './competency';
 import { seedCompletionReadiness, seedTraining } from './training';
 
 /**
@@ -216,6 +217,7 @@ export async function runSeed(prisma: PrismaClient, opts: SeedOptions = {}) {
 
   await seedTraining(prisma, log);
   await seedCompletionReadiness(prisma, log);
+  await seedCompetencies(prisma, log);
 
   return { students: students.length, trainers: TRAINERS.length, courses: COURSES.length };
 }

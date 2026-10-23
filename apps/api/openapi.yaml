@@ -26,6 +26,7 @@ tags:
   - name: certificates
   - name: reports
   - name: dashboard
+  - name: competency
 paths:
   /health:
     get:
@@ -1230,6 +1231,173 @@ paths:
       responses:
         '200': { description: Student dashboard }
         '403': { $ref: '#/components/responses/Forbidden' }
+  /courses/{courseId}/competencies:
+    get:
+      tags: [competency]
+      summary: Competencies of a course (staff) (BRQ-C.1)
+      parameters:
+        - { name: courseId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Competencies by code
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Competency' } }
+    post:
+      tags: [competency]
+      summary: Define a competency (Admin)
+      description: Code unique per course (409 COMPETENCY_CODE_TAKEN), required level 1–4, mandatory flag, and linked assessments from this course's batches (422 ASSESSMENT_NOT_IN_COURSE otherwise). Audited.
+      parameters:
+        - { name: courseId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CompetencyInput' }
+      responses:
+        '201': { description: Created }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /courses/{courseId}/linkable-assessments:
+    get:
+      tags: [competency]
+      summary: Assessments in any batch of the course, for linking (Admin)
+      parameters:
+        - { name: courseId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { '200': { description: Assessments with their batch } }
+  /courses/{courseId}/resources:
+    get:
+      tags: [competency]
+      summary: Learning resources of a course, approved and pending (staff)
+      parameters:
+        - { name: courseId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { '200': { description: Resources } }
+  /competencies/{id}:
+    put:
+      tags: [competency]
+      summary: Edit a competency and replace its linked assessments (Admin)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CompetencyInput' }
+      responses:
+        '200': { description: Updated }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+    delete:
+      tags: [competency]
+      summary: Delete a competency nobody has been rated on (409 HAS_RATINGS)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: Deleted }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /resources:
+    post:
+      tags: [competency]
+      summary: Add a learning resource (trainer or Admin; an admin's is approved at once)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ResourceInput' }
+      responses:
+        '201': { description: Created }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /resources/{id}:
+    put:
+      tags: [competency]
+      summary: Edit a resource (its creator or an admin; a trainer's edit needs approval again)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ResourceInput' }
+      responses:
+        '200': { description: Updated }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    delete:
+      tags: [competency]
+      summary: Delete a resource (its creator or an admin)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: Deleted }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /resources/{id}/approve:
+    post:
+      tags: [competency]
+      summary: Approve a resource so it is recommended to students (Admin)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { '200': { description: Approved } }
+  /batches/{batchId}/competency-ratings:
+    get:
+      tags: [competency]
+      summary: Rating grid — students × competencies (the batch's trainers, Admin)
+      parameters:
+        - { name: batchId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { '200': { description: Grid } }
+    put:
+      tags: [competency]
+      summary: Rate students 1–4 in bulk; optionally verify (assigned trainer only) (BRQ-C.2, BR-13)
+      description: One transaction. verify=true only at or above the required level (422 BELOW_REQUIRED_LEVEL, every offending cell in details, nothing saved). A verified rating can be raised but never set below the required level (409 VERIFIED_LOCKED). Unchanged cells are skipped; changes audited (COMPETENCY_RATED / _RATING_UPDATED / _VERIFIED). Batch must be ACTIVE.
+      parameters:
+        - { name: batchId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ratings]
+              properties:
+                ratings:
+                  type: array
+                  items:
+                    type: object
+                    required: [studentId, competencyId, level]
+                    properties:
+                      studentId: { type: string, format: uuid }
+                      competencyId: { type: string, format: uuid }
+                      level: { type: integer, minimum: 1, maximum: 4 }
+                      verify: { type: boolean }
+      responses:
+        '200': { description: Updated grid }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /batches/{batchId}/competency-heatmap:
+    get:
+      tags: [competency]
+      summary: Batch heatmap — level, source, gap and a below-level flag per cell (BRQ-12.4)
+      parameters:
+        - { name: batchId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Heatmap }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /students/{studentId}/gaps:
+    get:
+      tags: [competency]
+      summary: A student's competency gaps (BRQ-12.1–12.3, BR-18)
+      description: Demonstrated level = latest trainer rating, else provisional from linked assessment % (setting competency.provisionalBands), else not assessed. Gap = max(0, required − demonstrated). Returns belowLevel and notAssessed ranked by gap (mandatory first on ties) with approved resources only, and met. "me" for the signed-in student.
+      parameters:
+        - { name: studentId, in: path, required: true, schema: { type: string } }
+        - {
+            name: batchId,
+            in: query,
+            schema: { type: string, format: uuid },
+            description: Default the latest batch,
+          }
+      responses:
+        '200': { description: Gaps }
+        '403': { $ref: '#/components/responses/Forbidden' }
 components:
   securitySchemes:
     bearerAuth:
@@ -1536,6 +1704,34 @@ components:
               percent: { type: number, nullable: true }
               marks: { type: integer }
         minAttendancePercent: { type: number }
+    CompetencyInput:
+      type: object
+      required: [code, title, mode, requiredLevel, isMandatory]
+      properties:
+        code: { type: string, pattern: '^[A-Za-z0-9][A-Za-z0-9-]{0,19}$' }
+        title: { type: string, minLength: 3, maxLength: 160 }
+        description: { type: string, nullable: true }
+        mode: { type: string, enum: [THEORY, PRACTICAL] }
+        requiredLevel: { type: integer, minimum: 1, maximum: 4 }
+        isMandatory: { type: boolean }
+        assessmentIds: { type: array, items: { type: string, format: uuid } }
+    Competency:
+      allOf:
+        - $ref: '#/components/schemas/CompetencyInput'
+        - type: object
+          properties:
+            id: { type: string, format: uuid }
+            courseId: { type: string, format: uuid }
+            resourceCount: { type: integer }
+            ratingCount: { type: integer }
+    ResourceInput:
+      type: object
+      required: [competencyId, title, type, url]
+      properties:
+        competencyId: { type: string, format: uuid }
+        title: { type: string }
+        type: { type: string, enum: [VIDEO, DOCUMENT, PRACTICE_TASK, REMEDIAL_SESSION] }
+        url: { type: string, format: uri }
   responses:
     TooManyRequests:
       description: Rate limited or account locked

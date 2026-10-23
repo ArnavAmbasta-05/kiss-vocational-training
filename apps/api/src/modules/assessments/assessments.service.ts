@@ -446,3 +446,27 @@ export async function saveEvaluation(
     return toEvaluation(e);
   });
 }
+
+/** Every assessment in any batch of a course (the competency editor links them, BRQ-C.1). */
+export async function ofCourse(courseId: string): Promise<
+  Array<{
+    id: string;
+    title: string;
+    mode: AssessmentDto['mode'];
+    batchId: string;
+    batchName: string;
+  }>
+> {
+  const rows = await prisma().assessment.findMany({
+    where: { batch: { courseId } },
+    orderBy: [{ batch: { startDate: 'desc' } }, { createdAt: 'asc' }],
+    select: { id: true, title: true, mode: true, batchId: true, batch: { select: { name: true } } },
+  });
+  return rows.map((a) => ({
+    id: a.id,
+    title: a.title,
+    mode: a.mode,
+    batchId: a.batchId,
+    batchName: a.batch.name,
+  }));
+}
