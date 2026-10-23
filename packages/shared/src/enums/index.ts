@@ -70,6 +70,7 @@ const certificateStatus = defineEnum(['VALID', 'REVOKED', 'SUPERSEDED']);
 export const CertificateStatus = certificateStatus.obj;
 export type CertificateStatus = (typeof certificateStatus.values)[number];
 export const CertificateStatusSchema = certificateStatus.schema;
+export const CERTIFICATE_STATUSES = certificateStatus.values;
 
 const riskLevel = defineEnum(['LOW', 'MEDIUM', 'HIGH']);
 export const RiskLevel = riskLevel.obj;

@@ -5,3 +5,4 @@ export * from './enrollments';
 export * from './notifications';
 export * from './batches';
 export * from './training';
+export * from './completion';
