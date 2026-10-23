@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Card } from '../components/ui';
 import { NAV_BY_ROLE } from '../components/layout/nav';
 import { StudentBatchCard } from '../features/batches/MyBatches';
+import { StudentCertificateCard } from '../features/completion/MyCertificates';
 import { ApiStatusCard } from '../features/health/ApiStatusCard';
 import { useAuth } from '../lib/auth';
 
@@ -42,6 +43,7 @@ export function DashboardPage() {
         </ul>
       </section>
 
+      {user.role === 'STUDENT' && <StudentCertificateCard />}
       {user.role === 'STUDENT' && <StudentBatchCard />}
       {user.role === 'ADMIN' && <ApiStatusCard />}
       {user.role !== 'ADMIN' && (

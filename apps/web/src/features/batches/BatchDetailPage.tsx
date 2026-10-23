@@ -99,6 +99,14 @@ export function BatchDetailPage({ admin }: { admin: boolean }) {
             {b.status === 'PLANNED' && (
               <Button onClick={() => setActivating(true)}>{t('detail.activate')}</Button>
             )}
+            {b.status !== 'PLANNED' && (
+              <Link
+                to={`/admin/completions?batch=${b.id}`}
+                className="inline-flex h-10 items-center rounded-md bg-brand-700 px-4 text-sm font-medium text-white hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
+              >
+                {t('detail.completion')}
+              </Link>
+            )}
           </div>
         )}
       </div>

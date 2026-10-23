@@ -26,6 +26,18 @@
     "BATCH_ACTIVATED": {
       "title": "Training has started",
       "body": "{{courseTitle}}, {{batchName}} is now active."
+    },
+    "TRAINING_COMPLETED": {
+      "title": "Training completed",
+      "body": "You completed {{courseTitle}} with grade {{grade}}."
+    },
+    "TRAINING_NOT_COMPLETED": {
+      "title": "Training not completed",
+      "body": "{{courseTitle}}: {{reason}}"
+    },
+    "CERTIFICATE_ISSUED": {
+      "title": "Your certificate is ready",
+      "body": "Certificate {{publicCode}} can be downloaded from My certificates."
     }
   }
 }

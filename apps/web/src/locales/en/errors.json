@@ -72,6 +72,10 @@
     "NOT_IN_BATCH": "This student is not in the batch.",
     "MAX_BELOW_RESULTS": "Maximum marks cannot be below a mark already recorded.",
     "HAS_RESULTS": "An assessment with recorded marks cannot be deleted.",
-    "NOT_IN_TRAINING": "Evaluations are recorded while the student is in training."
+    "NOT_IN_TRAINING": "This student is not in training.",
+    "NOT_ELIGIBLE": "This student does not meet the completion rules yet.",
+    "ALREADY_COMPLETED": "This student has already completed training.",
+    "CERTIFICATE_NOT_RENDERED": "The certificate PDF is not ready yet.",
+    "CERTIFICATE_NOT_VALID": "This certificate is no longer valid."
   }
 }

@@ -9,6 +9,9 @@ import { AdminBatchesPage } from './features/batches/AdminBatchesPage';
 import { AllocationPage } from './features/batches/AllocationPage';
 import { BatchDetailPage } from './features/batches/BatchDetailPage';
 import { TrainerBatchesPage } from './features/batches/MyBatches';
+import { CertificatesPage } from './features/completion/CertificatesPage';
+import { CompletionPage } from './features/completion/CompletionPage';
+import { MyCertificatesPage } from './features/completion/MyCertificates';
 import { CataloguePage } from './features/catalogue/CataloguePage';
 import { CourseDetailPage } from './features/catalogue/CourseDetailPage';
 import { AttendancePage } from './features/training/AttendancePage';
@@ -32,10 +35,13 @@ const BUILT: Record<string, RouteObject['element']> = {
   '/admin/courses': <AdminCoursesPage />,
   '/admin/enrollments': <AdminEnrollmentsPage />,
   '/admin/batches': <AdminBatchesPage />,
+  '/admin/completions': <CompletionPage />,
+  '/admin/certificates': <CertificatesPage />,
   '/trainer/batches': <TrainerBatchesPage />,
   '/trainer/sessions': <TrainerSessionsPage />,
   '/trainer/assessments': <TrainerAssessmentsPage />,
   '/student/training': <MyTrainingPage />,
+  '/student/certificates': <MyCertificatesPage />,
   '/student/courses': <CataloguePage />,
   '/student/enrollment': <MyEnrollmentPage />,
 };

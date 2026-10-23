@@ -26,6 +26,18 @@
     "BATCH_ACTIVATED": {
       "title": "",
       "body": ""
+    },
+    "TRAINING_COMPLETED": {
+      "title": "",
+      "body": ""
+    },
+    "TRAINING_NOT_COMPLETED": {
+      "title": "",
+      "body": ""
+    },
+    "CERTIFICATE_ISSUED": {
+      "title": "",
+      "body": ""
     }
   }
 }

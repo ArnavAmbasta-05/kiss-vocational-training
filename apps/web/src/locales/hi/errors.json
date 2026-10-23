@@ -72,6 +72,10 @@
     "NOT_IN_BATCH": "",
     "MAX_BELOW_RESULTS": "",
     "HAS_RESULTS": "",
-    "NOT_IN_TRAINING": ""
+    "NOT_IN_TRAINING": "",
+    "NOT_ELIGIBLE": "",
+    "ALREADY_COMPLETED": "",
+    "CERTIFICATE_NOT_RENDERED": "",
+    "CERTIFICATE_NOT_VALID": ""
   }
 }

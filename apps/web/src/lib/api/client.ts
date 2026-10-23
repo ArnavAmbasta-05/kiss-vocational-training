@@ -28,6 +28,8 @@ export interface RequestOptions {
   signal?: AbortSignal;
   /** Non-2xx statuses that should resolve with their body instead of throwing. */
   acceptStatus?: number[];
+  /** Resolve a successful response as a Blob (file downloads) instead of JSON. */
+  blob?: boolean;
 }
 
 // The access token lives in memory only (ADR-05), never in localStorage.
@@ -101,6 +103,7 @@ async function send<T>(method: HttpMethod, path: string, opts: RequestOptions): 
     throw new ApiError(0, 'NETWORK_ERROR', 'Network request failed');
   }
 
+  if (opts.blob && res.ok) return (await res.blob()) as T;
   const text = await res.text();
   const data: unknown = text ? safeJson(text) : undefined;
 
@@ -131,4 +134,6 @@ export const api = {
   patch: <T>(path: string, body?: unknown, opts?: RequestOptions) =>
     request<T>('PATCH', path, { ...opts, body }),
   delete: <T>(path: string, opts?: RequestOptions) => request<T>('DELETE', path, opts),
+  /** GET a file with the same auth and refresh handling as JSON calls. */
+  blob: (path: string) => request<Blob>('GET', path, { blob: true }),
 };

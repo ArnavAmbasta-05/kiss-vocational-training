@@ -54,6 +54,7 @@
     "activateTitle": "Activate {{name}}?",
     "activateBody": "Training starts: every student in the batch becomes active and is notified. You need at least one trainer.",
     "activated": "Batch activated",
+    "completion": "Completion",
     "tabs": {
       "label": "Batch sections",
       "students": "Students",
