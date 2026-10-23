@@ -22,6 +22,8 @@ tags:
   - name: admin-batches
   - name: attendance
   - name: assessments
+  - name: completion
+  - name: certificates
 paths:
   /health:
     get:
@@ -998,6 +1000,137 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '409': { $ref: '#/components/responses/Conflict' }
 
+  /completions/queue:
+    get:
+      tags: [completion]
+      summary: Completion queue with the system's eligibility result (BRQ-9.4)
+      description: Every student of the batch who is in training or has finished, with the four BR-09 checks (passed, actual, required), live figures, projected grade and any certificate. Admin only.
+      parameters:
+        - { name: batchId, in: query, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Queue rows
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/CompletionRow' } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /completions/{enrollmentId}/approve:
+    post:
+      tags: [completion]
+      summary: Approve completion and issue the certificate (BR-09, BR-10, TAD §8.1)
+      description: Recomputes eligibility; if any check fails → 409 NOT_ELIGIBLE with the failing checks as details and nothing saved. Otherwise one transaction sets the enrollment COMPLETED and creates the certificate (random 16-character public code, grade/aggregate/attendance snapshots), both audited. The PDF is then rendered and stored and the enrollment becomes CERTIFIED; if rendering fails it stays COMPLETED and the response has rendered=false (retry with POST /certificates/{id}/render). 409 ALREADY_COMPLETED or NOT_IN_TRAINING for the wrong status.
+      parameters:
+        - { name: enrollmentId, in: path, required: true, schema: { type: string, format: uuid } }
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '201':
+          description: Approved
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApproveResult' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /completions/{enrollmentId}/not-completed:
+    post:
+      tags: [completion]
+      summary: Close a student in training as NOT_COMPLETED with a reason
+      parameters:
+        - { name: enrollmentId, in: path, required: true, schema: { type: string, format: uuid } }
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 3, maxLength: 500 }
+      responses:
+        '200': { description: Recorded }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /certificates:
+    get:
+      tags: [certificates]
+      summary: Register of every certificate issued (BRQ-7.3), newest first
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - {
+            name: q,
+            in: query,
+            schema: { type: string },
+            description: Student name,
+            roll number or certificate code,
+          }
+        - { name: status, in: query, schema: { type: string, enum: [VALID, REVOKED, SUPERSEDED] } }
+      responses:
+        '200':
+          description: Page of certificates
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Certificate' } }
+                  meta: { $ref: '#/components/schemas/PageMeta' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /certificates/{certificateId}:
+    get:
+      tags: [certificates]
+      summary: One certificate (its own student or an admin)
+      parameters:
+        - { name: certificateId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Certificate
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Certificate' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /certificates/{certificateId}/download:
+    get:
+      tags: [certificates]
+      summary: Download the certificate PDF (its own student or an admin; TC-17)
+      parameters:
+        - { name: certificateId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: PDF file
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /certificates/{certificateId}/render:
+    post:
+      tags: [certificates]
+      summary: Retry rendering after a failure (UC-04 4a); safe to repeat
+      parameters:
+        - { name: certificateId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Rendered and certified
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApproveResult' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /students/{studentId}/certificates:
+    get:
+      tags: [certificates]
+      summary: A student's certificates ("me" for the signed-in student)
+      parameters:
+        - { name: studentId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Certificates, newest first
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Certificate' } }
 components:
   securitySchemes:
     bearerAuth:
@@ -1207,6 +1340,58 @@ components:
         status: { type: string, enum: [SCHEDULED, CONDUCTED, CANCELLED] }
         trainerId: { type: string, format: uuid, nullable: true }
         trainerName: { type: string, nullable: true }
+    EligibilityCheck:
+      type: object
+      properties:
+        rule: { type: string, enum: [ATTENDANCE, MANDATORY_ASSESSMENTS, AGGREGATE, RECOMMENDATION] }
+        passed: { type: boolean }
+        actual: { nullable: true, oneOf: [{ type: number }, { type: boolean }] }
+        required: { oneOf: [{ type: number }, { type: boolean }] }
+    CertificateSummary:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        publicCode: { type: string, pattern: '^[0-9A-HJKMNP-TV-Z]{16}$' }
+        status: { type: string, enum: [VALID, REVOKED, SUPERSEDED] }
+        issuedAt: { type: string, format: date-time }
+        rendered: { type: boolean }
+    Certificate:
+      allOf:
+        - $ref: '#/components/schemas/CertificateSummary'
+        - type: object
+          properties:
+            enrollmentId: { type: string, format: uuid }
+            studentName: { type: string }
+            rollNo: { type: string }
+            courseTitle: { type: string }
+            batchName: { type: string }
+            cycleName: { type: string }
+            grade: { type: string, enum: [A, B, C, D] }
+            aggregatePercent: { type: number }
+            attendancePercent: { type: number }
+            issuedBy: { type: string }
+    CompletionRow:
+      type: object
+      properties:
+        enrollmentId: { type: string, format: uuid }
+        studentId: { type: string, format: uuid }
+        rollNo: { type: string }
+        fullName: { type: string }
+        status: { type: string }
+        reason: { type: string, nullable: true }
+        eligible: { type: boolean }
+        checks: { type: array, items: { $ref: '#/components/schemas/EligibilityCheck' } }
+        attendancePercent: { type: number, nullable: true }
+        aggregate: { type: number, nullable: true }
+        grade: { type: string, nullable: true, enum: [A, B, C, D, NOT_COMPLETED] }
+        certificate:
+          { nullable: true, allOf: [{ $ref: '#/components/schemas/CertificateSummary' }] }
+    ApproveResult:
+      type: object
+      properties:
+        enrollmentId: { type: string, format: uuid }
+        status: { type: string, enum: [COMPLETED, CERTIFIED] }
+        certificate: { $ref: '#/components/schemas/CertificateSummary' }
   responses:
     TooManyRequests:
       description: Rate limited or account locked

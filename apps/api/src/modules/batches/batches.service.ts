@@ -679,3 +679,35 @@ export async function placementsOf(studentId: string) {
     },
   }));
 }
+
+/** The batch an application is placed in (completion, certificates), or null. */
+export async function placementOf(enrollmentId: string) {
+  const r = await prisma().batchStudent.findUnique({
+    where: { enrollmentId },
+    select: {
+      studentId: true,
+      batch: {
+        select: {
+          id: true,
+          name: true,
+          status: true,
+          startDate: true,
+          endDate: true,
+          course: { select: { title: true } },
+        },
+      },
+    },
+  });
+  if (!r) return null;
+  return {
+    studentId: r.studentId,
+    batch: {
+      id: r.batch.id,
+      name: r.batch.name,
+      status: r.batch.status,
+      courseTitle: r.batch.course.title,
+      startDate: day(r.batch.startDate),
+      endDate: day(r.batch.endDate),
+    },
+  };
+}

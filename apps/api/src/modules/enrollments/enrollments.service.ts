@@ -498,6 +498,7 @@ export interface PlacementFacts {
   cycleId: string;
   cycleName: string;
   status: EnrollmentStatus;
+  reason: string | null;
   preferences: string[];
   rollNo: string;
   fullName: string;
@@ -511,6 +512,7 @@ export async function placementFacts(enrollmentId: string): Promise<PlacementFac
       studentId: true,
       cycleId: true,
       status: true,
+      reason: true,
       cycle: { select: { name: true } },
       preferences: { orderBy: { rank: 'asc' }, select: { courseId: true } },
       student: { select: { rollNo: true, user: { select: { id: true, fullName: true } } } },
@@ -524,10 +526,22 @@ export async function placementFacts(enrollmentId: string): Promise<PlacementFac
     cycleId: e.cycleId,
     cycleName: e.cycle.name,
     status: e.status,
+    reason: e.reason,
     preferences: e.preferences.map((p) => p.courseId),
     rollNo: e.student.rollNo,
     fullName: e.student.user.fullName,
   };
+}
+
+/** Current status and reason of several applications (completion queue). */
+export async function statusesOf(
+  enrollmentIds: string[],
+): Promise<Map<string, { status: EnrollmentStatus; reason: string | null }>> {
+  const rows = await prisma().enrollment.findMany({
+    where: { id: { in: enrollmentIds } },
+    select: { id: true, status: true, reason: true },
+  });
+  return new Map(rows.map((r) => [r.id, { status: r.status, reason: r.reason }]));
 }
 
 /** APPROVED or WAITLISTED applicants in a cycle who listed this course (for manual placement). */

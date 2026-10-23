@@ -106,6 +106,23 @@ export async function canAccessEnrollment(
   return enrollment ? isOwnStudent(user, enrollment.studentId) : 'not_found';
 }
 
+/** A certificate: its own student or an admin only (TC-17). Trainers don't download them. */
+export async function canAccessCertificate(
+  user: CurrentUser,
+  certificateId: string,
+): Promise<OwnershipResult> {
+  if (!isUuid(certificateId)) return 'not_found';
+  const c = await prisma().certificate.findUnique({
+    where: { id: certificateId },
+    select: { enrollment: { select: { studentId: true } } },
+  });
+  if (!c) return 'not_found';
+  if (user.role === 'ADMIN') return 'allow';
+  return user.role === 'STUDENT' && user.studentId === c.enrollment.studentId
+    ? 'allow'
+    : 'forbidden';
+}
+
 // ─── Middleware ────────────────────────────────────────────────────────────────
 
 export type Resolver = (req: Request) => Promise<OwnershipResult>;
@@ -153,4 +170,8 @@ export const owns = {
     (name = 'enrollmentId'): Resolver =>
     (req) =>
       canAccessEnrollment(req.user!, param(req, name)),
+  certificate:
+    (name = 'certificateId'): Resolver =>
+    (req) =>
+      canAccessCertificate(req.user!, param(req, name)),
 };

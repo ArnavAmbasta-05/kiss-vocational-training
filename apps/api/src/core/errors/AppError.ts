@@ -29,8 +29,8 @@ export class AppError extends Error {
   static notFound(message = 'Resource not found', code = 'NOT_FOUND') {
     return new AppError(404, code, message);
   }
-  static conflict(code: string, message: string) {
-    return new AppError(409, code, message);
+  static conflict(code: string, message: string, details?: ErrorDetail[]) {
+    return new AppError(409, code, message, details);
   }
   static unprocessable(code: string, message: string, details?: ErrorDetail[]) {
     return new AppError(422, code, message, details);

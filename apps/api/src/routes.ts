@@ -5,10 +5,12 @@ import {
   evaluationRoutes,
 } from './modules/assessments/assessments.routes';
 import { batchAttendanceRoutes, sessionRoutes } from './modules/attendance/attendance.routes';
+import { certificateRenderRoutes, completionRoutes } from './modules/completion/completion.routes';
 import { authRoutes } from './modules/auth/auth.routes';
 import { adminBatchRoutes, batchRoutes } from './modules/batches/batches.routes';
 import { adminCourseRoutes, catalogueRoutes } from './modules/courses/courses.routes';
 import { adminEnrollmentRoutes, enrollmentRoutes } from './modules/enrollments/enrollments.routes';
+import { certificateRoutes, studentCertificateRoutes } from './modules/documents/documents.routes';
 import { healthRoutes } from './modules/health/health.routes';
 import { notificationRoutes } from './modules/notifications/notifications.routes';
 import { studentTrainingRoutes } from './modules/training/training.routes';
@@ -30,6 +32,10 @@ export function v1Routes(): Router {
   router.use('/sessions', sessionRoutes());
   router.use('/assessments', assessmentRoutes());
   router.use('/students', studentTrainingRoutes());
+  router.use('/students', studentCertificateRoutes());
+  router.use('/completions', completionRoutes());
+  router.use('/certificates', certificateRenderRoutes());
+  router.use('/certificates', certificateRoutes());
   router.use('/admin/users', adminUserRoutes());
   router.use('/admin/enrollments', adminEnrollmentRoutes());
   router.use('/admin', adminBatchRoutes());

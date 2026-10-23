@@ -61,6 +61,11 @@ export const SETTINGS = {
     330,
     'Institution time zone as minutes from UTC (IST = 330); recurring sessions use it',
   ),
+  'institution.name': define(
+    z.string().trim().min(2).max(120),
+    'Kalinga Institute of Social Sciences (KISS)',
+    'Institution name printed on certificates [BRQ-7.2]',
+  ),
   'enrollment.maxPreferences': define(
     z.number().int().min(1).max(3),
     3,
