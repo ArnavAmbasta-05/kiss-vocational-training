@@ -53,7 +53,12 @@ export function Tabs({
 
   return (
     <div>
-      <div role="tablist" aria-label={label} className="flex gap-1 border-b border-slate-200">
+      {/* Tabs that don't fit (phones) scroll sideways instead of spilling off screen. */}
+      <div
+        role="tablist"
+        aria-label={label}
+        className="flex gap-1 overflow-x-auto border-b border-slate-200"
+      >
         {items.map((t, i) => (
           <button
             key={t.id}
@@ -69,7 +74,7 @@ export function Tabs({
             onClick={() => onSelect(t.id)}
             onKeyDown={onKey}
             className={cn(
-              '-mb-px border-b-2 px-4 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600',
+              '-mb-px shrink-0 whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600',
               i === index
                 ? 'border-brand-700 text-brand-800'
                 : 'border-transparent text-slate-600 hover:text-slate-900',

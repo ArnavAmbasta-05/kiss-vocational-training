@@ -39,7 +39,9 @@ export function Table<T>({
     <div
       role="region"
       aria-label={caption}
-      className="overflow-x-auto rounded-lg border border-slate-200"
+      // relative: absolutely positioned children (sr-only header labels) stay inside the scroll
+      // area instead of widening the whole page on phones.
+      className="relative overflow-x-auto rounded-lg border border-slate-200"
       // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- scrollable regions must be keyboard-reachable
       tabIndex={0}
     >
