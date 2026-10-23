@@ -44,8 +44,8 @@ wins for business rules.
 >   node-cron only for local runs.
 > - Security rate limits share counts in a Postgres table, because
 >   serverless instances share no memory.
-> - Files go to an object store, because functions have no persistent
->   disk.
+> - Files go to a private Vercel Blob store (chosen in Sprint 6),
+>   because functions have no persistent disk.
 > - The free-tier risks in §15.1 change accordingly.
 >
 > Rows changed by this amendment are marked "(Amendment 1)". Setup and
@@ -735,7 +735,8 @@ deployment · 6 nodes
 Configuration comes only from environment variables: DATABASE_URL,
 JWT_SECRET, REFRESH_SECRET, PUBLIC_BASE_URL, STORAGE\_\*, AI_ENABLED,
 ANTHROPIC_API_KEY, AI_MONTHLY_CAP, plus DIRECT_DATABASE_URL (migrations),
-TRUST_PROXY_HOPS and RATE_LIMIT_STORE for serverless hosting
+TRUST_PROXY_HOPS and RATE_LIMIT_STORE for serverless hosting, and
+BLOB_READ_WRITE_TOKEN with STORAGE_DRIVER=vercel-blob for file storage
 (Amendment 1).
 
 ## 12. Non-functional design
