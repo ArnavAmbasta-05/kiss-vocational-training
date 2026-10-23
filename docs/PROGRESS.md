@@ -15,6 +15,104 @@ Read this at the start of every session and update it at the end of every sprint
 
 ---
 
+## Sprint 8 — Competency model and Gap Analyzer, F12 (done, 2026-10-23)
+
+Release 2 starts here; Gate 1 passed on the live site first (Sprint 7).
+
+### Built
+- **Pure rules** (`competency/rules.ts`):
+  - `provisionalLevel`: linked-assessment % → level from the new setting
+    `competency.provisionalBands` (L2 40, L3 60, L4 85; below 40 → 1).
+  - `demonstrated`: the trainer's rating wins; otherwise a provisional level from the average
+    of the linked results; otherwise NOT_ASSESSED.
+  - `gap = max(0, required − demonstrated)` (BR-18); a not-assessed competency counts as the
+    full required level.
+  - `canVerify` (BR-13).
+  - Boundary tests: 39.99/40, 59.99/60, 84.99/85, equal level → 0, one below → 1, and the BRD
+    acceptance case (level 1 on a required 3 → 2).
+- **Module boundary test**: no core module may import an innovation module (CLAUDE.md rule
+  5); it scans the imports and fails the build otherwise.
+- **`modules/competency`** (innovation; reads core only through the batches, assessments and
+  courses services):
+  - **Competencies** (BRQ-C.1, Admin): `GET/POST /courses/:id/competencies` (GET also for
+    trainers), `PUT/DELETE /competencies/:id`.
+    - Codes are upper-cased and unique per course (409 `COMPETENCY_CODE_TAKEN`).
+    - Linked assessments must come from this course's batches (422
+      `ASSESSMENT_NOT_IN_COURSE`); `GET /courses/:id/linkable-assessments` lists them.
+    - A competency with ratings can't be deleted (409 `HAS_RATINGS`). Everything is audited.
+  - **Learning resources** (BRQ-12.3): `GET /courses/:id/resources`, `POST /resources`,
+    `PUT/DELETE /resources/:id` (creator or admin), `POST /resources/:id/approve` (admin).
+    - An admin's resource is approved at once.
+    - A trainer's resource, or a trainer's edit, waits for approval.
+    - Students only ever see approved ones.
+  - **Ratings** (BRQ-C.2, BR-13): `GET/PUT /batches/:id/competency-ratings`. Writing is the
+    batch's assigned trainer only; admins and other trainers get 403.
+    - One transaction. Students must be in the roster (422 `NOT_IN_BATCH`) and competencies
+      in the course (422 `COMPETENCY_NOT_IN_COURSE`).
+    - `verify` works only at or above the required level (422 `BELOW_REQUIRED_LEVEL` listing
+      every offending cell; nothing saved).
+    - A verified rating can be raised but never set below the required level (409
+      `VERIFIED_LOCKED`; ratings are never deleted).
+    - Each change is audited (`COMPETENCY_RATED`, `_RATING_UPDATED`, `_VERIFIED`).
+  - **Gaps** (BRQ-12.1–12.3): `GET /students/:id/gaps` (`me`; the student, their trainers,
+    admins) for the latest batch or `?batchId=`. It returns belowLevel and notAssessed
+    (largest gap first, mandatory first on ties, each with approved resources) and met.
+  - **Heatmap** (BRQ-12.4): `GET /batches/:id/competency-heatmap` gives level, source,
+    verified, gap and a `below` flag per cell.
+  - `competency.mandatoryGaps(studentId, batchId)` is exported for F11 (Sprint 10).
+- **Web** (`features/competency`, new `competency` namespace; nav items for all three roles):
+  - **Admin Competencies**: course picker, competency table with an edit dialog (code, type,
+    title, required level, mandatory, linked assessments as a checklist grouped by batch),
+    delete when unrated, and the resource library with approve.
+  - **Trainer Competencies**: batch picker and three tabs.
+    - **Ratings**: a students × competencies grid. Each cell has a labelled level select whose
+      options carry the rubric; the rubric legend sits above the grid. "Verify" appears only
+      once the level reaches the requirement, and verified cells show ✓.
+    - **Heatmap**: colour plus text in every cell ("L1 · gap 2", `*` = provisional, ✓ =
+      verified), a legend, and per-competency counts of students below level.
+    - **Resources**: the shared resource library.
+  - **Student My skill gaps**: per competency, a level meter (required marker, figures in
+    text), the ranked gap list with recommended links, plus not-assessed and met lists.
+- **Seed** (`seed/competency.ts`, idempotent):
+  - 10 competencies each for Electrician, Solar PV and Tailoring, with realistic titles (e.g.
+    "Wire a single-phase distribution board", "Test earthing resistance").
+  - The Electrician ones are linked to the pilot batch's three assessments.
+  - 53 approved resources: a video search and a reference page per competency, plus a
+    practice task and a remedial session.
+  - Pilot ratings by trainer1: everyone verified on E01. Students 021–028 are verified at 3 on
+    E04/E06; 029 is at 2 and 030 at 1, which is the BRD acceptance case (gap 2) on the live
+    demo.
+- **Fix**: the tab row no longer shows a stray vertical scrollbar (`overflow-y-hidden`).
+
+### Deviations
+- **No "drawer"**: the competency and resource forms use the existing accessible dialog.
+- **Ratings are keyed per student, competency and batch**, with "latest" being the current
+  row; the audit log keeps every earlier value.
+- **Verification can't be undone from the grid.** Revoking a verified competency comes with
+  the passport rules in Sprint 9 (BR-14).
+- **Ratings are allowed only while the batch is ACTIVE.**
+
+### Known gaps / follow-ups
+- F11 flags from mandatory gaps (BR-18 second half) arrive in Sprint 10, using
+  `mandatoryGaps`.
+- Linked assessments are per batch; a new batch's assessments must be linked again in the
+  editor.
+
+### Definition of done
+- [x] Unit: provisional bands, demonstrated level, gap (0, 1, 2 BRD case, not assessed),
+      verification rule, module boundary
+- [x] API: CRUD, unique codes, foreign links, delete guard, bulk ratings, verify below
+      required → 422 with nothing saved, verified lock, other trainer / admin / student →
+      403, stranger in roster → 422, gaps with only approved recommendations, provisional
+      level from marks, student privacy, heatmap flags every student below level
+- [x] e2e (desktop + mobile, axe on all three pages): admin defines a level-3 competency and a
+      resource → trainer rates level 1 (no verify offered) → heatmap "L1 · gap 2" → student
+      sees "Gap: 2 levels" with the resource
+- [x] 264 API tests (33 suites) · 33 e2e · lint · format · typecheck · build · i18n keys in sync ·
+      openapi.yaml (82 paths)
+
+---
+
 ## Sprint 7 — Reports, dashboards, end-to-end → GATE 1 (done, gate passed, 2026-10-23)
 
 ### Built
