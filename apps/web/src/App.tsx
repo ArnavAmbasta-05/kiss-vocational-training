@@ -1,33 +1,89 @@
+import { lazy } from 'react';
 import { createBrowserRouter, RouterProvider, type RouteObject } from 'react-router-dom';
 import type { Role } from '@vtmp/shared';
 import { AppShell } from './components/layout/AppShell';
 import { NAV_BY_ROLE } from './components/layout/nav';
-import { AdminCoursesPage } from './features/admin-courses/AdminCoursesPage';
-import { AdminEnrollmentsPage } from './features/admin-enrollments/AdminEnrollmentsPage';
-import { UsersPage } from './features/admin-users/UsersPage';
-import { AdminBatchesPage } from './features/batches/AdminBatchesPage';
-import { AllocationPage } from './features/batches/AllocationPage';
-import { BatchDetailPage } from './features/batches/BatchDetailPage';
-import { TrainerBatchesPage } from './features/batches/MyBatches';
-import { CertificatesPage } from './features/completion/CertificatesPage';
-import { CompletionPage } from './features/completion/CompletionPage';
-import { MyCertificatesPage } from './features/completion/MyCertificates';
-import { CataloguePage } from './features/catalogue/CataloguePage';
-import { CourseDetailPage } from './features/catalogue/CourseDetailPage';
-import { AttendancePage } from './features/training/AttendancePage';
-import { MarksPage } from './features/training/MarksPage';
-import { MyTrainingPage } from './features/training/MyTrainingPage';
-import { TrainerAssessmentsPage } from './features/training/TrainerAssessmentsPage';
-import { TrainerSessionsPage } from './features/training/TrainerSessionsPage';
-import { ApplyPage } from './features/enrollment/ApplyPage';
-import { MyEnrollmentPage } from './features/enrollment/MyEnrollmentPage';
-import { ChangePasswordPage } from './features/profile/ChangePasswordPage';
-import { ProfilePage } from './features/profile/ProfilePage';
 import { RequireAuth, RequireRole, RoleHomeRedirect } from './lib/auth';
 import { ComingSoonPage } from './pages/ComingSoonPage';
-import { DashboardPage } from './pages/DashboardPage';
 import { LoginPage } from './pages/LoginPage';
 import { NotFoundPage } from './pages/NotFoundPage';
+
+// Every page is its own chunk, loaded when first opened (NFR-10); the shell, login and 404
+// stay in the main bundle. AppShell shows a spinner while a page chunk loads.
+const AdminCoursesPage = lazy(() =>
+  import('./features/admin-courses/AdminCoursesPage').then((m) => ({
+    default: m.AdminCoursesPage,
+  })),
+);
+const AdminEnrollmentsPage = lazy(() =>
+  import('./features/admin-enrollments/AdminEnrollmentsPage').then((m) => ({
+    default: m.AdminEnrollmentsPage,
+  })),
+);
+const UsersPage = lazy(() =>
+  import('./features/admin-users/UsersPage').then((m) => ({ default: m.UsersPage })),
+);
+const AdminBatchesPage = lazy(() =>
+  import('./features/batches/AdminBatchesPage').then((m) => ({ default: m.AdminBatchesPage })),
+);
+const AllocationPage = lazy(() =>
+  import('./features/batches/AllocationPage').then((m) => ({ default: m.AllocationPage })),
+);
+const BatchDetailPage = lazy(() =>
+  import('./features/batches/BatchDetailPage').then((m) => ({ default: m.BatchDetailPage })),
+);
+const TrainerBatchesPage = lazy(() =>
+  import('./features/batches/MyBatches').then((m) => ({ default: m.TrainerBatchesPage })),
+);
+const CertificatesPage = lazy(() =>
+  import('./features/completion/CertificatesPage').then((m) => ({ default: m.CertificatesPage })),
+);
+const CompletionPage = lazy(() =>
+  import('./features/completion/CompletionPage').then((m) => ({ default: m.CompletionPage })),
+);
+const MyCertificatesPage = lazy(() =>
+  import('./features/completion/MyCertificates').then((m) => ({ default: m.MyCertificatesPage })),
+);
+const CataloguePage = lazy(() =>
+  import('./features/catalogue/CataloguePage').then((m) => ({ default: m.CataloguePage })),
+);
+const CourseDetailPage = lazy(() =>
+  import('./features/catalogue/CourseDetailPage').then((m) => ({ default: m.CourseDetailPage })),
+);
+const AttendancePage = lazy(() =>
+  import('./features/training/AttendancePage').then((m) => ({ default: m.AttendancePage })),
+);
+const MarksPage = lazy(() =>
+  import('./features/training/MarksPage').then((m) => ({ default: m.MarksPage })),
+);
+const MyTrainingPage = lazy(() =>
+  import('./features/training/MyTrainingPage').then((m) => ({ default: m.MyTrainingPage })),
+);
+const TrainerAssessmentsPage = lazy(() =>
+  import('./features/training/TrainerAssessmentsPage').then((m) => ({
+    default: m.TrainerAssessmentsPage,
+  })),
+);
+const TrainerSessionsPage = lazy(() =>
+  import('./features/training/TrainerSessionsPage').then((m) => ({
+    default: m.TrainerSessionsPage,
+  })),
+);
+const ApplyPage = lazy(() =>
+  import('./features/enrollment/ApplyPage').then((m) => ({ default: m.ApplyPage })),
+);
+const MyEnrollmentPage = lazy(() =>
+  import('./features/enrollment/MyEnrollmentPage').then((m) => ({ default: m.MyEnrollmentPage })),
+);
+const ChangePasswordPage = lazy(() =>
+  import('./features/profile/ChangePasswordPage').then((m) => ({ default: m.ChangePasswordPage })),
+);
+const ProfilePage = lazy(() =>
+  import('./features/profile/ProfilePage').then((m) => ({ default: m.ProfilePage })),
+);
+const DashboardPage = lazy(() =>
+  import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })),
+);
 
 /** Screens that exist today; every other nav item shows a "coming soon" page until built. */
 const BUILT: Record<string, RouteObject['element']> = {
