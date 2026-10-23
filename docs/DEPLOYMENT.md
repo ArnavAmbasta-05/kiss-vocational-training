@@ -28,7 +28,7 @@ locally and in CI it still runs as a normal server (`apps/api/src/server.ts`).
 | Database connections | Neon's pooled URL with `connection_limit=1` per function instance |
 | Migrations | Run in the production build (`scripts/vercel-build.sh`) against the direct URL, before the new code goes live |
 | Scheduled jobs (Sprint 10) | Vercel Cron, once a day on Hobby (may fire up to ~1 h late), calling a secret-protected API route. node-cron is used only locally |
-| Files (Sprint 6+) | No persistent disk, so PDFs and evidence go to an object store (chosen in Sprint 6) |
+| Files (Sprint 6+) | No persistent disk, so certificate PDFs (and evidence in Sprint 11) go to a **private Vercel Blob store** (`STORAGE_DRIVER=vercel-blob`). The database keeps only the object key; only the API can read the files, using `BLOB_READ_WRITE_TOKEN`. Fonts and PDFKit's data files ship with the function (`includeFiles` in `vercel.json`) |
 | Request time | Function limit set to 30 s (`vercel.json`). Bulk operations are designed to finish well inside it |
 
 ## One-time setup
@@ -73,6 +73,7 @@ node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
    | `CORS_ORIGINS` | `https://kiss-vtmp.vercel.app` |
    | `TRUST_PROXY_HOPS` | `1` |
    | `AI_ENABLED` | `false` |
+   | `STORAGE_DRIVER` | `vercel-blob` (needs the Blob store in step 3a) |
 
    Leave Preview without database variables. Preview deployments then show the web app only and
    never touch (or migrate) the production database.
@@ -80,6 +81,23 @@ node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
    `vercel.json` requests it, and it keeps the API next to Neon.
 6. Click **Deploy**. The build applies migrations, then builds the API bundle and the web app.
 7. Check `https://kiss-vtmp.vercel.app/api/v1/health` → `{"status":"ok","db":"ok",…}`.
+
+### 3a. File storage (Vercel Blob, Sprint 6)
+
+Certificate PDFs need a file store; Vercel Blob is included in the Hobby plan, so no card or
+new account is needed.
+
+1. In the Vercel project: **Storage → Create Database → Blob**. Name it `kiss-vtmp-files`, and
+   if it asks for an access type choose **Private**.
+2. **Connect** it to the `kiss-vtmp` project for the **Production** environment. Vercel adds
+   `BLOB_READ_WRITE_TOKEN` to the project's environment variables by itself.
+3. Make sure `STORAGE_DRIVER=vercel-blob` is set (step 3), then **redeploy** so the function
+   picks up both variables.
+4. Check: approve one eligible student in **Completion**, then download the certificate. If the
+   store is missing, the approval still succeeds but the student stays *Completed* and the
+   queue offers **Retry certificate** once storage works.
+
+Never paste `BLOB_READ_WRITE_TOKEN` anywhere: it can read every stored file.
 
 ### 4. Seed the demo data (once)
 

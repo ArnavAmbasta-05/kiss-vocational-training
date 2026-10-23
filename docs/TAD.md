@@ -191,12 +191,11 @@ features; all are free and open source except the optional AI API.
                           node-cron (local)       flag escalation (F11)
                           (Amendment 1)
 
-  File storage            Private object store    Evidence uploads (F18),
-                          reachable from Vercel   stored PDFs
-                          without a card (Vercel
-                          Blob or Neon object
-                          storage; chosen in
-                          Sprint 6) (Amendment 1)
+  File storage            Private Vercel Blob     Evidence uploads (F18),
+                          store (chosen in        stored PDFs
+                          Sprint 6; local disk
+                          in development)
+                          (Amendment 1)
 
   AI (R3, optional)       Claude API              AI Training Assistant
                           (claude-haiku-5-5 for   (F17)
@@ -709,8 +708,9 @@ other modules.
 
 The prototype runs on two free-tier services (Amendment 1): Vercel,
 which serves the SPA and runs the API as a serverless function on the
-same origin, and Neon for managed PostgreSQL. Object storage is added
-in Sprint 6, and the AI API is called only when F17 is enabled.
+same origin, and Neon for managed PostgreSQL. Files (certificate PDFs,
+later evidence) live in a private Vercel Blob store attached to the same
+project (Sprint 6), and the AI API is called only when F17 is enabled.
 Migrations run in the Vercel production build before new code goes
 live.
 

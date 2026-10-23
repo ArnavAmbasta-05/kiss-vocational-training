@@ -15,6 +15,103 @@ Read this at the start of every session and update it at the end of every sprint
 
 ---
 
+## Sprint 6 — Completion engine and certificates (done, 2026-10-23)
+
+### Built
+- **Eligibility** (`completion/rules.ts eligibility`, pure, BR-09): four checks, each reported
+  with passed / actual / required, so the admin sees every reason at once (BRQ-9.4):
+  attendance ≥ `attendance.minPercent`, every mandatory assessment recorded, aggregate ≥
+  `aggregate.minPercent`, trainer recommendation. Boundary tests: 74.99/75.00 (TC-13, TC-14),
+  39.99/40.00, null attendance/aggregate, missing mandatory, no or negative recommendation.
+- **Completion** (`modules/completion`, Admin only):
+  - `GET /completions/queue?batchId=`: everyone in training or finished, with live figures,
+    projected grade, the checks, status, reason and certificate.
+  - `POST /completions/:enrollmentId/approve` (Idempotency-Key), exactly per TAD §8.1:
+    - It recomputes eligibility and answers 409 `NOT_ELIGIBLE`, with the failing checks as
+      details, without saving anything.
+    - Otherwise, in ONE transaction, the enrollment goes ACTIVE (or NOT_COMPLETED) →
+      COMPLETED and the certificate row is created, with snapshots of grade, aggregate and
+      attendance. Audit rows and the student notification are written in the same
+      transaction.
+    - After commit, the PDF is rendered and stored, and the enrollment goes → CERTIFIED.
+    - If rendering fails, the student stays COMPLETED and the response says
+      `rendered: false`. `POST /certificates/:id/render` retries, and is safe to repeat.
+    - Approving again with a new key gives 409 `ALREADY_COMPLETED`. Concurrent approvals are
+      stopped by the conditional status update and the one-VALID-per-enrollment index.
+  - `POST /completions/:enrollmentId/not-completed {reason}`: ACTIVE → NOT_COMPLETED, with an
+    audit row and a notification. Approve can revisit it later if the student becomes
+    eligible.
+- **Documents** (`modules/documents`):
+  - **Public code** (BR-10, BR-19): 80 bits from `crypto.randomBytes`, written as 16 Crockford
+    base32 characters (no I/L/O/U). It's unique in the DB and never derived from a record.
+  - **PDF** (ADR-06): PDFKit, A4 landscape. It has the institution (new setting
+    `institution.name`), student, roll no, course, batch dates, grade with aggregate and
+    attendance, issue date, certificate ID, two signature lines, and a QR code of
+    `PUBLIC_BASE_URL/verify/<code>` (the page itself is Sprint 9).
+  - **Fonts**: Noto Sans (Latin) and Noto Sans Oriya are embedded from `apps/api/assets/fonts`
+    under OFL. Odia names switch fonts automatically and render with correct conjuncts.
+  - **Register and student endpoints**: `GET /certificates` is the admin register (search by
+    name, roll or code; status filter; paginated). `GET /certificates/:id` and
+    `/certificates/:id/download` are for the owner student or an admin only (new resolver
+    `owns.certificate`; trainers get 403, TC-17). `GET /students/me/certificates` lists a
+    student's own.
+- **Storage** (`core/storage`, ADR-10): a `put`/`get` adapter. Development uses local disk
+  (`STORAGE_LOCAL_DIR`, git-ignored; tests use the OS temp folder). Production uses a
+  **private Vercel Blob store** (`STORAGE_DRIVER=vercel-blob`, `BLOB_READ_WRITE_TOKEN`). The
+  DB keeps only the object key. The unused S3 variables are gone.
+- **Vercel bundle**: `includeFiles` now also ships the fonts and PDFKit's font metrics.
+- **Web** (`features/completion`, new `completion` namespace):
+  - **Admin Completion**: cycle and batch pickers, deep link `?batch=` from a new "Completion"
+    button on batch detail. The checklist uses ✓/✗ plus words, so colour is never the only
+    signal. Actions: approve (single, or selected one after another), not completed (reason
+    dialog pre-filled from the failing rules), retry, download.
+  - **Admin Certificates register**: search, status filter, paging, download.
+  - **Student**: a certificate card on the dashboard, a My certificates page with download,
+    and the reason shown when training was not completed.
+  - Downloads go through the API client with the in-memory token (`api.blob`), never a bare
+    link.
+  - Notifications: `TRAINING_COMPLETED`, `TRAINING_NOT_COMPLETED`, `CERTIFICATE_ISSUED`.
+- **Seed**: `seedCompletionReadiness` gives the pilot batch's final paper its marks and records
+  the trainer's evaluations. Students 021–028 become eligible (grades A–C) and 029–030 are not
+  (attendance, not recommended). It fills only what is missing.
+
+### Deviations
+- **Storage is a private Vercel Blob store** (TAD left Blob vs Neon open). It's on the
+  existing Vercel account, with no card or new service. `docs/TAD.md` §4/§11 and
+  `docs/DEPLOYMENT.md` (new step 3a) are updated. The Word TAD still says "chosen in
+  Sprint 6".
+- **Codes are 16 characters, not the TAD's 12.** 12 is the minimum (BR-19), and 16 base32
+  characters carry exactly 80 random bits.
+- **Bulk approval runs one request per student** from the browser, not one bulk endpoint,
+  because each approval renders a PDF inside the 30 s function limit.
+- **`AppError.conflict` now accepts details**, so 409 `NOT_ELIGIBLE` can list the failing
+  rules.
+- **Approve also works from NOT_COMPLETED**, so a decision can be revisited after marks are
+  corrected.
+
+### Known gaps / follow-ups
+- Revoke / reissue (BR-19 statuses REVOKED/SUPERSEDED) and the public verify page come in
+  Sprint 9. The register already shows the status.
+- Certificates are English-only for now (TAD §15 fallback); only Odia names are typeset in Odia.
+- Main JS bundle keeps growing (now ~930 kB minified). Route-level code splitting is due.
+
+### Definition of done
+- [x] A seeded or freshly trained student goes from approval to a downloadable certificate PDF
+      (Playwright desktop + mobile: admin queue with checklist, approve, not completed with
+      reason, register search; student dashboard card and PDF download; axe on queue,
+      register and student dashboard)
+- [x] Unit: eligibility boundaries (TC-13, TC-14, 39.99/40.00, missing mandatory, no
+      recommendation), public code format and uniqueness (20 000 codes), PDF renders with
+      embedded fonts
+- [x] API: ineligible → 409 with nothing saved; TC-16 approve → COMPLETED + certificate →
+      CERTIFIED with audit trail and notifications; idempotent replay → one certificate; render
+      failure → retry; TC-17 own download only (other student and trainer 403); TC-15 queue
+      403 for student/trainer; not-completed with reason; DB rejects a duplicate code
+- [x] 229 API tests · 29 e2e · lint · format · typecheck · build · i18n keys in sync ·
+      openapi.yaml (66 paths)
+
+---
+
 ## Sprint 5 — Attendance, assessments, progress and evaluations (done, 2026-10-19)
 
 ### Built
