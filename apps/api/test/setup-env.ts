@@ -1,3 +1,4 @@
+import os from 'node:os';
 import path from 'node:path';
 import dotenv from 'dotenv';
 
@@ -13,3 +14,6 @@ process.env.JWT_SECRET ??= 'test-access-secret-that-is-at-least-32-chars';
 process.env.REFRESH_SECRET ??= 'test-refresh-secret-that-is-at-least-32-chars';
 process.env.PUBLIC_BASE_URL ??= 'http://localhost:5173';
 process.env.CORS_ORIGINS ??= 'http://localhost:5173';
+// Certificate PDFs from integration tests go to a temp folder, never the developer's ./storage.
+process.env.STORAGE_DRIVER = 'local';
+process.env.STORAGE_LOCAL_DIR = path.join(os.tmpdir(), 'vtmp-test-storage');

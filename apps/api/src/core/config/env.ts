@@ -45,13 +45,11 @@ export const EnvSchema = z.object({
         .map((o) => o.trim())
         .filter(Boolean),
     ),
-  STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
+  // Files (certificate PDFs, later evidence) live outside the DB (ADR-10). Local disk in dev;
+  // a private Vercel Blob store in production, which has no persistent disk.
+  STORAGE_DRIVER: z.enum(['local', 'vercel-blob']).default('local'),
   STORAGE_LOCAL_DIR: z.string().default('./storage'),
-  STORAGE_BUCKET: optionalString,
-  STORAGE_ENDPOINT: optionalString,
-  STORAGE_REGION: z.string().default('auto'),
-  STORAGE_ACCESS_KEY_ID: optionalString,
-  STORAGE_SECRET_ACCESS_KEY: optionalString,
+  BLOB_READ_WRITE_TOKEN: optionalString,
   AI_ENABLED: booleanString,
   ANTHROPIC_API_KEY: optionalString,
   AI_MONTHLY_CAP: z.coerce.number().nonnegative().default(0),
@@ -69,8 +67,8 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
 
   if (parsed.success) {
     const env = parsed.data;
-    if (env.STORAGE_DRIVER === 's3' && !env.STORAGE_BUCKET) {
-      problems.push('STORAGE_BUCKET: required when STORAGE_DRIVER=s3');
+    if (env.STORAGE_DRIVER === 'vercel-blob' && !env.BLOB_READ_WRITE_TOKEN) {
+      problems.push('BLOB_READ_WRITE_TOKEN: required when STORAGE_DRIVER=vercel-blob');
     }
     if (env.NODE_ENV !== 'test' && env.BCRYPT_ROUNDS < 10) {
       problems.push('BCRYPT_ROUNDS: must be at least 10 outside tests');
