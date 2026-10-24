@@ -9,3 +9,5 @@ export * from './completion';
 export * from './reports';
 export * from './competency';
 export * from './passport';
+export * from './intervention';
+export * from './audit';

@@ -76,6 +76,7 @@ const riskLevel = defineEnum(['LOW', 'MEDIUM', 'HIGH']);
 export const RiskLevel = riskLevel.obj;
 export type RiskLevel = (typeof riskLevel.values)[number];
 export const RiskLevelSchema = riskLevel.schema;
+export const RISK_LEVELS = riskLevel.values;
 
 const grade = defineEnum(['A', 'B', 'C', 'D', 'NOT_COMPLETED']);
 export const Grade = grade.obj;
@@ -86,6 +87,7 @@ const interventionActionType = defineEnum(['COUNSELLING', 'EXTRA_SESSION', 'PRAC
 export const InterventionActionType = interventionActionType.obj;
 export type InterventionActionType = (typeof interventionActionType.values)[number];
 export const InterventionActionTypeSchema = interventionActionType.schema;
+export const INTERVENTION_ACTION_TYPES = interventionActionType.values;
 
 const learningResourceType = defineEnum(['VIDEO', 'DOCUMENT', 'PRACTICE_TASK', 'REMEDIAL_SESSION']);
 export const LearningResourceType = learningResourceType.obj;

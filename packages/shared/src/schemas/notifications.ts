@@ -10,6 +10,8 @@ export const NOTIFICATION_TYPES = [
   'TRAINING_COMPLETED',
   'TRAINING_NOT_COMPLETED',
   'CERTIFICATE_ISSUED',
+  'RISK_FLAG_ESCALATED',
+  'RISK_ACTION_AGREED',
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 
