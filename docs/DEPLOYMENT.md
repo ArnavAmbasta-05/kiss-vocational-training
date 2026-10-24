@@ -27,7 +27,7 @@ locally and in CI it still runs as a normal server (`apps/api/src/server.ts`).
 | Rate limits | Security limiters (failed logins now; the public router in Sprint 9) store counts in the `rate_limits` table (`RATE_LIMIT_STORE=postgres`, the production default), so every function instance shares one limit. The generous global flood limiter stays in memory |
 | Database connections | Neon's pooled URL with `connection_limit=1` per function instance |
 | Migrations | Run in the production build (`scripts/vercel-build.sh`) against the direct URL, before the new code goes live |
-| Scheduled jobs (Sprint 10) | Vercel Cron, once a day on Hobby (may fire up to ~1 h late), calling a secret-protected API route. node-cron is used only locally |
+| Scheduled jobs (Sprint 10) | Vercel Cron (`crons` in `vercel.json`) calls `GET /api/v1/internal/jobs/risk-evaluation` once a day at 20:30 UTC (02:00 IST; Hobby may fire up to ~1 h late) with `Authorization: Bearer $CRON_SECRET`. A lease row in `job_locks` stops two runs overlapping (session advisory locks don't survive the pooled URL). A run stops after 25 s and reports `partial`; batches go in random order, so later runs reach the rest. node-cron runs the same job at 02:00 only locally |
 | Files (Sprint 6+) | No persistent disk, so certificate PDFs (and evidence in Sprint 11) go to a **private Vercel Blob store** (`STORAGE_DRIVER=vercel-blob`). The database keeps only the object key; only the API can read the files, using `BLOB_READ_WRITE_TOKEN`. Fonts and PDFKit's data files ship with the function (`includeFiles` in `vercel.json`) |
 | Request time | Function limit set to 30 s (`vercel.json`). Bulk operations are designed to finish well inside it |
 
@@ -99,6 +99,18 @@ new account is needed.
 
 Never paste `BLOB_READ_WRITE_TOKEN` anywhere: it can read every stored file.
 
+### 3b. Daily risk check (Vercel Cron, Sprint 10)
+
+1. Generate one more secret with the command in step 2 (any 16+ random characters work).
+2. In Vercel, **Settings → Environment Variables**, add `CRON_SECRET` = that value for
+   **Production**, then redeploy. Vercel sends it to the cron route as a Bearer token on its own.
+3. Check: **Settings → Cron Jobs** lists `/api/v1/internal/jobs/risk-evaluation`. Its log
+   shows a 200 after the next run. To run it now without waiting, an admin can press **Run the
+   check now** on *At-risk students*.
+
+Without `CRON_SECRET` the route refuses every call (401), so the check only runs when someone
+saves attendance, marks or ratings, or presses the button. Never paste the secret anywhere.
+
 ### 4. Seed the demo data (once)
 
 Run this from your machine against the **direct** URL, with a strong demo password because the
@@ -159,6 +171,7 @@ Pull requests get Vercel preview URLs for the web app (no API, see step 3.4).
 ## Security checklist
 
 - [ ] Secrets only in Vercel's environment variables. `.env` is git-ignored.
+- [ ] `CRON_SECRET` is set in Vercel (Production) and nowhere else.
 - [ ] Neon password reset if it was ever shared outside Neon/Vercel.
 - [ ] Demo seed password is not `Password@123`.
 - [ ] Admin password changed after the first sign-in on production.

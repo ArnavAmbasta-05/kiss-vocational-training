@@ -15,6 +15,148 @@ Read this at the start of every session and update it at the end of every sprint
 
 ---
 
+## Sprint 10 — Early Intervention (F11) and audit viewer (F19) → GATE 2 (built, 2026-10-24)
+
+### Built
+- **Risk rules** (`modules/intervention/rules.ts`, pure, unit-tested at the BRD boundaries):
+  - `riskLevel(facts, thresholds)` returns a level and every reason (BR-16, BR-18).
+    - Medium: attendance < 80 %, ≥ 3 consecutive absences, or the latest assessment < 50 %.
+    - High: attendance < 75 %, projected aggregate < 40 %, a drop of ≥ 15 points from the
+      previous assessment to the latest, or an assessed mandatory competency below its
+      required level.
+    - "Below" is strict: 74.99 % is High, 75.00 % Medium, 79.99 % Medium, 80.00 % Low. A
+      15.00-point drop is High, 14.99 is not.
+    - Every threshold is a `risk.*` setting.
+  - `flagStep` (BR-17 lifecycle) and `shouldEscalate`.
+- **Evaluation** (`intervention.service`):
+  - `evaluateBatch` gathers each source's facts for the whole batch with one set-based call
+    per source: attendance, assessments and competency each gained a batch-level read
+    (`batchScores`, `mandatoryGapsByStudent`).
+  - It then opens, updates, starts the clear period, closes after `risk.closeAfterClearDays`
+    (7) clear days, and escalates High flags open `risk.escalateAfterDays` (14) to every
+    admin with an in-app notification.
+  - Every step is an audited change (system actor), and the flag's timeline is built from
+    those rows, so the history is kept after a flag closes (BRQ-11.4).
+  - Writes take `pg_advisory_xact_lock` on the batch, so a scheduled run and an on-save run
+    never interleave.
+- **Triggers**:
+  - **On save**: attendance, marks and competency ratings announce "batch data changed"
+    through a new core hook (`core/events`). The intervention module subscribes when routes
+    are wired, so core never imports it (rule 5). The re-evaluation is awaited before the
+    response, never fire-and-forget. A flag therefore appears as soon as the session is
+    marked, well within the BRD's one day.
+  - **Daily**: Vercel Cron (`vercel.json`, 20:30 UTC = 02:00 IST) calls
+    `GET /api/v1/internal/jobs/risk-evaluation` with `Bearer CRON_SECRET`, checked in
+    constant time. node-cron runs the same job at 02:00 locally.
+  - **Admin**: `POST /risk-flags/evaluate` runs it now, and the At-risk page has a "Run the
+    check now" button.
+  - Overlap: a lease row in the new `job_locks` table (migration `20261024120000_job_locks`)
+    ensures two runs never overlap.
+  - Time budget: a run stops after 25 s and reports `partial` and the number of batches left.
+- **API**:
+  - `GET /risk-flags` (trainer: own batches, 403 for others; admin: all) with filters for
+    batch, level, status (OPEN/CLOSED/ALL) and escalated; paginated, worst first.
+  - `GET /risk-flags/:id` returns the flag with its actions, timeline and who can own an
+    action.
+  - `POST /risk-flags/:id/actions` creates a COUNSELLING, EXTRA_SESSION or PRACTICE_TASK
+    action:
+    - The owner must be one of the batch's trainers or an admin (422 `INVALID_OWNER`).
+    - The due date must be today or later (422 `DUE_IN_PAST`).
+    - The flag must be open (409 `FLAG_CLOSED`).
+    - The student is notified of the plan, never the staff note.
+  - `PATCH /risk-actions/:id {outcome, completedAt?}` records an action's outcome.
+  - `GET /students/me/risk` returns the student's own flags.
+- **Audit viewer** (`modules/audit`, Admin, read-only):
+  - `GET /audit-logs` filters by user, entity, record ID, action and date (inclusive UTC
+    days), newest first, paginated.
+  - `/audit-logs/facets` supplies the filter lists.
+  - `/audit-logs/export.csv` returns the same filters, capped at 10 000 rows, with an
+    `X-Export-Truncated` header and CSV-injection-safe cells.
+  - There are no edit or delete endpoints (404), and the DB trigger still refuses UPDATE
+    (TC-19 asserted again).
+- **Web**:
+  - **At-risk students** (trainer and admin) shows level badges, reason chips with figures,
+    days open, action counts and filters.
+  - **Flag detail** shows why the student is flagged, a remedial-actions table with "Add
+    action" (type, owner, due date, staff-only note) and "Record outcome", and a history
+    timeline of level changes and actions.
+  - **Admin dashboard** has an escalations widget.
+  - **Student dashboard** shows a "Let's get you back on track" card: the reasons in plain,
+    encouraging words (no "risk" wording, no level badge), the agreed plan, and an offer of
+    help.
+  - **Audit log** has filters, click-a-name to filter by user, a per-row old → new table
+    with changed fields marked in text, and CSV export.
+  - New strings are in `intervention.json` and `audit.json` (or/hi synced).
+- **Fix found while testing**: the Gate 1 integration test runs the whole R1 workflow in one
+  test. With the on-save evaluation it sometimes passed Jest's default 5 s under parallel
+  load, so it now has an explicit 30 s timeout.
+
+### Deviations
+- **Lease row instead of a session advisory lock for the whole run.** Production uses Neon's
+  pooled URL (PgBouncer transaction mode, `connection_limit=1`). A session advisory lock is
+  released as soon as the connection returns to the pool, and holding one transaction open
+  for the whole run would starve the single pooled connection. The run claims a `job_locks`
+  row with one atomic upsert (expires after 10 min if a run crashes). Per-batch writes do use
+  a transaction-scoped advisory lock, which works with pooling.
+- **Facts come from the core services, not one cross-module SQL query.** One set-based call
+  per source per batch (not per student), so rule 5 (modules never read another module's
+  tables) still holds.
+- **Assessment rules use the latest result.** BRD: "an assessment below 50 %" and "a drop
+  between consecutive assessments". Using every past result would keep a recovering student
+  flagged forever, so a flag could never close (BR-17). The prompt's facts list ("latest and
+  previous assessment %") supports this reading.
+- **Not-yet-assessed mandatory competencies don't raise a flag.** Early in a course nobody
+  has been assessed; BR-18's gap counts once a competency has a rating or linked marks.
+- **Vercel Cron calls with GET.** The route accepts GET (what Vercel sends) and POST (manual
+  runs), both with the secret.
+- **The seed adds no flags.** They are derived data (rule 9). The pilot batch already has
+  students below 75 % attendance, and the first evaluation (cron, a save, or the admin button)
+  flags them.
+
+### Known gaps / follow-ups
+- The admin can revoke a competency verification through the API (Sprint 9); there is no
+  screen for it yet. The audit viewer shows those revocations.
+- The daily run evaluates batches one at a time. On a much larger live database it could need
+  more than one run to cover everything (it reports `partial`). That isn't expected at demo
+  scale.
+
+### GATE 2 checklist (BRD §15)
+Locally (CI-equivalent), all pass:
+- [x] **F10** (BRD §9.2): a certified student opens their passport and sees each verified
+      competency with level and date; a shared link opens without login; after revocation it
+      shows "Link no longer active". Covered by `passport.spec.ts` on desktop and mobile
+      (Pixel 7) and `verification.int.test.ts`.
+- [x] **F11** (§9.3): 74.99 % → High (unit). Marking a session flags the student at once
+      (integration and e2e). Recording an action, then returning above the thresholds, closes
+      the flag after 7 clear days and keeps its history (integration). Escalation at 14 days
+      (integration). Student sees the supportive card with the agreed action (e2e).
+- [x] **F12** (§9.4): Sprint 8 acceptance tests still green (`competency.int.test.ts`,
+      `competency.spec.ts`); a mandatory gap now also raises an F11 flag (integration).
+- [x] **F15** (§9.6): the QR target shows Valid with the name; an unknown ID shows Not found;
+      a revoked certificate shows Revoked without the reason. The employer view runs on a
+      phone viewport in the mobile project (`passport.spec.ts`).
+- [ ] **On the deployed build**: push, wait for CI and the deploy, set `CRON_SECRET` in
+      Vercel, then run the live checks (verify page, passport share/revoke, at-risk flow,
+      audit log). R3 starts only after this.
+
+### Definition of done
+- [x] Unit: risk boundaries (74.99/75.00, 79.99/80.00, 49.99/50, 39.99/40, 15.00/14.99 drop,
+      3 absences), lifecycle (open/update/clearing/close at 7 days, not 6.99), escalation at
+      14 days, once
+- [x] API (TC-27–31): on-save flagging and level updates; consecutive absences; 15-point
+      drop; mandatory gap; inactive batch ignored; close after 7 clear days with history;
+      clear period reset when risk returns; escalation to admins once; trainer/admin/student
+      scoping (403); action validation (DUE_IN_PAST, INVALID_OWNER, FLAG_CLOSED); student view
+      without the staff note; lease prevents a second run; cron route needs the secret; time
+      budget reports partial; audit viewer filters, CSV, admin-only, no edit or delete, UPDATE
+      refused (TC-19)
+- [x] e2e (desktop and mobile, axe on every new page): absence → flag → trainer adds action →
+      student sees a supportive card without the note → admin finds it in the audit log
+- [x] API_TESTS (307, 37 suites) · E2E_TESTS (37) · lint · format · typecheck · build · i18n
+      keys in sync · openapi.yaml (101 paths)
+
+---
+
 ## Sprint 9 — Skill Passport (F10) and QR verification (F15) (done, 2026-10-24)
 
 ### Built
