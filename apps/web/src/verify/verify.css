@@ -1,0 +1,156 @@
+/* Verify page (NFR-09): hand-written, no framework. Colours meet 4.5:1 on their backgrounds. */
+:root {
+  --ink: #0f172a;
+  --muted: #475569;
+  --brand: #1844ae;
+  --line: #cbd5e1;
+  --ok-bg: #dcfce7;
+  --ok-ink: #14532d;
+  --bad-bg: #fee2e2;
+  --bad-ink: #7f1d1d;
+  --warn-bg: #fef3c7;
+  --warn-ink: #78350f;
+  --info-bg: #f1f5f9;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    'Noto Sans',
+    'Noto Sans Oriya',
+    sans-serif;
+  color: var(--ink);
+  background: #f8fafc;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+main {
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+.brand {
+  margin: 0;
+  font-weight: 700;
+  color: var(--brand);
+}
+h1 {
+  margin: 0.25rem 0 0.5rem;
+  font-size: 1.6rem;
+  line-height: 1.2;
+}
+.intro,
+.fine {
+  color: var(--muted);
+  line-height: 1.5;
+}
+.fine {
+  font-size: 0.8rem;
+  margin: 0.5rem 0 0;
+}
+.lookup {
+  margin: 1.25rem 0;
+}
+label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+.row {
+  display: flex;
+  gap: 0.5rem;
+}
+input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  letter-spacing: 0.06em;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid #64748b;
+  border-radius: 0.5rem;
+}
+button {
+  font: inherit;
+  font-weight: 600;
+  padding: 0.6rem 1.1rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: var(--brand);
+  color: #fff;
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.7;
+  cursor: progress;
+}
+input:focus-visible,
+button:focus-visible {
+  outline: 3px solid #93c5fd;
+  outline-offset: 2px;
+}
+.result {
+  border-radius: 0.75rem;
+  padding: 1.1rem 1.2rem;
+  margin: 1rem 0;
+  border: 1px solid var(--line);
+  background: var(--info-bg);
+}
+.result p {
+  margin: 0.4rem 0 0;
+  line-height: 1.5;
+}
+.status {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.status h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+.icon {
+  display: inline-grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 999px;
+  font-size: 1.35rem;
+  font-weight: 700;
+  background: #fff;
+}
+.valid {
+  background: var(--ok-bg);
+  color: var(--ok-ink);
+  border-color: #86efac;
+}
+.revoked,
+.notFound {
+  background: var(--bad-bg);
+  color: var(--bad-ink);
+  border-color: #fca5a5;
+}
+.superseded,
+.rateLimited,
+.error {
+  background: var(--warn-bg);
+  color: var(--warn-ink);
+  border-color: #fcd34d;
+}
+dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.35rem 1rem;
+  margin: 0.9rem 0 0;
+  color: var(--ink);
+}
+dt {
+  color: var(--muted);
+}
+dd {
+  margin: 0;
+  font-weight: 600;
+}
