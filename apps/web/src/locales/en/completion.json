@@ -75,7 +75,21 @@
     "notRendered": "Not generated",
     "previous": "Previous",
     "next": "Next",
-    "page": "Page {{page}} of {{pages}}"
+    "page": "Page {{page}} of {{pages}}",
+    "revoke": "Revoke",
+    "revokeFor": "Revoke certificate {{code}}",
+    "revokeTitle": "Revoke certificate {{code}}?",
+    "revokeBody": "The verification page will show it as revoked, with the date but not the reason. The student's completion stays recorded.",
+    "reason": "Reason (kept in the record, never shown publicly)",
+    "revoked": "Certificate revoked",
+    "reissue": "Reissue",
+    "reissueFor": "Reissue certificate {{code}}",
+    "reissueTitle": "Reissue certificate {{code}}?",
+    "reissueBody": "A new certificate with a new ID is issued with the same grade and figures. The old ID will show as superseded.",
+    "reissued": "New certificate {{code}} issued",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "reasonRequired": "Enter a reason of at least 3 characters"
   },
   "certStatus": {
     "VALID": "Valid",

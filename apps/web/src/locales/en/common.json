@@ -27,7 +27,8 @@
       "enrollment": "My enrollment",
       "training": "My training",
       "certificates": "Certificates",
-      "skills": "My skill gaps"
+      "skills": "My skill gaps",
+      "passport": "Skill Passport"
     },
     "trainer": {
       "batches": "My batches",

@@ -1,7 +1,8 @@
-import { lazy } from 'react';
+import { Suspense, lazy } from 'react';
 import { createBrowserRouter, RouterProvider, type RouteObject } from 'react-router-dom';
 import type { Role } from '@vtmp/shared';
 import { AppShell } from './components/layout/AppShell';
+import { Spinner } from './components/ui';
 import { NAV_BY_ROLE } from './components/layout/nav';
 import { RequireAuth, RequireRole, RoleHomeRedirect } from './lib/auth';
 import { ComingSoonPage } from './pages/ComingSoonPage';
@@ -103,6 +104,15 @@ const MySkillGapsPage = lazy(() =>
   import('./features/competency/MySkillGapsPage').then((m) => ({ default: m.MySkillGapsPage })),
 );
 
+const MyPassportPage = lazy(() =>
+  import('./features/passport/MyPassportPage').then((m) => ({ default: m.MyPassportPage })),
+);
+const PublicPassportPage = lazy(() =>
+  import('./features/passport/PublicPassportPage').then((m) => ({
+    default: m.PublicPassportPage,
+  })),
+);
+
 /** Screens that exist today; every other nav item shows a "coming soon" page until built. */
 const BUILT: Record<string, RouteObject['element']> = {
   '/admin/users': <UsersPage />,
@@ -115,6 +125,7 @@ const BUILT: Record<string, RouteObject['element']> = {
   '/admin/competencies': <AdminCompetenciesPage />,
   '/trainer/competencies': <TrainerCompetenciesPage />,
   '/student/skills': <MySkillGapsPage />,
+  '/student/passport': <MyPassportPage />,
   '/trainer/batches': <TrainerBatchesPage />,
   '/trainer/sessions': <TrainerSessionsPage />,
   '/trainer/assessments': <TrainerAssessmentsPage />,
@@ -163,6 +174,15 @@ function roleSection(role: Role, base: string): RouteObject {
 
 const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
+  // A shared Skill Passport: public, no sign-in and no app chrome (BRQ-10.3).
+  {
+    path: '/p/:token',
+    element: (
+      <Suspense fallback={<Spinner size="lg" />}>
+        <PublicPassportPage />
+      </Suspense>
+    ),
+  },
   {
     element: <RequireAuth />,
     children: [

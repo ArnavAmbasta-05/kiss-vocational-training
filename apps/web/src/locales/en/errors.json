@@ -83,6 +83,11 @@
     "BELOW_REQUIRED_LEVEL": "A competency can be verified only at or above its required level.",
     "VERIFIED_LOCKED": "A verified competency cannot be rated below its required level.",
     "COMPETENCY_NOT_IN_COURSE": "Some competencies don't belong to this batch's course.",
-    "COMPETENCY_NOT_FOUND": "That competency no longer exists."
+    "COMPETENCY_NOT_FOUND": "That competency no longer exists.",
+    "SHARE_TOO_LONG": "That is longer than a share link may last.",
+    "NOT_VERIFIED": "Only a verified skill can be revoked.",
+    "LINK_INACTIVE": "Link no longer active.",
+    "LINK_NOT_FOUND": "Link not found.",
+    "CERTIFICATE_NOT_FOUND": "Certificate not found."
   }
 }

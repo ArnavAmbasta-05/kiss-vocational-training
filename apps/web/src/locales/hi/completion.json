@@ -75,7 +75,21 @@
     "notRendered": "",
     "previous": "",
     "next": "",
-    "page": ""
+    "page": "",
+    "revoke": "",
+    "revokeFor": "",
+    "revokeTitle": "",
+    "revokeBody": "",
+    "reason": "",
+    "revoked": "",
+    "reissue": "",
+    "reissueFor": "",
+    "reissueTitle": "",
+    "reissueBody": "",
+    "reissued": "",
+    "confirm": "",
+    "cancel": "",
+    "reasonRequired": ""
   },
   "certStatus": {
     "VALID": "",

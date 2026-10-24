@@ -76,3 +76,11 @@ export const useRetryRender = () =>
 /** Downloads the certificate PDF (owner student or admin). */
 export const downloadCertificate = (id: string, publicCode: string) =>
   downloadFile(`/certificates/${id}/download`, `certificate-${publicCode}.pdf`);
+
+export const useRevokeCertificate = () =>
+  useCompletionMutation(({ id, reason }: { id: string; reason: string }) =>
+    api.post<CertificateDto>(`/certificates/${id}/revoke`, { reason }),
+  );
+
+export const useReissueCertificate = () =>
+  useCompletionMutation((id: string) => api.post<CertificateDto>(`/certificates/${id}/reissue`));

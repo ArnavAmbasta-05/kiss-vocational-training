@@ -21,17 +21,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // One refresh at a time: concurrent 401s share it, and rotation never races itself.
   const inFlight = useRef<Promise<boolean> | null>(null);
 
+  // Whether a session was ever active in this page. Only then is there private data to drop:
+  // clearing the cache on a first, anonymous load would also cancel public pages' requests.
+  const hadSession = useRef(false);
+
   const clearSession = useCallback(() => {
     accessToken = null;
     clearTimeout(timer.current);
     setUser(null);
     setStatus('anonymous');
-    queryClient.clear();
+    if (hadSession.current) queryClient.clear();
+    hadSession.current = false;
   }, [queryClient]);
 
   const applySession = useCallback(
     (session: AuthSession) => {
       accessToken = session.accessToken;
+      hadSession.current = true;
       setUser(session.user);
       setStatus('authenticated');
       if (i18n.resolvedLanguage !== session.user.locale) {

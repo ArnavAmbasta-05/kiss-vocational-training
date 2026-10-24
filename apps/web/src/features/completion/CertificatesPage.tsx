@@ -6,6 +6,7 @@ import {
   Button,
   EmptyState,
   Input,
+  Modal,
   Select,
   Spinner,
   Table,
@@ -14,7 +15,12 @@ import {
 import { useToast } from '../../components/toast';
 import { useErrorMessage } from '../../lib/api/useErrorMessage';
 import { formatDate } from '../../lib/format';
-import { downloadCertificate, useCertificates } from './api';
+import {
+  downloadCertificate,
+  useCertificates,
+  useReissueCertificate,
+  useRevokeCertificate,
+} from './api';
 
 const PAGE_SIZE = 20;
 
@@ -29,6 +35,9 @@ export function CertificatesPage() {
   const [status, setStatus] = useState<CertificateStatus | ''>('');
   const [page, setPage] = useState(1);
   const list = useCertificates({ q, status: status || undefined, page, pageSize: PAGE_SIZE });
+  const [action, setAction] = useState<{ kind: 'revoke' | 'reissue'; cert: CertificateDto } | null>(
+    null,
+  );
 
   // Search as you type, a moment after the last keystroke.
   useEffect(() => {
@@ -94,6 +103,32 @@ export function CertificatesPage() {
         ) : (
           <span className="text-xs text-slate-600">{t('register.notRendered')}</span>
         ),
+    },
+    {
+      key: 'actions',
+      header: <span className="sr-only">{t('register.revoke')}</span>,
+      align: 'right',
+      render: (c) =>
+        c.status === 'VALID' ? (
+          <div className="flex justify-end gap-1">
+            <Button
+              size="sm"
+              variant="ghost"
+              aria-label={t('register.reissueFor', { code: c.publicCode })}
+              onClick={() => setAction({ kind: 'reissue', cert: c })}
+            >
+              {t('register.reissue')}
+            </Button>
+            <Button
+              size="sm"
+              variant="danger"
+              aria-label={t('register.revokeFor', { code: c.publicCode })}
+              onClick={() => setAction({ kind: 'revoke', cert: c })}
+            >
+              {t('register.revoke')}
+            </Button>
+          </div>
+        ) : null,
     },
   ];
 
@@ -164,6 +199,85 @@ export function CertificatesPage() {
           </Button>
         </nav>
       )}
+      <CertificateAction action={action} onClose={() => setAction(null)} />
     </div>
+  );
+}
+
+/** Revoke (with a reason) or reissue a valid certificate, after confirmation (BRQ-15.4, BR-19). */
+function CertificateAction({
+  action,
+  onClose,
+}: {
+  action: { kind: 'revoke' | 'reissue'; cert: CertificateDto } | null;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation('completion');
+  const toast = useToast();
+  const errorMessage = useErrorMessage();
+  const revoke = useRevokeCertificate();
+  const reissue = useReissueCertificate();
+  const [reason, setReason] = useState('');
+  const [invalid, setInvalid] = useState(false);
+
+  useEffect(() => {
+    setReason('');
+    setInvalid(false);
+  }, [action]);
+
+  if (!action) return null;
+  const code = action.cert.publicCode;
+  const isRevoke = action.kind === 'revoke';
+
+  const confirm = async () => {
+    try {
+      if (isRevoke) {
+        if (reason.trim().length < 3) return setInvalid(true);
+        await revoke.mutateAsync({ id: action.cert.id, reason: reason.trim() });
+        toast.show({ tone: 'success', title: t('register.revoked') });
+      } else {
+        const fresh = await reissue.mutateAsync(action.cert.id);
+        toast.show({ tone: 'success', title: t('register.reissued', { code: fresh.publicCode }) });
+      }
+      onClose();
+    } catch (err) {
+      toast.show({ tone: 'error', title: errorMessage(err) });
+    }
+  };
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={isRevoke ? t('register.revokeTitle', { code }) : t('register.reissueTitle', { code })}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>
+            {t('register.cancel')}
+          </Button>
+          <Button
+            variant={isRevoke ? 'danger' : 'primary'}
+            loading={revoke.isPending || reissue.isPending}
+            onClick={() => void confirm()}
+          >
+            {t('register.confirm')}
+          </Button>
+        </>
+      }
+    >
+      <p className="text-sm text-slate-700">
+        {isRevoke ? t('register.revokeBody') : t('register.reissueBody')}
+      </p>
+      {isRevoke && (
+        <div className="mt-4">
+          <Input
+            label={t('register.reason')}
+            value={reason}
+            error={invalid ? t('register.reasonRequired') : undefined}
+            onChange={(e) => setReason(e.target.value)}
+          />
+        </div>
+      )}
+    </Modal>
   );
 }

@@ -83,6 +83,11 @@
     "BELOW_REQUIRED_LEVEL": "",
     "VERIFIED_LOCKED": "",
     "COMPETENCY_NOT_IN_COURSE": "",
-    "COMPETENCY_NOT_FOUND": ""
+    "COMPETENCY_NOT_FOUND": "",
+    "SHARE_TOO_LONG": "",
+    "NOT_VERIFIED": "",
+    "LINK_INACTIVE": "",
+    "LINK_NOT_FOUND": "",
+    "CERTIFICATE_NOT_FOUND": ""
   }
 }

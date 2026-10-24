@@ -18,6 +18,7 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
     { to: '/student/enrollment', labelKey: 'nav.student.enrollment' },
     { to: '/student/training', labelKey: 'nav.student.training' },
     { to: '/student/skills', labelKey: 'nav.student.skills' },
+    { to: '/student/passport', labelKey: 'nav.student.passport' },
     { to: '/student/certificates', labelKey: 'nav.student.certificates' },
   ],
   TRAINER: [
