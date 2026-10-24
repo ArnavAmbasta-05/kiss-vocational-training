@@ -4,9 +4,11 @@ import {
   CompetencyInputSchema,
   RatingsSaveSchema,
   ResourceInputSchema,
+  RevokeSchema,
   type CompetencyInput,
   type RatingsSaveInput,
   type ResourceInput,
+  type RevokeInput,
 } from '@vtmp/shared';
 import { authenticate, authorize, owns, requireOwnership } from '../../core/auth';
 import { asyncHandler } from '../../core/http';
@@ -189,6 +191,26 @@ export function studentGapRoutes(): Router {
       const id = req.params.studentId === 'me' ? req.user!.studentId! : req.params.studentId!;
       const { batchId } = req.query as z.infer<typeof GapQuery>;
       res.set('Cache-Control', 'no-store').json(await service.studentGaps(id, batchId));
+    }),
+  );
+  return router;
+}
+
+/** POST /competency-ratings/:id/revoke — Admin, with a reason (BR-14). */
+export function ratingRevokeRoutes(): Router {
+  const router = Router();
+  router.post(
+    '/:id/revoke',
+    ...admin,
+    validate({ params: IdParams, body: RevokeSchema }),
+    asyncHandler(async (req, res) => {
+      res.json(
+        await service.revokeVerification(
+          viewer(req),
+          req.params.id!,
+          (req.body as RevokeInput).reason,
+        ),
+      );
     }),
   );
   return router;

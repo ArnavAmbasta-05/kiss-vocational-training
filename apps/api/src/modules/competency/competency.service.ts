@@ -1,6 +1,8 @@
 import { Prisma } from '@prisma/client';
 import type {
   CompetencyDto,
+  PassportEntry,
+  RevokedPassportEntry,
   CompetencyInput,
   CompetencyStanding,
   GapItem,
@@ -20,6 +22,7 @@ import { settings } from '../../core/settings';
 import * as assessments from '../assessments/assessments.service';
 import * as batches from '../batches/batches.service';
 import * as courses from '../courses/courses.service';
+import * as enrollments from '../enrollments/enrollments.service';
 import { canVerify, demonstrated, gap } from './rules';
 
 /**
@@ -385,7 +388,7 @@ export async function ratingGrid(viewer: Viewer, batchId: string): Promise<Ratin
       studentId: r.studentId,
       competencyId: r.competencyId,
       level: r.level,
-      verified: r.verifiedAt !== null,
+      verified: r.verifiedAt !== null && r.revokedAt === null,
       ratedAt: r.ratedAt.toISOString(),
     })),
   };
@@ -452,7 +455,8 @@ export async function saveRatings(
       const key = `${r.studentId}:${r.competencyId}`;
       const before = existing.get(key);
       const required = byId.get(r.competencyId)!.requiredLevel;
-      const wasVerified = !!before?.verifiedAt;
+      // A verification an admin revoked (BR-14) no longer counts; the trainer may verify again.
+      const wasVerified = !!before?.verifiedAt && !before.revokedAt;
       if (wasVerified && r.level < required) {
         throw AppError.conflict(
           'VERIFIED_LOCKED',
@@ -462,7 +466,15 @@ export async function saveRatings(
       const verifyNow = !!r.verify && !wasVerified;
       if (before && before.level === r.level && !verifyNow) continue;
 
-      const verification = verifyNow ? { verifiedAt: now, verifiedById: actor.userId } : {};
+      const verification = verifyNow
+        ? {
+            verifiedAt: now,
+            verifiedById: actor.userId,
+            revokedAt: null,
+            revokedById: null,
+            revokedReason: null,
+          }
+        : {};
       const row = before
         ? await tx.competencyRating.update({
             where: { id: before.id },
@@ -542,7 +554,7 @@ async function standings(
             requiredLevel: c.requiredLevel,
             demonstratedLevel: d.level,
             source: d.source,
-            verified: !!rating?.verifiedAt,
+            verified: !!rating?.verifiedAt && !rating.revokedAt,
             gap: gap(c.requiredLevel, d.level),
           };
         }),
@@ -619,4 +631,86 @@ export async function mandatoryGaps(
 ): Promise<CompetencyStanding[]> {
   const { byStudent } = await standings(batchId, [studentId]);
   return (byStudent.get(studentId) ?? []).filter((s) => s.isMandatory && s.gap > 0);
+}
+
+// ─── Passport support (F10: BRQ-10.1, 10.4, BR-14) ─────────────────────────────
+
+/**
+ * Every competency a trainer verified for this student, across all batches and cycles
+ * (BRQ-10.4), split into active and revoked. Batch, course and cycle names come from the core
+ * services, not their tables.
+ */
+export async function verifiedEntries(
+  studentId: string,
+): Promise<{ active: PassportEntry[]; revoked: RevokedPassportEntry[] }> {
+  const [rows, placements] = await Promise.all([
+    prisma().competencyRating.findMany({
+      where: { studentId, verifiedAt: { not: null } },
+      orderBy: { verifiedAt: 'desc' },
+      include: {
+        competency: { select: { code: true, title: true, mode: true, requiredLevel: true } },
+        verifiedBy: { select: { fullName: true } },
+      },
+    }),
+    batches.placementsOf(studentId),
+  ]);
+  const cycles = new Map(
+    await Promise.all(
+      placements.map(
+        async (p) =>
+          [
+            p.batch.id,
+            (await enrollments.placementFacts(p.enrollmentId))?.cycleName ?? '',
+          ] as const,
+      ),
+    ),
+  );
+  const byBatch = new Map(placements.map((p) => [p.batch.id, p.batch]));
+  const entry = (r: (typeof rows)[number]): PassportEntry => ({
+    ratingId: r.id,
+    competencyId: r.competencyId,
+    code: r.competency.code,
+    title: r.competency.title,
+    mode: r.competency.mode,
+    level: r.level,
+    requiredLevel: r.competency.requiredLevel,
+    courseTitle: byBatch.get(r.batchId)?.courseTitle ?? '',
+    batchName: byBatch.get(r.batchId)?.name ?? '',
+    cycleName: cycles.get(r.batchId) ?? '',
+    verifiedAt: r.verifiedAt!.toISOString(),
+    verifiedBy: r.verifiedBy?.fullName ?? '',
+  });
+  return {
+    active: rows.filter((r) => !r.revokedAt).map(entry),
+    revoked: rows
+      .filter((r) => r.revokedAt)
+      .map((r) => ({
+        ...entry(r),
+        revokedAt: r.revokedAt!.toISOString(),
+        revokedReason: r.revokedReason ?? '',
+      })),
+  };
+}
+
+/** BR-14: an admin revokes a verified competency with a reason; the entry is kept and logged. */
+export async function revokeVerification(actor: Actor, ratingId: string, reason: string) {
+  const r = await prisma().competencyRating.findUnique({ where: { id: ratingId } });
+  if (!r) throw AppError.notFound('Rating not found');
+  if (!r.verifiedAt || r.revokedAt) {
+    throw AppError.conflict('NOT_VERIFIED', 'Only a verified, unrevoked competency can be revoked');
+  }
+  await withAudit(actor, async (tx, log) => {
+    await tx.competencyRating.update({
+      where: { id: ratingId },
+      data: { revokedAt: new Date(), revokedById: actor.userId, revokedReason: reason },
+    });
+    await log({
+      action: 'COMPETENCY_VERIFICATION_REVOKED',
+      entity: 'CompetencyRating',
+      entityId: ratingId,
+      oldValue: { verified: true, level: r.level },
+      newValue: { verified: false, reason },
+    });
+  });
+  return { ratingId, revoked: true };
 }

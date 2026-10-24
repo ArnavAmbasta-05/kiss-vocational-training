@@ -252,3 +252,14 @@ export async function activeCounts(): Promise<{ students: number; trainers: numb
   const of = (role: string) => rows.find((r) => r.role === role)?._count._all ?? 0;
   return { students: of('STUDENT'), trainers: of('TRAINER') };
 }
+
+/** Public-safe identity of a student (passport): name, roll number and optional photo only. */
+export async function studentProfile(
+  studentId: string,
+): Promise<{ id: string; fullName: string; rollNo: string; photoUrl: string | null } | null> {
+  const s = await prisma().student.findUnique({
+    where: { id: studentId },
+    select: { id: true, rollNo: true, photoUrl: true, user: { select: { fullName: true } } },
+  });
+  return s ? { id: s.id, fullName: s.user.fullName, rollNo: s.rollNo, photoUrl: s.photoUrl } : null;
+}

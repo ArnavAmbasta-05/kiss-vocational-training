@@ -1,6 +1,11 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { CertificateListQuerySchema, type CertificateListQuery } from '@vtmp/shared';
+import {
+  CertificateListQuerySchema,
+  RevokeSchema,
+  type CertificateListQuery,
+  type RevokeInput,
+} from '@vtmp/shared';
 import { authenticate, authorize, owns, requireOwnership } from '../../core/auth';
 import { asyncHandler, parsePagination } from '../../core/http';
 import { validate } from '../../core/middleware';
@@ -32,6 +37,38 @@ export function certificateRoutes(): Router {
     validate({ params: CertificateParams }),
     asyncHandler(async (req, res) => {
       res.json(await service.get(req.params.certificateId!));
+    }),
+  );
+  // BRQ-15.4, BR-19: Admin revokes (with a reason) or reissues (new code, old SUPERSEDED).
+  router.post(
+    '/:certificateId/revoke',
+    authenticate,
+    authorize('ADMIN'),
+    validate({ params: CertificateParams, body: RevokeSchema }),
+    asyncHandler(async (req, res) => {
+      res.json(
+        await service.revokeCertificate(
+          { userId: req.user!.id, ip: req.ip ?? null },
+          req.params.certificateId!,
+          (req.body as RevokeInput).reason,
+        ),
+      );
+    }),
+  );
+  router.post(
+    '/:certificateId/reissue',
+    authenticate,
+    authorize('ADMIN'),
+    validate({ params: CertificateParams }),
+    asyncHandler(async (req, res) => {
+      res
+        .status(201)
+        .json(
+          await service.reissueCertificate(
+            { userId: req.user!.id, ip: req.ip ?? null },
+            req.params.certificateId!,
+          ),
+        );
     }),
   );
   router.get(

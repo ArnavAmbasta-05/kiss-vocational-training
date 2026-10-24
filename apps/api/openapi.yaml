@@ -27,6 +27,8 @@ tags:
   - name: reports
   - name: dashboard
   - name: competency
+  - name: passport
+  - name: public
 paths:
   /health:
     get:
@@ -1398,6 +1400,145 @@ paths:
       responses:
         '200': { description: Gaps }
         '403': { $ref: '#/components/responses/Forbidden' }
+  /public/verify/{code}:
+    get:
+      tags: [public]
+      summary: Verify a certificate by its ID — no login (BRQ-15.2, 15.3, TAD §8.3)
+      description: Returns only name, course, grade, issue date and status (VALID, REVOKED with the date but never the reason, or SUPERSEDED). Unknown or malformed codes → 404 CERTIFICATE_NOT_FOUND "Certificate not found". Each lookup of a known code is counted in the background. Cache-Control no-cache with an ETag, so a revocation shows at once. Rate-limited per IP (setting public.rateLimitPerMin, 30/min) → 429.
+      security: []
+      parameters:
+        - { name: code, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Verification result
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicVerification' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /public/passport/{token}:
+    get:
+      tags: [public]
+      summary: A shared Skill Passport, read-only — no login (BRQ-10.3, BR-15)
+      description: Name, optional photo, verified competencies (title, level, course, date) and valid certificates only — never marks, attendance or contact details. Revoked or expired link → 410 LINK_INACTIVE "Link no longer active"; unknown → 404.
+      security: []
+      parameters:
+        - { name: token, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Public passport }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '410': { description: Link no longer active }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /students/{studentId}/passport:
+    get:
+      tags: [passport]
+      summary: Skill Passport — verified competencies across all cycles, practical and theory, certificates (BRQ-10.1, 10.2, 10.4)
+      description: The student ("me"), their trainers and admins. Revoked verifications are listed separately with their reason.
+      parameters:
+        - { name: studentId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Passport }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /students/{studentId}/passport.pdf:
+    get:
+      tags: [passport]
+      summary: Skill Passport as PDF
+      parameters:
+        - { name: studentId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: PDF file
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /students/me/passport/shares:
+    get:
+      tags: [passport]
+      summary: My share links with status and view counts (Student)
+      responses: { '200': { description: Share links } }
+    post:
+      tags: [passport]
+      summary: Create a share link (Student) — the token is returned once and stored hashed
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                expiresInDays:
+                  {
+                    type: integer,
+                    minimum: 1,
+                    description: 'Default setting passport.shareDefaultDays (30), at most passport.shareMaxDays (365)',
+                  }
+      responses:
+        '201': { description: Link with token and url }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /passport/shares/{id}:
+    delete:
+      tags: [passport]
+      summary: Revoke one of my share links (Student)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Revoked }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /competency-ratings/{id}/revoke:
+    post:
+      tags: [passport]
+      summary: Revoke a verified competency with a reason (Admin, BR-14) — kept on record, audited
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              {
+                type: object,
+                required: [reason],
+                properties: { reason: { type: string, minLength: 3 } },
+              }
+      responses:
+        '200': { description: Revoked }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /certificates/{certificateId}/revoke:
+    post:
+      tags: [certificates]
+      summary: Revoke a valid certificate with a reason (Admin, BRQ-15.4)
+      parameters:
+        - { name: certificateId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              {
+                type: object,
+                required: [reason],
+                properties: { reason: { type: string, minLength: 3 } },
+              }
+      responses:
+        '200':
+          description: Revoked certificate
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Certificate' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /certificates/{certificateId}/reissue:
+    post:
+      tags: [certificates]
+      summary: Reissue with a new random code; the old one becomes SUPERSEDED (Admin, BR-19)
+      parameters:
+        - { name: certificateId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '201':
+          description: The new certificate
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Certificate' }
+        '409': { $ref: '#/components/responses/Conflict' }
 components:
   securitySchemes:
     bearerAuth:
@@ -1732,6 +1873,16 @@ components:
         title: { type: string }
         type: { type: string, enum: [VIDEO, DOCUMENT, PRACTICE_TASK, REMEDIAL_SESSION] }
         url: { type: string, format: uri }
+    PublicVerification:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string }
+        course: { type: string }
+        grade: { type: string, enum: [A, B, C, D] }
+        issueDate: { type: string, format: date }
+        status: { type: string, enum: [VALID, REVOKED, SUPERSEDED] }
+        revokedOn: { type: string, format: date, nullable: true }
   responses:
     TooManyRequests:
       description: Rate limited or account locked

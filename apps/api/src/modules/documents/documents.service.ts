@@ -5,6 +5,7 @@ import type {
   CertificateSummary,
   Grade,
   Paginated,
+  PublicVerification,
 } from '@vtmp/shared';
 import { withAudit, type Actor, type AuditFn } from '../../core/audit';
 import { config } from '../../core/config';
@@ -266,6 +267,7 @@ export async function gradeDistribution(courseId?: string): Promise<Map<string, 
 
 export { renderStudentReport, renderTableReport } from './reports.pdf';
 export { pdfDay } from './pdf';
+export { renderPassport } from './passport.pdf';
 export type { StudentReportContent, TableReportContent } from './reports.pdf';
 
 /**
@@ -303,4 +305,121 @@ export async function batchGrades(batchId: string): Promise<Map<string, number>>
     _count: { _all: true },
   });
   return new Map(rows.map((r) => [r.grade, r._count._all]));
+}
+
+// ─── Revoke, reissue, public verification (F15: BRQ-15.2–15.5, BR-19) ─────────
+
+/** BRQ-15.4: a valid certificate becomes REVOKED at once; it stays on record (BR-19). */
+export async function revokeCertificate(
+  actor: Actor,
+  id: string,
+  reason: string,
+): Promise<CertificateDto> {
+  const c = await prisma().certificate.findUnique({ where: { id } });
+  if (!c) throw AppError.notFound('Certificate not found');
+  if (c.status !== 'VALID') {
+    throw AppError.conflict('CERTIFICATE_NOT_VALID', 'Only a valid certificate can be revoked');
+  }
+  await withAudit(actor, async (tx, log) => {
+    const updated = await tx.certificate.updateMany({
+      where: { id, status: 'VALID' },
+      data: { status: 'REVOKED', revokedAt: new Date(), revokedReason: reason },
+    });
+    if (updated.count !== 1) {
+      throw AppError.conflict('CERTIFICATE_NOT_VALID', 'Only a valid certificate can be revoked');
+    }
+    await log({
+      action: 'CERTIFICATE_REVOKED',
+      entity: 'Certificate',
+      entityId: id,
+      oldValue: { status: 'VALID' },
+      newValue: { status: 'REVOKED', reason },
+    });
+  });
+  return get(id);
+}
+
+/**
+ * BR-19: reissue creates a new certificate with a new random code and the same snapshots; the
+ * old one becomes SUPERSEDED and points to it. The enrollment stays CERTIFIED. The new PDF is
+ * rendered after commit; if that fails, the admin retries as after an approval.
+ */
+export async function reissueCertificate(actor: Actor, id: string): Promise<CertificateDto> {
+  const old = await prisma().certificate.findUnique({ where: { id } });
+  if (!old) throw AppError.notFound('Certificate not found');
+  if (old.status !== 'VALID') {
+    throw AppError.conflict('CERTIFICATE_NOT_VALID', 'Only a valid certificate can be reissued');
+  }
+  const fresh = await withAudit(actor, async (tx, log) => {
+    // Free the one-VALID-per-enrollment slot first, then add the replacement and link them.
+    const moved = await tx.certificate.updateMany({
+      where: { id, status: 'VALID' },
+      data: { status: 'SUPERSEDED' },
+    });
+    if (moved.count !== 1) {
+      throw AppError.conflict('CERTIFICATE_NOT_VALID', 'Only a valid certificate can be reissued');
+    }
+    const created = await tx.certificate.create({
+      data: {
+        enrollmentId: old.enrollmentId,
+        publicCode: publicCode(),
+        grade: old.grade,
+        aggregatePercent: old.aggregatePercent,
+        attendancePercent: old.attendancePercent,
+        issuedById: actor.userId!,
+      },
+    });
+    await tx.certificate.update({ where: { id }, data: { supersededById: created.id } });
+    await log.many([
+      {
+        action: 'CERTIFICATE_SUPERSEDED',
+        entity: 'Certificate',
+        entityId: id,
+        oldValue: { status: 'VALID' },
+        newValue: { status: 'SUPERSEDED', supersededById: created.id },
+      },
+      {
+        action: 'CERTIFICATE_ISSUED',
+        entity: 'Certificate',
+        entityId: created.id,
+        newValue: { enrollmentId: old.enrollmentId, publicCode: created.publicCode, reissueOf: id },
+      },
+    ]);
+    return created;
+  });
+  try {
+    await renderAndStore(actor, fresh.id);
+  } catch {
+    // Left unrendered; POST /certificates/:id/render retries (UC-04 4a).
+  }
+  return get(fresh.id);
+}
+
+/**
+ * BRQ-15.3, BR-15: what anyone may see about a certificate code — name, course, grade, issue
+ * date, status, and for a revoked one the date (never the reason). Null when unknown.
+ */
+export async function publicVerification(code: string): Promise<PublicVerification | null> {
+  const c = await prisma().certificate.findUnique({
+    where: { publicCode: code.trim().toUpperCase() },
+    include: certificateInclude,
+  });
+  if (!c) return null;
+  return {
+    name: c.enrollment.student.user.fullName,
+    course: c.enrollment.batchMembership?.batch.course.title ?? '',
+    grade: c.grade,
+    issueDate: c.issuedAt.toISOString().slice(0, 10),
+    status: c.status,
+    revokedOn:
+      c.status === 'REVOKED' && c.revokedAt ? c.revokedAt.toISOString().slice(0, 10) : null,
+  };
+}
+
+/** BRQ-15.5: counts lookups of a known code. Callers don't wait for it. */
+export async function recordVerification(code: string): Promise<void> {
+  await prisma().certificate.updateMany({
+    where: { publicCode: code.trim().toUpperCase() },
+    data: { verificationCount: { increment: 1 } },
+  });
 }

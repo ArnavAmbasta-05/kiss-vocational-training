@@ -9,6 +9,7 @@ import {
   batchCompetencyRoutes,
   competencyRoutes,
   courseCompetencyRoutes,
+  ratingRevokeRoutes,
   resourceRoutes,
   studentGapRoutes,
 } from './modules/competency/competency.routes';
@@ -19,6 +20,8 @@ import { adminCourseRoutes, catalogueRoutes } from './modules/courses/courses.ro
 import { adminEnrollmentRoutes, enrollmentRoutes } from './modules/enrollments/enrollments.routes';
 import { dashboardRoutes } from './modules/dashboard/dashboard.routes';
 import { certificateRoutes, studentCertificateRoutes } from './modules/documents/documents.routes';
+import { shareRoutes, studentPassportRoutes } from './modules/passport/passport.routes';
+import { publicRoutes } from './modules/verification/verification.routes';
 import { healthRoutes } from './modules/health/health.routes';
 import { notificationRoutes } from './modules/notifications/notifications.routes';
 import { reportRoutes } from './modules/reports/reports.routes';
@@ -28,6 +31,8 @@ import { adminUserRoutes, meRoutes } from './modules/users/users.routes';
 /** Everything under /api/v1. Each module mounts its own router here. */
 export function v1Routes(): Router {
   const router = Router();
+  // Public, unauthenticated router first (rule 7): its own rate limit, whitelisted fields only.
+  router.use('/public', publicRoutes());
   router.use('/health', healthRoutes());
   router.use('/auth', authRoutes());
   router.use('/users', meRoutes());
@@ -53,6 +58,9 @@ export function v1Routes(): Router {
   router.use('/resources', resourceRoutes());
   router.use('/batches', batchCompetencyRoutes());
   router.use('/students', studentGapRoutes());
+  router.use('/competency-ratings', ratingRevokeRoutes());
+  router.use('/students', studentPassportRoutes());
+  router.use('/passport', shareRoutes());
   router.use('/admin/users', adminUserRoutes());
   router.use('/admin/enrollments', adminEnrollmentRoutes());
   router.use('/admin', adminBatchRoutes());
