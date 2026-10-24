@@ -263,3 +263,51 @@ export async function studentProfile(
   });
   return s ? { id: s.id, fullName: s.user.fullName, rollNo: s.rollNo, photoUrl: s.photoUrl } : null;
 }
+
+/** Names and roll numbers for a set of students (lists in other modules). */
+export async function studentSummaries(
+  ids: string[],
+): Promise<Map<string, { id: string; fullName: string; rollNo: string; userId: string }>> {
+  if (ids.length === 0) return new Map();
+  const rows = await prisma().student.findMany({
+    where: { id: { in: [...new Set(ids)] } },
+    select: { id: true, rollNo: true, userId: true, user: { select: { fullName: true } } },
+  });
+  return new Map(
+    rows.map((s) => [
+      s.id,
+      { id: s.id, fullName: s.user.fullName, rollNo: s.rollNo, userId: s.userId },
+    ]),
+  );
+}
+
+/** Display names for a set of users. */
+export async function userNames(ids: string[]): Promise<Map<string, string>> {
+  if (ids.length === 0) return new Map();
+  const rows = await prisma().user.findMany({
+    where: { id: { in: [...new Set(ids)] } },
+    select: { id: true, fullName: true },
+  });
+  return new Map(rows.map((u) => [u.id, u.fullName]));
+}
+
+/** Active administrators (escalation notices, action owners). */
+export async function activeAdmins(): Promise<Array<{ id: string; fullName: string }>> {
+  return prisma().user.findMany({
+    where: { role: 'ADMIN', isActive: true },
+    orderBy: { fullName: 'asc' },
+    select: { id: true, fullName: true },
+  });
+}
+
+/** Name and email for a set of users (audit viewer). */
+export async function userIdentities(
+  ids: string[],
+): Promise<Map<string, { id: string; fullName: string; email: string }>> {
+  if (ids.length === 0) return new Map();
+  const rows = await prisma().user.findMany({
+    where: { id: { in: [...new Set(ids)] } },
+    select: { id: true, fullName: true, email: true },
+  });
+  return new Map(rows.map((u) => [u.id, u]));
+}

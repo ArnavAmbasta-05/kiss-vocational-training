@@ -222,5 +222,6 @@ describe('Gate 1: enrollment → certificate, fully audited', () => {
     // Every row names who did it (system rows would have a null user; none here).
     expect(rows.every((r) => r.userId !== null)).toBe(true);
     expect(await db.performanceReport.count({ where: { enrollmentId: enrollment.id } })).toBe(1);
-  });
+    // The whole R1 workflow in one test; saves also re-evaluate risk flags (Sprint 10).
+  }, 30_000);
 });

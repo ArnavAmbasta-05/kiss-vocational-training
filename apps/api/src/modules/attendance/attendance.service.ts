@@ -10,6 +10,7 @@ import type {
 } from '@vtmp/shared';
 import { withAudit, type Actor } from '../../core/audit';
 import { prisma } from '../../core/db';
+import { batchEvents } from '../../core/events';
 import { AppError } from '../../core/errors';
 import { settings } from '../../core/settings';
 import { attendanceFigures, editWindow } from './rules';
@@ -160,7 +161,7 @@ export async function save(viewer: Viewer, sessionId: string, input: AttendanceS
     );
   }
 
-  return withAudit(viewer, async (tx, log) => {
+  const saved = await withAudit(viewer, async (tx, log) => {
     // Serialise saves of the same session so two trainers can't interleave.
     await tx.$queryRaw`SELECT id FROM training_sessions WHERE id = ${sessionId}::uuid FOR UPDATE`;
     const existing = new Map(
@@ -228,6 +229,9 @@ export async function save(viewer: Viewer, sessionId: string, input: AttendanceS
     }
     return { created: created.length, changed: changed.length };
   });
+  // F11: re-evaluate the batch's risk flags before responding (TAD §8.2 step 6).
+  await batchEvents.dataChanged(s.batchId);
+  return saved;
 }
 
 // ─── Figures (BR-08, BRQ-5.3): counts from SQL, percentage from the rule ──────

@@ -171,6 +171,44 @@ export async function mine(user: {
   return rows.map(toSummary);
 }
 
+/** Batch names and statuses by id (lists in other modules). */
+export async function namesOf(
+  ids: string[],
+): Promise<Map<string, { id: string; name: string; status: BatchStatus }>> {
+  if (ids.length === 0) return new Map();
+  const rows = await prisma().batch.findMany({
+    where: { id: { in: [...new Set(ids)] } },
+    select: { id: true, name: true, status: true },
+  });
+  return new Map(rows.map((b) => [b.id, b]));
+}
+
+/** Ids of batches in a status (e.g. the daily F11 run over ACTIVE batches). */
+export async function idsByStatus(status: BatchStatus): Promise<string[]> {
+  const rows = await prisma().batch.findMany({ where: { status }, select: { id: true } });
+  return rows.map((b) => b.id);
+}
+
+/** Ids of the batches a trainer is assigned to (BR-05 scoping). */
+export async function idsForTrainer(trainerId: string): Promise<string[]> {
+  const rows = await prisma().trainerAssignment.findMany({
+    where: { trainerId },
+    select: { batchId: true },
+  });
+  return rows.map((r) => r.batchId);
+}
+
+/** The user accounts of a batch's trainers (action owners, notices). */
+export async function trainerUsers(
+  batchId: string,
+): Promise<Array<{ id: string; fullName: string }>> {
+  const rows = await prisma().trainerAssignment.findMany({
+    where: { batchId, trainer: { user: { isActive: true } } },
+    select: { trainer: { select: { user: { select: { id: true, fullName: true } } } } },
+  });
+  return rows.map((r) => r.trainer.user).sort((a, b) => a.fullName.localeCompare(b.fullName));
+}
+
 export async function sessions(batchId: string): Promise<SessionDto[]> {
   const rows = await prisma().trainingSession.findMany({
     where: { batchId },

@@ -17,3 +17,4 @@ process.env.CORS_ORIGINS ??= 'http://localhost:5173';
 // Certificate PDFs from integration tests go to a temp folder, never the developer's ./storage.
 process.env.STORAGE_DRIVER = 'local';
 process.env.STORAGE_LOCAL_DIR = path.join(os.tmpdir(), 'vtmp-test-storage');
+process.env.CRON_SECRET ??= 'test-cron-secret-0123456789';

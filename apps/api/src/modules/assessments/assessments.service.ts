@@ -16,6 +16,7 @@ import type {
 import { withAudit, type Actor } from '../../core/audit';
 import { trainerOwnsBatch } from '../../core/auth';
 import { prisma } from '../../core/db';
+import { batchEvents } from '../../core/events';
 import { AppError } from '../../core/errors';
 import { resultPercent } from './rules';
 
@@ -273,6 +274,8 @@ export async function saveResults(
     }
     await log.many(entries);
   });
+  // F11: re-evaluate the batch's risk flags before responding (TAD §8.2 step 6).
+  await batchEvents.dataChanged(a.batchId);
   return resultsSheet(id);
 }
 
@@ -299,6 +302,43 @@ export async function studentResults(batchId: string, studentId: string): Promis
       remarks: r?.remarks ?? null,
     };
   });
+}
+
+/**
+ * Every student's recorded results in one batch, oldest assessment first, in one query (F11
+ * input). Students with nothing recorded are absent from the map.
+ */
+export async function batchScores(
+  batchId: string,
+): Promise<
+  Map<string, Array<{ marks: number; maxMarks: number; weightage: number; percent: number }>>
+> {
+  const rows = await prisma().assessmentResult.findMany({
+    where: { assessment: { batchId } },
+    orderBy: [{ assessment: { heldOn: 'asc' } }, { assessment: { createdAt: 'asc' } }],
+    select: {
+      studentId: true,
+      marks: true,
+      assessment: { select: { maxMarks: true, weightage: true } },
+    },
+  });
+  const byStudent = new Map<
+    string,
+    Array<{ marks: number; maxMarks: number; weightage: number; percent: number }>
+  >();
+  for (const r of rows) {
+    const marks = num(r.marks);
+    const maxMarks = num(r.assessment.maxMarks);
+    const list = byStudent.get(r.studentId) ?? [];
+    list.push({
+      marks,
+      maxMarks,
+      weightage: num(r.assessment.weightage),
+      percent: resultPercent(marks, maxMarks),
+    });
+    byStudent.set(r.studentId, list);
+  }
+  return byStudent;
 }
 
 // ─── Progress milestones (BRQ-6.3) ─────────────────────────────────────────────

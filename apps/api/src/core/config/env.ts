@@ -53,6 +53,11 @@ export const EnvSchema = z.object({
   STORAGE_DRIVER: z.enum(['local', 'vercel-blob']).default('local'),
   STORAGE_LOCAL_DIR: z.string().default('./storage'),
   BLOB_READ_WRITE_TOKEN: optionalString,
+  // Vercel Cron sends it as a Bearer token to /api/v1/internal/jobs/* (Sprint 10). Without it,
+  // the job endpoints refuse every call; locally node-cron runs the jobs instead.
+  CRON_SECRET: optionalString.refine((v) => v === undefined || v.length >= 16, {
+    message: 'must be at least 16 characters',
+  }),
   AI_ENABLED: booleanString,
   ANTHROPIC_API_KEY: optionalString,
   AI_MONTHLY_CAP: z.coerce.number().nonnegative().default(0),

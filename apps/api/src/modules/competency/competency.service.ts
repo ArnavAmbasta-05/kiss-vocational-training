@@ -17,6 +17,7 @@ import type {
 } from '@vtmp/shared';
 import { withAudit, type Actor } from '../../core/audit';
 import { prisma } from '../../core/db';
+import { batchEvents } from '../../core/events';
 import { AppError } from '../../core/errors';
 import { settings } from '../../core/settings';
 import * as assessments from '../assessments/assessments.service';
@@ -510,6 +511,8 @@ export async function saveRatings(
     }
     if (entries.length) await log.many(entries);
   });
+  // F11 (BR-18): a mandatory gap may open or clear a risk flag.
+  await batchEvents.dataChanged(batchId);
   return ratingGrid({ ...actor, role: 'TRAINER' }, batchId);
 }
 
@@ -624,13 +627,21 @@ export async function heatmap(batchId: string): Promise<Heatmap> {
   };
 }
 
-/** For F11 (Sprint 10): mandatory competencies where the student is below the required level. */
-export async function mandatoryGaps(
-  studentId: string,
+/**
+ * F11 input (BR-18): per student, the mandatory competencies they were assessed on and are
+ * still below the required level. Not-yet-assessed competencies don't count: early in a course
+ * nobody has been assessed, and that is not a risk.
+ */
+export async function mandatoryGapsByStudent(
   batchId: string,
-): Promise<CompetencyStanding[]> {
-  const { byStudent } = await standings(batchId, [studentId]);
-  return (byStudent.get(studentId) ?? []).filter((s) => s.isMandatory && s.gap > 0);
+): Promise<Map<string, CompetencyStanding[]>> {
+  const { byStudent } = await standings(batchId);
+  const out = new Map<string, CompetencyStanding[]>();
+  for (const [studentId, list] of byStudent) {
+    const gaps = list.filter((s) => s.isMandatory && s.source !== 'NOT_ASSESSED' && s.gap > 0);
+    if (gaps.length) out.set(studentId, gaps);
+  }
+  return out;
 }
 
 // ─── Passport support (F10: BRQ-10.1, 10.4, BR-14) ─────────────────────────────

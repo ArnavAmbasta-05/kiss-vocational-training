@@ -1,6 +1,7 @@
 import { createApp } from './app';
 import { config } from './core/config';
 import { disconnectPrisma } from './core/db';
+import { startLocalJobs } from './jobs';
 import { logger } from './core/logger';
 
 function main() {
@@ -9,6 +10,7 @@ function main() {
   const server = app.listen(env.PORT, () => {
     logger.info({ port: env.PORT, env: env.NODE_ENV }, 'VTMP API listening');
   });
+  if (env.NODE_ENV !== 'test') startLocalJobs();
 
   const shutdown = (signal: string) => {
     logger.info({ signal }, 'shutting down');
