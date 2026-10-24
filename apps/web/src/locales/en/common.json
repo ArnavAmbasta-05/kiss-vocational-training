@@ -34,7 +34,8 @@
       "batches": "My batches",
       "sessions": "Sessions",
       "assessments": "Assessments",
-      "competencies": "Competencies"
+      "competencies": "Competencies",
+      "atRisk": "At-risk students"
     },
     "admin": {
       "users": "Users",
@@ -44,7 +45,9 @@
       "completions": "Completions",
       "certificates": "Certificates",
       "reports": "Reports",
-      "competencies": "Competencies"
+      "competencies": "Competencies",
+      "atRisk": "At-risk students",
+      "audit": "Audit log"
     }
   },
   "actions": {

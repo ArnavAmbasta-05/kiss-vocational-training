@@ -1,0 +1,130 @@
+{
+  "level": {
+    "LOW": "",
+    "MEDIUM": "",
+    "HIGH": ""
+  },
+  "status": {
+    "OPEN": "",
+    "CLOSED": "",
+    "ALL": ""
+  },
+  "actionType": {
+    "COUNSELLING": "",
+    "EXTRA_SESSION": "",
+    "PRACTICE_TASK": ""
+  },
+  "role": {
+    "TRAINER": "",
+    "ADMIN": ""
+  },
+  "reasons": {
+    "ATTENDANCE_BELOW_MEDIUM": "",
+    "ATTENDANCE_BELOW_HIGH": "",
+    "CONSECUTIVE_ABSENCES": "",
+    "ASSESSMENT_BELOW": "",
+    "PROJECTED_BELOW": "",
+    "SCORE_DROP": "",
+    "MANDATORY_GAP": ""
+  },
+  "list": {
+    "title": "",
+    "intro": "",
+    "batch": "",
+    "allBatches": "",
+    "level": "",
+    "anyLevel": "",
+    "status": "",
+    "student": "",
+    "reasons": "",
+    "age": "",
+    "actions": "",
+    "days_one": "",
+    "days_other": "",
+    "noActions": "",
+    "actionCount_one": "",
+    "actionCount_other": "",
+    "escalated": "",
+    "improving": "",
+    "openFor": "",
+    "caption": "",
+    "empty": "",
+    "emptyHint": "",
+    "pages": "",
+    "previous": "",
+    "next": "",
+    "page": "",
+    "run": "",
+    "runDone": "",
+    "runSkipped": "",
+    "everyBatch": ""
+  },
+  "detail": {
+    "back": "",
+    "why": "",
+    "openFor_one": "",
+    "openFor_other": "",
+    "improving": "",
+    "closedOn": ""
+  },
+  "actions": {
+    "title": "",
+    "add": "",
+    "none": "",
+    "type": "",
+    "owner": "",
+    "due": "",
+    "note": "",
+    "noNote": "",
+    "outcome": "",
+    "done": "",
+    "record": "",
+    "recordFor": "",
+    "addTitle": "",
+    "noteLabel": "",
+    "noteHint": "",
+    "cancel": "",
+    "save": "",
+    "added": "",
+    "recordTitle": "",
+    "outcomeHint": "",
+    "outcomeRequired": "",
+    "recorded": ""
+  },
+  "timeline": {
+    "title": "",
+    "system": "",
+    "OPENED": "",
+    "LEVEL_CHANGED": "",
+    "CLEARING": "",
+    "CLOSED": "",
+    "ESCALATED": "",
+    "ACTION_ADDED": "",
+    "ACTION_COMPLETED": ""
+  },
+  "escalations": {
+    "title": "",
+    "all": "",
+    "none": "",
+    "more_one": "",
+    "more_other": ""
+  },
+  "student": {
+    "title": "",
+    "intro": "",
+    "improving": "",
+    "reasons": {
+      "ATTENDANCE_BELOW_MEDIUM": "",
+      "ATTENDANCE_BELOW_HIGH": "",
+      "CONSECUTIVE_ABSENCES": "",
+      "ASSESSMENT_BELOW": "",
+      "PROJECTED_BELOW": "",
+      "SCORE_DROP": "",
+      "MANDATORY_GAP": ""
+    },
+    "plan": "",
+    "action": "",
+    "done": "",
+    "help": ""
+  }
+}

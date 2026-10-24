@@ -9,6 +9,7 @@ import { useAuth } from '../../lib/auth';
 import { formatSessionDate, formatSessionTime } from '../../lib/format';
 import { useAdminCycles } from '../admin-courses/api';
 import { StatusBadge } from '../enrollment/StatusBadge';
+import { EscalationsWidget, MyRiskCard } from '../intervention/Widgets';
 import { downloadStudentReport } from '../reports/api';
 import { useAdminDashboard, useStudentDashboard, useTrainerDashboard } from './api';
 import { StatTile } from './StatTile';
@@ -70,6 +71,7 @@ export function AdminHome() {
           }
         />
       </div>
+      <EscalationsWidget />
       <div className="w-64">
         <Select
           label={t('charts.cycle')}
@@ -233,39 +235,44 @@ export function StudentHome() {
   };
 
   return (
-    <Card title={t('studentHome.figures')} headingLevel={2} data-testid="student-figures">
-      {data.enrollment && (
-        <p className="mb-3 flex flex-wrap items-center gap-2 text-sm text-slate-700">
-          {t('tiles.status')}: <StatusBadge status={data.enrollment.status} />
-          <span>{data.enrollment.cycleName}</span>
-        </p>
-      )}
-      {!tr ? (
-        <p className="text-sm text-slate-700">{t('studentHome.noTraining')}</p>
-      ) : (
-        <>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <StatTile
-              label={t('tiles.attendance')}
-              value={pct(tr.attendancePercent, t('tiles.none'))}
-              detail={t('tiles.minimum', { min: tr.minAttendancePercent })}
-            />
-            <StatTile label={t('tiles.aggregate')} value={pct(tr.aggregate, t('tiles.none'))} />
-            <StatTile
-              label={t('tiles.grade')}
-              value={
-                tr.projectedGrade ? t(`training:mine.grade.${tr.projectedGrade}`) : t('tiles.none')
-              }
-            />
-          </div>
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <Button variant="secondary" loading={busy} onClick={() => void onReport()}>
-              {t('studentHome.report')}
-            </Button>
-            <span className="text-xs text-slate-600">{t('studentHome.reportHint')}</span>
-          </div>
-        </>
-      )}
-    </Card>
+    <div className="flex flex-col gap-6">
+      <MyRiskCard />
+      <Card title={t('studentHome.figures')} headingLevel={2} data-testid="student-figures">
+        {data.enrollment && (
+          <p className="mb-3 flex flex-wrap items-center gap-2 text-sm text-slate-700">
+            {t('tiles.status')}: <StatusBadge status={data.enrollment.status} />
+            <span>{data.enrollment.cycleName}</span>
+          </p>
+        )}
+        {!tr ? (
+          <p className="text-sm text-slate-700">{t('studentHome.noTraining')}</p>
+        ) : (
+          <>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <StatTile
+                label={t('tiles.attendance')}
+                value={pct(tr.attendancePercent, t('tiles.none'))}
+                detail={t('tiles.minimum', { min: tr.minAttendancePercent })}
+              />
+              <StatTile label={t('tiles.aggregate')} value={pct(tr.aggregate, t('tiles.none'))} />
+              <StatTile
+                label={t('tiles.grade')}
+                value={
+                  tr.projectedGrade
+                    ? t(`training:mine.grade.${tr.projectedGrade}`)
+                    : t('tiles.none')
+                }
+              />
+            </div>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <Button variant="secondary" loading={busy} onClick={() => void onReport()}>
+                {t('studentHome.report')}
+              </Button>
+              <span className="text-xs text-slate-600">{t('studentHome.reportHint')}</span>
+            </div>
+          </>
+        )}
+      </Card>
+    </div>
   );
 }

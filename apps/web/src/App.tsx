@@ -113,6 +113,16 @@ const PublicPassportPage = lazy(() =>
   })),
 );
 
+const AtRiskPage = lazy(() =>
+  import('./features/intervention/AtRiskPage').then((m) => ({ default: m.AtRiskPage })),
+);
+const FlagDetailPage = lazy(() =>
+  import('./features/intervention/FlagDetailPage').then((m) => ({ default: m.FlagDetailPage })),
+);
+const AuditLogPage = lazy(() =>
+  import('./features/audit/AuditLogPage').then((m) => ({ default: m.AuditLogPage })),
+);
+
 /** Screens that exist today; every other nav item shows a "coming soon" page until built. */
 const BUILT: Record<string, RouteObject['element']> = {
   '/admin/users': <UsersPage />,
@@ -126,6 +136,9 @@ const BUILT: Record<string, RouteObject['element']> = {
   '/trainer/competencies': <TrainerCompetenciesPage />,
   '/student/skills': <MySkillGapsPage />,
   '/student/passport': <MyPassportPage />,
+  '/trainer/at-risk': <AtRiskPage base="/trainer/at-risk" />,
+  '/admin/at-risk': <AtRiskPage base="/admin/at-risk" />,
+  '/admin/audit': <AuditLogPage />,
   '/trainer/batches': <TrainerBatchesPage />,
   '/trainer/sessions': <TrainerSessionsPage />,
   '/trainer/assessments': <TrainerAssessmentsPage />,
@@ -146,11 +159,13 @@ const EXTRA: Partial<Record<Role, RouteObject[]>> = {
     { path: 'batches/:batchId', element: <BatchDetailPage admin /> },
     { path: 'sessions/:sessionId', element: <AttendancePage /> },
     { path: 'assessments/:assessmentId', element: <MarksPage /> },
+    { path: 'at-risk/:flagId', element: <FlagDetailPage back="/admin/at-risk" /> },
   ],
   TRAINER: [
     { path: 'batches/:batchId', element: <BatchDetailPage admin={false} /> },
     { path: 'sessions/:sessionId', element: <AttendancePage back="/trainer/sessions" /> },
     { path: 'assessments/:assessmentId', element: <MarksPage back="/trainer/assessments" /> },
+    { path: 'at-risk/:flagId', element: <FlagDetailPage back="/trainer/at-risk" /> },
   ],
 };
 

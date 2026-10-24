@@ -88,6 +88,10 @@
     "NOT_VERIFIED": "Only a verified skill can be revoked.",
     "LINK_INACTIVE": "Link no longer active.",
     "LINK_NOT_FOUND": "Link not found.",
-    "CERTIFICATE_NOT_FOUND": "Certificate not found."
+    "CERTIFICATE_NOT_FOUND": "Certificate not found.",
+    "FLAG_CLOSED": "This flag is already closed.",
+    "DUE_IN_PAST": "The due date cannot be in the past.",
+    "INVALID_OWNER": "The owner must be one of the batch's trainers or an admin.",
+    "COMPLETED_IN_FUTURE": "The completion time cannot be in the future."
   }
 }

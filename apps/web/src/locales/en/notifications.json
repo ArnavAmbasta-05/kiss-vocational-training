@@ -38,6 +38,14 @@
     "CERTIFICATE_ISSUED": {
       "title": "Your certificate is ready",
       "body": "Certificate {{publicCode}} can be downloaded from My certificates."
+    },
+    "RISK_FLAG_ESCALATED": {
+      "title": "A student needs attention",
+      "body": "{{student}} ({{batch}}) has been at high risk for {{days}} days."
+    },
+    "RISK_ACTION_AGREED": {
+      "title": "A plan to help you",
+      "body": "{{owner}} has set up support for you, due {{dueOn}}."
     }
   }
 }

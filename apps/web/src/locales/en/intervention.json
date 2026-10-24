@@ -1,0 +1,130 @@
+{
+  "level": {
+    "LOW": "Low",
+    "MEDIUM": "Medium risk",
+    "HIGH": "High risk"
+  },
+  "status": {
+    "OPEN": "Open",
+    "CLOSED": "Closed",
+    "ALL": "All"
+  },
+  "actionType": {
+    "COUNSELLING": "Counselling",
+    "EXTRA_SESSION": "Extra session",
+    "PRACTICE_TASK": "Practice task"
+  },
+  "role": {
+    "TRAINER": "Trainer",
+    "ADMIN": "Admin"
+  },
+  "reasons": {
+    "ATTENDANCE_BELOW_MEDIUM": "Attendance {{actual}} % (below {{threshold}} %)",
+    "ATTENDANCE_BELOW_HIGH": "Attendance {{actual}} % (below {{threshold}} %)",
+    "CONSECUTIVE_ABSENCES": "{{actual}} absences in a row",
+    "ASSESSMENT_BELOW": "Latest assessment {{actual}} % (below {{threshold}} %)",
+    "PROJECTED_BELOW": "Projected aggregate {{actual}} % (below {{threshold}} %)",
+    "SCORE_DROP": "Dropped {{actual}} points since the previous assessment",
+    "MANDATORY_GAP": "{{competency}}: {{actual}} level(s) below the required level {{threshold}}"
+  },
+  "list": {
+    "title": "At-risk students",
+    "intro": "Students flagged by the daily check of attendance, marks and mandatory skills. Open a student to agree a remedial action and follow it up.",
+    "batch": "Batch",
+    "allBatches": "All my batches",
+    "level": "Level",
+    "anyLevel": "Any level",
+    "status": "Status",
+    "student": "Student",
+    "reasons": "Why",
+    "age": "Open for",
+    "actions": "Actions",
+    "days_one": "{{count}} day",
+    "days_other": "{{count}} days",
+    "noActions": "None yet",
+    "actionCount_one": "{{count}} ({{open}} open)",
+    "actionCount_other": "{{count}} ({{open}} open)",
+    "escalated": "Escalated",
+    "improving": "Improving",
+    "openFor": "Open the flag for {{name}}",
+    "caption": "At-risk students",
+    "empty": "No students match these filters",
+    "emptyHint": "Flags appear here after attendance or marks are saved, and after the daily check.",
+    "pages": "At-risk students pages",
+    "previous": "Previous",
+    "next": "Next",
+    "page": "Page {{page}} of {{pages}}",
+    "run": "Run the check now",
+    "runDone": "Checked {{students}} students; {{opened}} newly flagged.",
+    "runSkipped": "A check is already running. Try again in a minute.",
+    "everyBatch": "All batches"
+  },
+  "detail": {
+    "back": "Back to at-risk students",
+    "why": "Why this student is flagged",
+    "openFor_one": "Open for {{count}} day.",
+    "openFor_other": "Open for {{count}} days.",
+    "improving": "Everything has been on track since {{date}}. The flag closes by itself after {{days}} clear days.",
+    "closedOn": "Closed on {{date}}. Its history is kept below."
+  },
+  "actions": {
+    "title": "Remedial actions",
+    "add": "Add action",
+    "none": "No actions agreed yet.",
+    "type": "Type",
+    "owner": "Owner",
+    "due": "Due",
+    "note": "Note",
+    "noNote": "—",
+    "outcome": "Outcome",
+    "done": "Done",
+    "record": "Record outcome",
+    "recordFor": "Record the outcome of {{type}}",
+    "addTitle": "Agree an action for {{name}}",
+    "noteLabel": "Note (staff only)",
+    "noteHint": "Not shown to the student.",
+    "cancel": "Cancel",
+    "save": "Save",
+    "added": "Action recorded. The student has been told about the plan.",
+    "recordTitle": "Outcome of {{type}}",
+    "outcomeHint": "What happened, in a sentence.",
+    "outcomeRequired": "Describe the outcome (at least 3 characters).",
+    "recorded": "Outcome recorded"
+  },
+  "timeline": {
+    "title": "History",
+    "system": "Daily check",
+    "OPENED": "Flagged: {{level}}",
+    "LEVEL_CHANGED": "Changed from {{from}} to {{to}}",
+    "CLEARING": "Back on track; clear period started",
+    "CLOSED": "Flag closed",
+    "ESCALATED": "Escalated to admins",
+    "ACTION_ADDED": "Action agreed: {{type}}",
+    "ACTION_COMPLETED": "Action completed: {{type}}"
+  },
+  "escalations": {
+    "title": "Escalated students",
+    "all": "All at-risk students",
+    "none": "No escalations right now",
+    "more_one": "and {{count}} more",
+    "more_other": "and {{count}} more"
+  },
+  "student": {
+    "title": "Let's get you back on track",
+    "intro": "Your trainers noticed a few things in {{batch}} that we can work on together:",
+    "improving": "You're back on track. Keep it up: this note goes away once things stay steady for a little while.",
+    "reasons": {
+      "ATTENDANCE_BELOW_MEDIUM": "Your attendance is {{actual}} %. Coming to every session from now on will lift it.",
+      "ATTENDANCE_BELOW_HIGH": "Your attendance is {{actual}} %, and you need {{threshold}} % to complete the course. Every session from now on counts.",
+      "CONSECUTIVE_ABSENCES": "You've missed the last {{actual}} sessions. We'd love to see you at the next one.",
+      "ASSESSMENT_BELOW": "Your latest assessment was {{actual}} %. A little practice will help.",
+      "PROJECTED_BELOW": "Your marks so far average {{actual}} %. There is still time to bring this up.",
+      "SCORE_DROP": "Your latest score was {{actual}} points lower than the one before.",
+      "MANDATORY_GAP": "{{competency}} needs a bit more practice to reach the required level."
+    },
+    "plan": "What we agreed",
+    "action": "{{type}} with {{owner}} by {{date}}",
+    "done": "done",
+    "help": "If something is making it hard to attend or keep up, talk to your trainer. We are here to help."
+  }
+}

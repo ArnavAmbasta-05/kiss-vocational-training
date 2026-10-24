@@ -1,0 +1,38 @@
+{
+  "title": "",
+  "intro": "",
+  "export": "",
+  "filters": {
+    "entity": "",
+    "action": "",
+    "entityId": "",
+    "from": "",
+    "to": "",
+    "any": "",
+    "user": "",
+    "clearUser": ""
+  },
+  "caption": "",
+  "empty": "",
+  "cols": {
+    "time": "",
+    "user": "",
+    "action": "",
+    "record": "",
+    "changes": ""
+  },
+  "system": "",
+  "filterByUser": "",
+  "show": "",
+  "hide": "",
+  "diffCaption": "",
+  "field": "",
+  "old": "",
+  "new": "",
+  "changed": "",
+  "noValues": "",
+  "pages": "",
+  "previous": "",
+  "next": "",
+  "page": ""
+}

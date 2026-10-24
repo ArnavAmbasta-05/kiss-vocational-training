@@ -38,6 +38,14 @@
     "CERTIFICATE_ISSUED": {
       "title": "",
       "body": ""
+    },
+    "RISK_FLAG_ESCALATED": {
+      "title": "",
+      "body": ""
+    },
+    "RISK_ACTION_AGREED": {
+      "title": "",
+      "body": ""
     }
   }
 }

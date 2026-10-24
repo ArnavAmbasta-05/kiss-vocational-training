@@ -1,0 +1,38 @@
+{
+  "title": "Audit log",
+  "intro": "Every change to attendance, marks, enrollments, completions, certificates, passports and risk flags: who did it, when, and what changed. Entries cannot be edited or deleted.",
+  "export": "Export CSV",
+  "filters": {
+    "entity": "Entity",
+    "action": "Action",
+    "entityId": "Record ID",
+    "from": "From",
+    "to": "To",
+    "any": "Any",
+    "user": "User: {{name}}",
+    "clearUser": "Clear user filter"
+  },
+  "caption": "Audit log entries, newest first",
+  "empty": "No entries match these filters",
+  "cols": {
+    "time": "Time",
+    "user": "By",
+    "action": "Action",
+    "record": "Record",
+    "changes": "Changes"
+  },
+  "system": "System",
+  "filterByUser": "Show only changes by {{name}}",
+  "show": "Show changes",
+  "hide": "Hide changes",
+  "diffCaption": "Old and new values",
+  "field": "Field",
+  "old": "Old",
+  "new": "New",
+  "changed": "changed",
+  "noValues": "No values recorded for this entry.",
+  "pages": "Audit log pages",
+  "previous": "Previous",
+  "next": "Next",
+  "page": "Page {{page}} of {{pages}} · {{total}} entries"
+}

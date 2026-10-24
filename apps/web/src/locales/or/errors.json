@@ -88,6 +88,10 @@
     "NOT_VERIFIED": "",
     "LINK_INACTIVE": "",
     "LINK_NOT_FOUND": "",
-    "CERTIFICATE_NOT_FOUND": ""
+    "CERTIFICATE_NOT_FOUND": "",
+    "FLAG_CLOSED": "",
+    "DUE_IN_PAST": "",
+    "INVALID_OWNER": "",
+    "COMPLETED_IN_FUTURE": ""
   }
 }
