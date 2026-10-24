@@ -127,4 +127,24 @@ async function history(entity: string, entityId: string): Promise<AuditRow[]> {
   });
 }
 
-export const audit = { record, recordMany, history };
+/** Read-only: the audit trails of several records of one entity, oldest first. */
+async function historyOf(
+  entity: string,
+  entityIds: string[],
+): Promise<Array<AuditRow & { entityId: string }>> {
+  if (entityIds.length === 0) return [];
+  return prisma().auditLog.findMany({
+    where: { entity, entityId: { in: entityIds } },
+    orderBy: { createdAt: 'asc' },
+    select: {
+      entityId: true,
+      action: true,
+      userId: true,
+      oldValue: true,
+      newValue: true,
+      createdAt: true,
+    },
+  });
+}
+
+export const audit = { record, recordMany, history, historyOf };

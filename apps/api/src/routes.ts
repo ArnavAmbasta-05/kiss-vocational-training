@@ -14,12 +14,20 @@ import {
   studentGapRoutes,
 } from './modules/competency/competency.routes';
 import { certificateRenderRoutes, completionRoutes } from './modules/completion/completion.routes';
+import { auditLogRoutes } from './modules/audit/audit.routes';
 import { authRoutes } from './modules/auth/auth.routes';
 import { adminBatchRoutes, batchRoutes } from './modules/batches/batches.routes';
 import { adminCourseRoutes, catalogueRoutes } from './modules/courses/courses.routes';
 import { adminEnrollmentRoutes, enrollmentRoutes } from './modules/enrollments/enrollments.routes';
 import { dashboardRoutes } from './modules/dashboard/dashboard.routes';
 import { certificateRoutes, studentCertificateRoutes } from './modules/documents/documents.routes';
+import {
+  internalJobRoutes,
+  registerInterventionHooks,
+  riskActionRoutes,
+  riskFlagRoutes,
+  studentRiskRoutes,
+} from './modules/intervention/intervention.routes';
 import { shareRoutes, studentPassportRoutes } from './modules/passport/passport.routes';
 import { publicRoutes } from './modules/verification/verification.routes';
 import { healthRoutes } from './modules/health/health.routes';
@@ -33,6 +41,8 @@ export function v1Routes(): Router {
   const router = Router();
   // Public, unauthenticated router first (rule 7): its own rate limit, whitelisted fields only.
   router.use('/public', publicRoutes());
+  // Scheduled jobs: secret-protected, no user session (Vercel Cron in production).
+  router.use('/internal/jobs', internalJobRoutes());
   router.use('/health', healthRoutes());
   router.use('/auth', authRoutes());
   router.use('/users', meRoutes());
@@ -52,6 +62,7 @@ export function v1Routes(): Router {
   router.use('/certificates', certificateRoutes());
   router.use('/reports', reportRoutes());
   router.use('/dashboard', dashboardRoutes());
+  router.use('/audit-logs', auditLogRoutes());
   // Innovation modules (R2). Core modules never import these; only this file wires them in.
   router.use('/courses', courseCompetencyRoutes());
   router.use('/competencies', competencyRoutes());
@@ -61,6 +72,11 @@ export function v1Routes(): Router {
   router.use('/competency-ratings', ratingRevokeRoutes());
   router.use('/students', studentPassportRoutes());
   router.use('/passport', shareRoutes());
+  router.use('/risk-flags', riskFlagRoutes());
+  router.use('/risk-actions', riskActionRoutes());
+  router.use('/students', studentRiskRoutes());
+  // F11: saves of attendance, marks and ratings re-evaluate that batch's risk flags.
+  registerInterventionHooks();
   router.use('/admin/users', adminUserRoutes());
   router.use('/admin/enrollments', adminEnrollmentRoutes());
   router.use('/admin', adminBatchRoutes());

@@ -29,6 +29,9 @@ tags:
   - name: competency
   - name: passport
   - name: public
+  - name: intervention
+  - name: audit
+  - name: jobs
 paths:
   /health:
     get:
@@ -1539,6 +1542,146 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Certificate' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /risk-flags:
+    get:
+      tags: [intervention]
+      summary: At-risk students with reasons (BRQ-11.2) - trainers see their own batches, admins all
+      description: Worst level first, then the longest-open. status defaults to OPEN. A trainer filtering on someone else's batch gets 403.
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PageSize' }
+        - { name: batchId, in: query, schema: { type: string, format: uuid } }
+        - { name: level, in: query, schema: { type: string, enum: [LOW, MEDIUM, HIGH] } }
+        - {
+            name: status,
+            in: query,
+            schema: { type: string, enum: [OPEN, CLOSED, ALL], default: OPEN },
+          }
+        - { name: escalated, in: query, schema: { type: string, enum: ['true', 'false'] } }
+      responses:
+        '200':
+          description: Page of flags
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/RiskFlagRow' } }
+                  meta: { $ref: '#/components/schemas/PageMeta' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /risk-flags/evaluate:
+    post:
+      tags: [intervention]
+      summary: Run the daily risk evaluation now (Admin) - the same job the cron runs
+      responses:
+        '200': { description: Run summary; skipped is true when a run is already in progress }
+  /risk-flags/{flagId}:
+    get:
+      tags: [intervention]
+      summary: One flag with its actions, a timeline built from the audit log, and who can own an action (BRQ-11.4)
+      parameters:
+        - { name: flagId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Flag detail }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /risk-flags/{flagId}/actions:
+    post:
+      tags: [intervention]
+      summary: Record a remedial action with owner and due date (BRQ-11.3)
+      description: The owner must be one of the batch's trainers or an admin (422 INVALID_OWNER); dueOn today or later (422 DUE_IN_PAST); the flag must be open (409 FLAG_CLOSED). The student is notified of the agreed action, never the note. Audited.
+      parameters:
+        - { name: flagId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, ownerId, dueOn]
+              properties:
+                type: { type: string, enum: [COUNSELLING, EXTRA_SESSION, PRACTICE_TASK] }
+                ownerId: { type: string, format: uuid }
+                dueOn: { type: string, format: date }
+                note: { type: string, maxLength: 1000 }
+      responses:
+        '201': { description: The updated flag detail }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /risk-actions/{actionId}:
+    patch:
+      tags: [intervention]
+      summary: Record an action's outcome (completedAt defaults to now and cannot be in the future)
+      parameters:
+        - { name: actionId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [outcome]
+              properties:
+                outcome: { type: string, minLength: 3, maxLength: 1000 }
+                completedAt: { type: string, format: date-time }
+      responses:
+        '200': { description: The updated flag detail }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /students/me/risk:
+    get:
+      tags: [intervention]
+      summary: The student's own open flags with reasons and agreed actions - supportive view (BRQ-11.5)
+      responses:
+        '200': { description: Own flags (staff notes are never included) }
+  /internal/jobs/risk-evaluation:
+    get:
+      tags: [jobs]
+      summary: Daily risk evaluation, called by Vercel Cron (BRQ-11.1, TAD 8.2)
+      description: Authorization Bearer CRON_SECRET (not a user token). Evaluates every ACTIVE batch; a job lease means two runs never overlap (a second returns skipped true). POST works the same for manual runs.
+      security: []
+      responses:
+        '200': { description: Run summary }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [jobs]
+      summary: Same as GET, for manual runs with the cron secret
+      security: []
+      responses:
+        '200': { description: Run summary }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /audit-logs:
+    get:
+      tags: [audit]
+      summary: Audit log viewer (Admin, BRQ-19.2) - newest first, read-only
+      description: There are no edit or delete endpoints, and the table refuses UPDATE and DELETE (BRQ-19.3). from and to are inclusive UTC days.
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PageSize' }
+        - { name: userId, in: query, schema: { type: string, format: uuid } }
+        - { name: entity, in: query, schema: { type: string } }
+        - { name: entityId, in: query, schema: { type: string } }
+        - { name: action, in: query, schema: { type: string } }
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+      responses:
+        '200': { description: Page of audit rows (user is null for system jobs) }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /audit-logs/facets:
+    get:
+      tags: [audit]
+      summary: Entities and actions present in the log, for the filters (Admin)
+      responses:
+        '200': { description: Entities and actions }
+  /audit-logs/export.csv:
+    get:
+      tags: [audit]
+      summary: The same filters as CSV (Admin), at most 10000 rows; X-Export-Truncated says whether more matched
+      responses:
+        '200':
+          description: CSV file
+          content:
+            text/csv: {}
 components:
   securitySchemes:
     bearerAuth:
@@ -1560,6 +1703,34 @@ components:
       required: false
       schema: { type: string, maxLength: 128 }
   schemas:
+    RiskFlagRow:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        student:
+          type: object
+          properties: { id: { type: string }, fullName: { type: string }, rollNo: { type: string } }
+        batch:
+          type: object
+          properties: { id: { type: string }, name: { type: string } }
+        level: { type: string, enum: [LOW, MEDIUM, HIGH] }
+        reasons:
+          type: array
+          items:
+            type: object
+            properties:
+              code: { type: string }
+              level: { type: string, enum: [MEDIUM, HIGH] }
+              actual: { type: number }
+              threshold: { type: number }
+              competency: { type: string }
+        status: { type: string, enum: [OPEN, CLOSED] }
+        openedAt: { type: string, format: date-time }
+        clearSince: { type: string, format: date-time, nullable: true }
+        closedAt: { type: string, format: date-time, nullable: true }
+        escalatedAt: { type: string, format: date-time, nullable: true }
+        actionCount: { type: integer }
+        openActionCount: { type: integer }
     Error:
       type: object
       required: [error]
