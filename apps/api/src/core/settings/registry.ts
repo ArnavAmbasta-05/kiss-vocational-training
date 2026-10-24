@@ -73,6 +73,16 @@ export const SETTINGS = {
     { L2: 40, L3: 60, L4: 85 },
     'Provisional level from linked assessment %: below L2 → 1, L2+ → 2, L3+ → 3, L4+ → 4 [F12]',
   ),
+  'passport.shareDefaultDays': define(
+    z.number().int().min(1).max(365),
+    30,
+    'Days a passport share link lasts when the student does not choose [BRQ-10.3]',
+  ),
+  'passport.shareMaxDays': define(
+    z.number().int().min(1).max(3650),
+    365,
+    'Longest a passport share link may last [BRQ-10.3]',
+  ),
   'enrollment.maxPreferences': define(
     z.number().int().min(1).max(3),
     3,

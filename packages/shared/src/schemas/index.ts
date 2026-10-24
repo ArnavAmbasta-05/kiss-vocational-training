@@ -8,3 +8,4 @@ export * from './training';
 export * from './completion';
 export * from './reports';
 export * from './competency';
+export * from './passport';
