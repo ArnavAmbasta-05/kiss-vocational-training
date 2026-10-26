@@ -1,5 +1,6 @@
 import cron from 'node-cron';
 import { logger } from './core/logger';
+import { refresh } from './modules/analytics/analytics.service';
 import { evaluateAll } from './modules/intervention/intervention.service';
 
 /**
@@ -15,6 +16,16 @@ export function startLocalJobs(): void {
       evaluateAll()
         .then((summary) => logger.info({ summary }, 'risk evaluation finished'))
         .catch((err: unknown) => logger.error({ err }, 'risk evaluation failed'));
+    },
+    { timezone: 'Asia/Kolkata' },
+  );
+  // F20: refresh the outcome analytics views at 02:30 India time, after the risk run.
+  cron.schedule(
+    '30 2 * * *',
+    () => {
+      refresh()
+        .then((r) => logger.info(r, 'analytics refresh finished'))
+        .catch((err: unknown) => logger.error({ err }, 'analytics refresh failed'));
     },
     { timezone: 'Asia/Kolkata' },
   );

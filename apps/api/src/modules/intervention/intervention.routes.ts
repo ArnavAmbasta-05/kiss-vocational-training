@@ -1,4 +1,3 @@
-import { createHash, timingSafeEqual } from 'node:crypto';
 import { Router, type Request } from 'express';
 import { z } from 'zod';
 import {
@@ -16,8 +15,6 @@ import {
   requireOwnership,
   type Resolver,
 } from '../../core/auth';
-import { config } from '../../core/config';
-import { AppError } from '../../core/errors';
 import { batchEvents } from '../../core/events';
 import { asyncHandler } from '../../core/http';
 import { validate } from '../../core/middleware';
@@ -133,30 +130,5 @@ export function studentRiskRoutes(): Router {
       res.set('Cache-Control', 'no-store').json(await service.myRisk(req.user!.studentId!));
     }),
   );
-  return router;
-}
-
-const digest = (v: string) => createHash('sha256').update(v).digest();
-
-/** Bearer CRON_SECRET, compared in constant time. With no secret configured, nothing passes. */
-function cronAuthorised(req: Request): boolean {
-  const secret = config().CRON_SECRET;
-  const header = req.get('authorization') ?? '';
-  if (!secret || !header.startsWith('Bearer ')) return false;
-  return timingSafeEqual(digest(header.slice(7)), digest(secret));
-}
-
-/**
- * /internal/jobs — scheduled jobs. Vercel Cron calls the path with GET and
- * `Authorization: Bearer $CRON_SECRET`; POST is accepted for manual runs with the same secret.
- */
-export function internalJobRoutes(): Router {
-  const router = Router();
-  const run = asyncHandler(async (req, res) => {
-    if (!cronAuthorised(req)) throw AppError.unauthorized('Invalid job credentials');
-    res.set('Cache-Control', 'no-store').json(await service.evaluateAll());
-  });
-  router.get('/risk-evaluation', run);
-  router.post('/risk-evaluation', run);
   return router;
 }

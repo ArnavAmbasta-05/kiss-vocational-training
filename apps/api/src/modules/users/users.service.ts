@@ -29,13 +29,24 @@ export async function updateProfile(
       select: {
         fullName: true,
         locale: true,
-        student: { select: { id: true, phone: true } },
+        student: { select: { id: true, phone: true, nameOdia: true } },
         trainer: { select: { id: true, phone: true } },
       },
     });
-    const { phone, ...userFields } = input;
+    const { phone, nameOdia, ...userFields } = input;
+    if (nameOdia !== undefined && !before.student) {
+      throw AppError.unprocessable('STUDENTS_ONLY', 'Only students have an Odia name', [
+        { path: 'nameOdia', message: 'Students only' },
+      ]);
+    }
     if (Object.keys(userFields).length) {
       await tx.user.update({ where: { id: userId }, data: userFields });
+    }
+    if (nameOdia !== undefined && before.student) {
+      await tx.student.update({
+        where: { id: before.student.id },
+        data: { nameOdia: nameOdia || null },
+      });
     }
     if (phone !== undefined) {
       if (before.student)
@@ -51,6 +62,7 @@ export async function updateProfile(
         fullName: before.fullName,
         locale: before.locale,
         phone: before.student?.phone ?? before.trainer?.phone ?? null,
+        ...(before.student ? { nameOdia: before.student.nameOdia } : {}),
       },
       newValue: input,
     });
@@ -310,4 +322,15 @@ export async function userIdentities(
     select: { id: true, fullName: true, email: true },
   });
   return new Map(rows.map((u) => [u.id, u]));
+}
+
+/** A student by roll number (case-insensitive), for staff lookups such as placements. */
+export async function studentByRollNo(
+  rollNo: string,
+): Promise<{ id: string; fullName: string; rollNo: string } | null> {
+  const s = await prisma().student.findFirst({
+    where: { rollNo: { equals: rollNo.trim(), mode: 'insensitive' } },
+    select: { id: true, rollNo: true, user: { select: { fullName: true } } },
+  });
+  return s ? { id: s.id, fullName: s.user.fullName, rollNo: s.rollNo } : null;
 }

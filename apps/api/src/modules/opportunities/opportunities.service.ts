@@ -431,3 +431,8 @@ export async function interestedCsv(
     ),
   };
 }
+
+/** For other modules (F20 placements): does this opportunity exist? */
+export async function exists(id: string): Promise<boolean> {
+  return (await prisma().opportunity.count({ where: { id } })) > 0;
+}

@@ -221,5 +221,11 @@ export async function runSeed(prisma: PrismaClient, opts: SeedOptions = {}) {
   await seedCompetencies(prisma, log);
   await seedOpportunities(prisma, log);
 
+  // F20: rebuild the outcome views so a fresh database shows figures straight away (production
+  // refreshes them nightly).
+  await prisma.$executeRawUnsafe('REFRESH MATERIALIZED VIEW analytics_batch_outcomes');
+  await prisma.$executeRawUnsafe('REFRESH MATERIALIZED VIEW analytics_course_competency');
+  log('analytics: outcome views refreshed');
+
   return { students: students.length, trainers: TRAINERS.length, courses: COURSES.length };
 }
