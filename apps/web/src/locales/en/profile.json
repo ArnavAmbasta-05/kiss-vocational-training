@@ -27,6 +27,9 @@
   },
   "validation": {
     "fullName": "Enter your full name (at least 2 characters)",
-    "phone": "Enter a valid phone number"
-  }
+    "phone": "Enter a valid phone number",
+    "nameOdia": "Use Odia script only"
+  },
+  "nameOdia": "Name in Odia (optional)",
+  "nameOdiaHint": "Printed under your English name on certificates. Use Odia script."
 }

@@ -1,51 +1,51 @@
 {
-  "bell": "",
-  "bellUnread_one": "",
-  "bellUnread_other": "",
-  "heading": "",
-  "empty": "",
-  "markAllRead": "",
-  "unread": "",
+  "bell": "सूचनाएँ",
+  "bellUnread_one": "सूचनाएँ, {{count}} अपठित",
+  "bellUnread_other": "सूचनाएँ, {{count}} अपठित",
+  "heading": "सूचनाएँ",
+  "empty": "आपके लिए कोई सूचना नहीं है।",
+  "markAllRead": "सब पढ़ा हुआ चिह्नित करें",
+  "unread": "अपठित",
   "types": {
     "ENROLLMENT_APPROVED": {
-      "title": "",
-      "body": ""
+      "title": "आवेदन स्वीकृत",
+      "body": "{{cycleName}} के लिए आपका आवेदन स्वीकृत हो गया।"
     },
     "ENROLLMENT_REJECTED": {
-      "title": "",
-      "body": ""
+      "title": "आवेदन स्वीकृत नहीं हुआ",
+      "body": "{{cycleName}} के लिए आपका आवेदन स्वीकृत नहीं हुआ: {{reason}}"
     },
     "ENROLLMENT_WAITLISTED": {
-      "title": "",
-      "body": ""
+      "title": "आवेदन प्रतीक्षा सूची में",
+      "body": "{{cycleName}} के लिए आपका आवेदन प्रतीक्षा सूची में है।"
     },
     "ENROLLMENT_ALLOCATED": {
-      "title": "",
-      "body": ""
+      "title": "आपको बैच मिल गया",
+      "body": "आपको {{courseTitle}} के लिए {{batchName}} में रखा गया है।"
     },
     "BATCH_ACTIVATED": {
-      "title": "",
-      "body": ""
+      "title": "प्रशिक्षण शुरू हो गया",
+      "body": "{{courseTitle}}, {{batchName}} अब सक्रिय है।"
     },
     "TRAINING_COMPLETED": {
-      "title": "",
-      "body": ""
+      "title": "प्रशिक्षण पूरा हुआ",
+      "body": "आपने {{courseTitle}} ग्रेड {{grade}} के साथ पूरा किया।"
     },
     "TRAINING_NOT_COMPLETED": {
-      "title": "",
-      "body": ""
+      "title": "प्रशिक्षण पूरा नहीं हुआ",
+      "body": "{{courseTitle}}: {{reason}}"
     },
     "CERTIFICATE_ISSUED": {
-      "title": "",
-      "body": ""
+      "title": "आपका प्रमाणपत्र तैयार है",
+      "body": "प्रमाणपत्र {{publicCode}} को 'मेरे प्रमाणपत्र' से डाउनलोड किया जा सकता है।"
     },
     "RISK_FLAG_ESCALATED": {
-      "title": "",
-      "body": ""
+      "title": "एक विद्यार्थी को ध्यान देने की ज़रूरत है",
+      "body": "{{student}} ({{batch}}) {{days}} दिनों से उच्च जोखिम में है।"
     },
     "RISK_ACTION_AGREED": {
-      "title": "",
-      "body": ""
+      "title": "आपकी मदद के लिए एक योजना",
+      "body": "{{owner}} ने आपके लिए सहायता तय की है, {{dueOn}} तक।"
     }
   }
 }

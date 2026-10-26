@@ -1,26 +1,26 @@
 {
   "panel": {
-    "title": "",
-    "intro": ""
+    "title": "समय-सारणी जाँच",
+    "intro": "इस आवंटन के बाद हर बैच कितना भरेगा, उसे कौन पढ़ाता है, और उसके आगामी सत्रों में स्थान या प्रशिक्षक का कोई टकराव।"
   },
   "capacity": {
-    "OK": "",
-    "NEAR": "",
-    "OVER": ""
+    "OK": "{{capacity}} में से {{projected}} ({{percent}} %)",
+    "NEAR": "लगभग भरा: {{capacity}} में से {{projected}} ({{percent}} %)",
+    "OVER": "क्षमता से अधिक: {{capacity}} में से {{projected}}"
   },
   "clash": {
-    "hard_one": "",
-    "hard_other": "",
-    "soft_one": "",
-    "soft_other": "",
-    "VENUE": "",
-    "TRAINER": "",
-    "more_one": "",
-    "more_other": ""
+    "hard_one": "{{count}} टकराव",
+    "hard_other": "{{count}} टकराव",
+    "soft_one": "{{count}} चेतावनी",
+    "soft_other": "{{count}} चेतावनियाँ",
+    "VENUE": "{{date}}, {{time}}: {{venue}} {{other}} के लिए भी बुक है",
+    "TRAINER": "{{date}}, {{time}}: {{trainer}} {{other}} को भी पढ़ाते हैं",
+    "more_one": "और {{count}}",
+    "more_other": "और {{count}}"
   },
   "trainers": {
-    "assigned": "",
-    "none": "",
-    "free": ""
+    "assigned": "प्रशिक्षक: {{names}}",
+    "none": "अभी कोई प्रशिक्षक नहीं सौंपा गया।",
+    "free": "पढ़ाने के लिए उपलब्ध: {{names}}"
   }
 }

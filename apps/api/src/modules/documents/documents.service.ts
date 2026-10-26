@@ -134,6 +134,7 @@ export async function renderAndStore(
   const pdf = await renderCertificate({
     institution,
     studentName: facts.fullName,
+    nameOdia: facts.nameOdia,
     rollNo: facts.rollNo,
     courseTitle: placement.batch.courseTitle,
     batchName: placement.batch.name,

@@ -21,7 +21,7 @@ const meSelect = {
   fullName: true,
   role: true,
   locale: true,
-  student: { select: { id: true, rollNo: true, cgpa: true, phone: true } },
+  student: { select: { id: true, rollNo: true, cgpa: true, phone: true, nameOdia: true } },
   trainer: { select: { id: true, employeeCode: true, phone: true, specialization: true } },
 } satisfies Prisma.UserSelect;
 

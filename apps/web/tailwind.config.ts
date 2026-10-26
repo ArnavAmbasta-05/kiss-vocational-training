@@ -26,6 +26,9 @@ export default {
           '"Segoe UI"',
           'Roboto',
           '"Noto Sans"',
+          // Loaded on demand for Odia and Hindi (src/i18n); browsers pick them per character.
+          '"Noto Sans Oriya"',
+          '"Noto Sans Devanagari"',
           'Arial',
           'sans-serif',
         ],

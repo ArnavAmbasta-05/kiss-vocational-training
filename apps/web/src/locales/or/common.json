@@ -1,72 +1,75 @@
 {
-  "appName": "",
-  "appFullName": "",
-  "skipToContent": "",
-  "loading": "",
+  "appName": "KISS VTMP",
+  "appFullName": "KISS ବୃତ୍ତିଗତ ପ୍ରଶିକ୍ଷଣ ପରିଚାଳନା ପୋର୍ଟାଲ",
+  "skipToContent": "ମୁଖ୍ୟ ବିଷୟବସ୍ତୁକୁ ଯାଆନ୍ତୁ",
+  "loading": "ଲୋଡ୍ ହେଉଛି…",
   "language": {
-    "label": "",
-    "en": "",
-    "or": "",
-    "hi": ""
+    "label": "ଭାଷା",
+    "en": "English",
+    "or": "ଓଡ଼ିଆ",
+    "hi": "हिन्दी"
   },
   "roles": {
-    "STUDENT": "",
-    "TRAINER": "",
-    "ADMIN": ""
+    "STUDENT": "ଛାତ୍ରଛାତ୍ରୀ",
+    "TRAINER": "ପ୍ରଶିକ୍ଷକ",
+    "ADMIN": "ପ୍ରଶାସକ"
   },
   "nav": {
-    "label": "",
-    "home": "",
-    "dashboard": "",
-    "openMenu": "",
-    "closeMenu": "",
-    "userMenu": "",
-    "profile": "",
+    "label": "ମୁଖ୍ୟ ନେଭିଗେସନ୍",
+    "home": "ମୂଳ ପୃଷ୍ଠା",
+    "dashboard": "ଡ୍ୟାସବୋର୍ଡ",
+    "openMenu": "ମେନୁ ଖୋଲନ୍ତୁ",
+    "closeMenu": "ମେନୁ ବନ୍ଦ କରନ୍ତୁ",
+    "userMenu": "ଆକାଉଣ୍ଟ",
+    "profile": "ମୋ ପ୍ରୋଫାଇଲ୍",
     "student": {
-      "courses": "",
-      "enrollment": "",
-      "training": "",
-      "certificates": "",
-      "skills": "",
-      "passport": "",
-      "opportunities": ""
+      "courses": "ପାଠ୍ୟକ୍ରମ",
+      "enrollment": "ମୋ ନାମଲେଖା",
+      "training": "ମୋ ପ୍ରଶିକ୍ଷଣ",
+      "certificates": "ପ୍ରମାଣପତ୍ର",
+      "skills": "ମୋ ଦକ୍ଷତା ଅଭାବ",
+      "passport": "ଦକ୍ଷତା ପାସପୋର୍ଟ",
+      "opportunities": "ସୁଯୋଗ",
+      "assistant": "ପ୍ରଶିକ୍ଷଣ ସହାୟକ"
     },
     "trainer": {
-      "batches": "",
-      "sessions": "",
-      "assessments": "",
-      "competencies": "",
-      "atRisk": ""
+      "batches": "ମୋ ବ୍ୟାଚ୍",
+      "sessions": "ଅଧିବେଶନ",
+      "assessments": "ମୂଲ୍ୟାଙ୍କନ",
+      "competencies": "ଦକ୍ଷତା",
+      "atRisk": "ବିପଦରେ ଥିବା ଛାତ୍ରଛାତ୍ରୀ"
     },
     "admin": {
-      "users": "",
-      "courses": "",
-      "enrollments": "",
-      "batches": "",
-      "completions": "",
-      "certificates": "",
-      "reports": "",
-      "competencies": "",
-      "atRisk": "",
-      "audit": "",
-      "opportunities": ""
+      "users": "ବ୍ୟବହାରକାରୀ",
+      "courses": "ପାଠ୍ୟକ୍ରମ ଓ ଚକ୍ର",
+      "enrollments": "ନାମଲେଖା",
+      "batches": "ବ୍ୟାଚ୍",
+      "completions": "ସମାପ୍ତି",
+      "certificates": "ପ୍ରମାଣପତ୍ର",
+      "reports": "ରିପୋର୍ଟ",
+      "competencies": "ଦକ୍ଷତା",
+      "atRisk": "ବିପଦରେ ଥିବା ଛାତ୍ରଛାତ୍ରୀ",
+      "audit": "ଅଡିଟ୍ ଲଗ୍",
+      "opportunities": "ସୁଯୋଗ",
+      "analytics": "ଫଳାଫଳ ବିଶ୍ଳେଷଣ",
+      "materials": "ସହାୟକ ସାମଗ୍ରୀ"
     }
   },
   "actions": {
-    "close": "",
-    "cancel": "",
-    "dismiss": "",
-    "retry": "",
-    "goHome": "",
-    "goDashboard": ""
+    "close": "ବନ୍ଦ କରନ୍ତୁ",
+    "cancel": "ବାତିଲ୍ କରନ୍ତୁ",
+    "dismiss": "ସୂଚନା ହଟାନ୍ତୁ",
+    "retry": "ପୁଣି ଚେଷ୍ଟା କରନ୍ତୁ",
+    "goHome": "ମୂଳ ପୃଷ୍ଠାକୁ ଯାଆନ୍ତୁ",
+    "goDashboard": "ମୋ ଡ୍ୟାସବୋର୍ଡକୁ ଯାଆନ୍ତୁ"
   },
   "table": {
-    "empty": ""
+    "empty": "ଏବେ ଦେଖାଇବାକୁ କିଛି ନାହିଁ।"
   },
   "toast": {
-    "regionLabel": ""
+    "regionLabel": "ସୂଚନା"
   },
   "footer": {
-    "institution": ""
+    "institution": "କଳିଙ୍ଗ ଇନଷ୍ଟିଚ୍ୟୁଟ୍ ଅଫ୍ ସୋସିଆଲ୍ ସାଇନ୍ସେସ୍"
   }
 }

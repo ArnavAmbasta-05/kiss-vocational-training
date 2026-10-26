@@ -1,32 +1,32 @@
 {
-  "title": "",
-  "intro": "",
+  "title": "ରିପୋର୍ଟ",
+  "intro": "ବ୍ୟାଚ୍ ଓ ପାଠ୍ୟକ୍ରମ ରିପୋର୍ଟ ସ୍ପ୍ରେଡସିଟ୍ ପାଇଁ CSV କିମ୍ବା ପ୍ରିଣ୍ଟ ପାଇଁ PDF ଭାବେ ଡାଉନଲୋଡ୍ କରନ୍ତୁ, ଏବଂ ଯେକୌଣସି ଛାତ୍ରଛାତ୍ରୀଙ୍କ ପ୍ରଦର୍ଶନ ରିପୋର୍ଟ।",
   "batch": {
-    "heading": "",
-    "desc": "",
-    "cycle": "",
-    "batch": "",
-    "choose": "",
-    "students": "",
-    "studentsCaption": "",
-    "student": "",
-    "status": "",
-    "report": "",
-    "reportFor": ""
+    "heading": "ବ୍ୟାଚ୍ ରିପୋର୍ଟ",
+    "desc": "ପ୍ରତ୍ୟେକ ଛାତ୍ରଛାତ୍ରୀଙ୍କ ଉପସ୍ଥିତି, ମାର୍କ, ମୋଟ ମାର୍କ, ଗ୍ରେଡ୍, ସମାପ୍ତି ସ୍ଥିତି ଓ ପ୍ରମାଣପତ୍ର।",
+    "cycle": "ଚକ୍ର",
+    "batch": "ବ୍ୟାଚ୍",
+    "choose": "— ଏକ ବ୍ୟାଚ୍ ବାଛନ୍ତୁ —",
+    "students": "ଛାତ୍ରଛାତ୍ରୀ ପ୍ରଦର୍ଶନ ରିପୋର୍ଟ",
+    "studentsCaption": "ଏହି ବ୍ୟାଚର ଛାତ୍ରଛାତ୍ରୀ",
+    "student": "ଛାତ୍ରଛାତ୍ରୀ",
+    "status": "ସ୍ଥିତି",
+    "report": "ରିପୋର୍ଟ PDF",
+    "reportFor": "{{name}}ଙ୍କ ପ୍ରଦର୍ଶନ ରିପୋର୍ଟ ଡାଉନଲୋଡ୍ କରନ୍ତୁ"
   },
   "course": {
-    "heading": "",
-    "desc": "",
-    "course": "",
-    "choose": ""
+    "heading": "ପାଠ୍ୟକ୍ରମ ରିପୋର୍ଟ",
+    "desc": "ଏକ ପାଠ୍ୟକ୍ରମର ସମସ୍ତ ବ୍ୟାଚରେ ସମାପ୍ତି ହାର ଓ ଗ୍ରେଡ୍ ବଣ୍ଟନ।",
+    "course": "ପାଠ୍ୟକ୍ରମ",
+    "choose": "— ଏକ ପାଠ୍ୟକ୍ରମ ବାଛନ୍ତୁ —"
   },
-  "csv": "",
-  "pdf": "",
-  "csvFor": "",
-  "pdfFor": "",
-  "downloading": "",
-  "failed": "",
-  "batchReport": "",
-  "batchReportCsv": "",
-  "batchReportPdf": ""
+  "csv": "CSV ଡାଉନଲୋଡ୍ କରନ୍ତୁ",
+  "pdf": "PDF ଡାଉନଲୋଡ୍ କରନ୍ତୁ",
+  "csvFor": "{{name}}କୁ CSV ଭାବେ ଡାଉନଲୋଡ୍ କରନ୍ତୁ",
+  "pdfFor": "{{name}}କୁ PDF ଭାବେ ଡାଉନଲୋଡ୍ କରନ୍ତୁ",
+  "downloading": "ଫାଇଲ୍ ପ୍ରସ୍ତୁତ ହେଉଛି…",
+  "failed": "ରିପୋର୍ଟ ଡାଉନଲୋଡ୍ ହୋଇପାରିଲା ନାହିଁ",
+  "batchReport": "ବ୍ୟାଚ୍ ରିପୋର୍ଟ",
+  "batchReportCsv": "CSV",
+  "batchReportPdf": "PDF"
 }

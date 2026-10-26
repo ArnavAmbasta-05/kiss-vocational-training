@@ -7,6 +7,8 @@ import { fontsDir } from './pdf';
 export interface CertificateContent {
   institution: string;
   studentName: string;
+  /** Optional second line in Odia script (BRQ-16.2: the certificate stays in English). */
+  nameOdia?: string | null;
   rollNo: string;
   courseTitle: string;
   batchName: string;
@@ -95,13 +97,29 @@ export async function renderCertificate(c: CertificateContent): Promise<Buffer> 
 
   centre('This is to certify that', 192, 'regular', 13, MUTED);
   centre(c.studentName, 214, bold(c.studentName), 28);
-  centre(`Roll No. ${c.rollNo}`, 254, 'regular', 11, MUTED);
-  centre('has successfully completed the vocational training course', 280, 'regular', 13, MUTED);
-  centre(c.courseTitle, 302, bold(c.courseTitle), 20);
-  centre(`${c.batchName} · ${day(c.startDate)} to ${day(c.endDate)}`, 334, 'regular', 12, MUTED);
+  // The optional Odia name sits under the English one and pushes the rest down a line.
+  const odia = c.nameOdia?.trim() && ODIA.test(c.nameOdia) ? c.nameOdia.trim() : null;
+  if (odia) centre(odia, 250, 'odia', 16);
+  const dy = odia ? 24 : 0;
+  centre(`Roll No. ${c.rollNo}`, 254 + dy, 'regular', 11, MUTED);
+  centre(
+    'has successfully completed the vocational training course',
+    280 + dy,
+    'regular',
+    13,
+    MUTED,
+  );
+  centre(c.courseTitle, 302 + dy, bold(c.courseTitle), 20);
+  centre(
+    `${c.batchName} · ${day(c.startDate)} to ${day(c.endDate)}`,
+    334 + dy,
+    'regular',
+    12,
+    MUTED,
+  );
   centre(
     `Grade ${c.grade} · Aggregate ${c.aggregatePercent.toFixed(2)} % · Attendance ${c.attendancePercent.toFixed(2)} %`,
-    362,
+    362 + dy,
     'bold',
     13,
   );

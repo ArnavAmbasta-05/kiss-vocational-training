@@ -1,51 +1,51 @@
 {
-  "bell": "",
-  "bellUnread_one": "",
-  "bellUnread_other": "",
-  "heading": "",
-  "empty": "",
-  "markAllRead": "",
-  "unread": "",
+  "bell": "ସୂଚନା",
+  "bellUnread_one": "ସୂଚନା, {{count}}ଟି ପଢ଼ାଯାଇନି",
+  "bellUnread_other": "ସୂଚନା, {{count}}ଟି ପଢ଼ାଯାଇନି",
+  "heading": "ସୂଚନା",
+  "empty": "ଆପଣଙ୍କ ପାଇଁ କୌଣସି ସୂଚନା ନାହିଁ।",
+  "markAllRead": "ସବୁକୁ ପଢ଼ାଯାଇଛି ବୋଲି ଚିହ୍ନିତ କରନ୍ତୁ",
+  "unread": "ପଢ଼ାଯାଇନି",
   "types": {
     "ENROLLMENT_APPROVED": {
-      "title": "",
-      "body": ""
+      "title": "ଆବେଦନ ଅନୁମୋଦିତ",
+      "body": "{{cycleName}} ପାଇଁ ଆପଣଙ୍କ ଆବେଦନ ଅନୁମୋଦିତ ହୋଇଛି।"
     },
     "ENROLLMENT_REJECTED": {
-      "title": "",
-      "body": ""
+      "title": "ଆବେଦନ ଅନୁମୋଦିତ ହୋଇନି",
+      "body": "{{cycleName}} ପାଇଁ ଆପଣଙ୍କ ଆବେଦନ ଅନୁମୋଦିତ ହୋଇନି: {{reason}}"
     },
     "ENROLLMENT_WAITLISTED": {
-      "title": "",
-      "body": ""
+      "title": "ଆବେଦନ ଅପେକ୍ଷା ତାଲିକାରେ",
+      "body": "{{cycleName}} ପାଇଁ ଆପଣଙ୍କ ଆବେଦନ ଅପେକ୍ଷା ତାଲିକାରେ ଅଛି।"
     },
     "ENROLLMENT_ALLOCATED": {
-      "title": "",
-      "body": ""
+      "title": "ଆପଣଙ୍କୁ ବ୍ୟାଚ୍ ମିଳିଛି",
+      "body": "ଆପଣଙ୍କୁ {{courseTitle}} ପାଇଁ {{batchName}}ରେ ରଖାଯାଇଛି।"
     },
     "BATCH_ACTIVATED": {
-      "title": "",
-      "body": ""
+      "title": "ପ୍ରଶିକ୍ଷଣ ଆରମ୍ଭ ହୋଇଛି",
+      "body": "{{courseTitle}}, {{batchName}} ଏବେ ସକ୍ରିୟ ଅଛି।"
     },
     "TRAINING_COMPLETED": {
-      "title": "",
-      "body": ""
+      "title": "ପ୍ରଶିକ୍ଷଣ ସମ୍ପୂର୍ଣ୍ଣ",
+      "body": "ଆପଣ {{courseTitle}} ଗ୍ରେଡ୍ {{grade}} ସହ ସମ୍ପୂର୍ଣ୍ଣ କରିଛନ୍ତି।"
     },
     "TRAINING_NOT_COMPLETED": {
-      "title": "",
-      "body": ""
+      "title": "ପ୍ରଶିକ୍ଷଣ ସମ୍ପୂର୍ଣ୍ଣ ହୋଇନି",
+      "body": "{{courseTitle}}: {{reason}}"
     },
     "CERTIFICATE_ISSUED": {
-      "title": "",
-      "body": ""
+      "title": "ଆପଣଙ୍କ ପ୍ରମାଣପତ୍ର ପ୍ରସ୍ତୁତ",
+      "body": "ପ୍ରମାଣପତ୍ର {{publicCode}} 'ମୋ ପ୍ରମାଣପତ୍ର'ରୁ ଡାଉନଲୋଡ୍ କରିହେବ।"
     },
     "RISK_FLAG_ESCALATED": {
-      "title": "",
-      "body": ""
+      "title": "ଜଣେ ଛାତ୍ରଛାତ୍ରୀଙ୍କୁ ଧ୍ୟାନ ଦେବା ଦରକାର",
+      "body": "{{student}} ({{batch}}) {{days}} ଦିନ ଧରି ଉଚ୍ଚ ବିପଦରେ ଅଛନ୍ତି।"
     },
     "RISK_ACTION_AGREED": {
-      "title": "",
-      "body": ""
+      "title": "ଆପଣଙ୍କୁ ସାହାଯ୍ୟ କରିବା ପାଇଁ ଏକ ଯୋଜନା",
+      "body": "{{owner}} ଆପଣଙ୍କ ପାଇଁ ସହାୟତା ସ୍ଥିର କରିଛନ୍ତି, {{dueOn}} ସୁଦ୍ଧା।"
     }
   }
 }

@@ -502,6 +502,8 @@ export interface PlacementFacts {
   preferences: string[];
   rollNo: string;
   fullName: string;
+  /** Optional Odia-script name for the certificate (BRQ-16.2). */
+  nameOdia: string | null;
 }
 
 export async function placementFacts(enrollmentId: string): Promise<PlacementFacts | null> {
@@ -515,7 +517,9 @@ export async function placementFacts(enrollmentId: string): Promise<PlacementFac
       reason: true,
       cycle: { select: { name: true } },
       preferences: { orderBy: { rank: 'asc' }, select: { courseId: true } },
-      student: { select: { rollNo: true, user: { select: { id: true, fullName: true } } } },
+      student: {
+        select: { rollNo: true, nameOdia: true, user: { select: { id: true, fullName: true } } },
+      },
     },
   });
   if (!e) return null;
@@ -530,6 +534,7 @@ export async function placementFacts(enrollmentId: string): Promise<PlacementFac
     preferences: e.preferences.map((p) => p.courseId),
     rollNo: e.student.rollNo,
     fullName: e.student.user.fullName,
+    nameOdia: e.student.nameOdia,
   };
 }
 

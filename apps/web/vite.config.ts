@@ -33,6 +33,8 @@ export default defineConfig({
   build: {
     target: 'es2020',
     sourcemap: true,
+    // dist/.vite/manifest.json: scripts/check-bundle.mjs measures each page's first load.
+    manifest: true,
     rollupOptions: {
       // Two pages: the app, and the tiny public verify page with no React in it.
       input: {

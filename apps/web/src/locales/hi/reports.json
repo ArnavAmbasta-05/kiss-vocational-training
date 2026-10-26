@@ -1,32 +1,32 @@
 {
-  "title": "",
-  "intro": "",
+  "title": "रिपोर्ट",
+  "intro": "बैच और पाठ्यक्रम की रिपोर्ट स्प्रेडशीट के लिए CSV या प्रिंट के लिए PDF में डाउनलोड करें, और किसी भी विद्यार्थी की प्रदर्शन रिपोर्ट।",
   "batch": {
-    "heading": "",
-    "desc": "",
-    "cycle": "",
-    "batch": "",
-    "choose": "",
-    "students": "",
-    "studentsCaption": "",
-    "student": "",
-    "status": "",
-    "report": "",
-    "reportFor": ""
+    "heading": "बैच रिपोर्ट",
+    "desc": "हर विद्यार्थी की उपस्थिति, अंक, कुल अंक, ग्रेड, समापन की स्थिति और प्रमाणपत्र।",
+    "cycle": "चक्र",
+    "batch": "बैच",
+    "choose": "— बैच चुनें —",
+    "students": "विद्यार्थी प्रदर्शन रिपोर्ट",
+    "studentsCaption": "इस बैच के विद्यार्थी",
+    "student": "विद्यार्थी",
+    "status": "स्थिति",
+    "report": "रिपोर्ट PDF",
+    "reportFor": "{{name}} की प्रदर्शन रिपोर्ट डाउनलोड करें"
   },
   "course": {
-    "heading": "",
-    "desc": "",
-    "course": "",
-    "choose": ""
+    "heading": "पाठ्यक्रम रिपोर्ट",
+    "desc": "किसी पाठ्यक्रम के सभी बैचों में समापन दर और ग्रेड का वितरण।",
+    "course": "पाठ्यक्रम",
+    "choose": "— पाठ्यक्रम चुनें —"
   },
-  "csv": "",
-  "pdf": "",
-  "csvFor": "",
-  "pdfFor": "",
-  "downloading": "",
-  "failed": "",
-  "batchReport": "",
-  "batchReportCsv": "",
-  "batchReportPdf": ""
+  "csv": "CSV डाउनलोड करें",
+  "pdf": "PDF डाउनलोड करें",
+  "csvFor": "{{name}} को CSV में डाउनलोड करें",
+  "pdfFor": "{{name}} को PDF में डाउनलोड करें",
+  "downloading": "फ़ाइल तैयार हो रही है…",
+  "failed": "रिपोर्ट डाउनलोड नहीं हो सकी",
+  "batchReport": "बैच रिपोर्ट",
+  "batchReportCsv": "CSV",
+  "batchReportPdf": "PDF"
 }

@@ -1,72 +1,75 @@
 {
-  "appName": "",
-  "appFullName": "",
-  "skipToContent": "",
-  "loading": "",
+  "appName": "KISS VTMP",
+  "appFullName": "KISS व्यावसायिक प्रशिक्षण प्रबंधन पोर्टल",
+  "skipToContent": "मुख्य सामग्री पर जाएँ",
+  "loading": "लोड हो रहा है…",
   "language": {
-    "label": "",
-    "en": "",
-    "or": "",
-    "hi": ""
+    "label": "भाषा",
+    "en": "English",
+    "or": "ଓଡ଼ିଆ",
+    "hi": "हिन्दी"
   },
   "roles": {
-    "STUDENT": "",
-    "TRAINER": "",
-    "ADMIN": ""
+    "STUDENT": "विद्यार्थी",
+    "TRAINER": "प्रशिक्षक",
+    "ADMIN": "प्रशासक"
   },
   "nav": {
-    "label": "",
-    "home": "",
-    "dashboard": "",
-    "openMenu": "",
-    "closeMenu": "",
-    "userMenu": "",
-    "profile": "",
+    "label": "मुख्य नेविगेशन",
+    "home": "होम",
+    "dashboard": "डैशबोर्ड",
+    "openMenu": "मेनू खोलें",
+    "closeMenu": "मेनू बंद करें",
+    "userMenu": "खाता",
+    "profile": "मेरी प्रोफ़ाइल",
     "student": {
-      "courses": "",
-      "enrollment": "",
-      "training": "",
-      "certificates": "",
-      "skills": "",
-      "passport": "",
-      "opportunities": ""
+      "courses": "पाठ्यक्रम",
+      "enrollment": "मेरा नामांकन",
+      "training": "मेरा प्रशिक्षण",
+      "certificates": "प्रमाणपत्र",
+      "skills": "मेरी कौशल कमियाँ",
+      "passport": "कौशल पासपोर्ट",
+      "opportunities": "अवसर",
+      "assistant": "प्रशिक्षण सहायक"
     },
     "trainer": {
-      "batches": "",
-      "sessions": "",
-      "assessments": "",
-      "competencies": "",
-      "atRisk": ""
+      "batches": "मेरे बैच",
+      "sessions": "सत्र",
+      "assessments": "मूल्यांकन",
+      "competencies": "दक्षताएँ",
+      "atRisk": "जोखिम वाले विद्यार्थी"
     },
     "admin": {
-      "users": "",
-      "courses": "",
-      "enrollments": "",
-      "batches": "",
-      "completions": "",
-      "certificates": "",
-      "reports": "",
-      "competencies": "",
-      "atRisk": "",
-      "audit": "",
-      "opportunities": ""
+      "users": "उपयोगकर्ता",
+      "courses": "पाठ्यक्रम और चक्र",
+      "enrollments": "नामांकन",
+      "batches": "बैच",
+      "completions": "समापन",
+      "certificates": "प्रमाणपत्र",
+      "reports": "रिपोर्ट",
+      "competencies": "दक्षताएँ",
+      "atRisk": "जोखिम वाले विद्यार्थी",
+      "audit": "ऑडिट लॉग",
+      "opportunities": "अवसर",
+      "analytics": "परिणाम विश्लेषण",
+      "materials": "सहायक सामग्री"
     }
   },
   "actions": {
-    "close": "",
-    "cancel": "",
-    "dismiss": "",
-    "retry": "",
-    "goHome": "",
-    "goDashboard": ""
+    "close": "बंद करें",
+    "cancel": "रद्द करें",
+    "dismiss": "सूचना हटाएँ",
+    "retry": "फिर से कोशिश करें",
+    "goHome": "होम पेज पर जाएँ",
+    "goDashboard": "मेरे डैशबोर्ड पर जाएँ"
   },
   "table": {
-    "empty": ""
+    "empty": "अभी दिखाने के लिए कुछ नहीं है।"
   },
   "toast": {
-    "regionLabel": ""
+    "regionLabel": "सूचनाएँ"
   },
   "footer": {
-    "institution": ""
+    "institution": "कलिंग इंस्टीट्यूट ऑफ़ सोशल साइंसेज़"
   }
 }

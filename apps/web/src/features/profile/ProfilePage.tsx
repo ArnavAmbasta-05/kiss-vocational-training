@@ -16,6 +16,12 @@ const FormSchema = z.object({
     .string()
     .trim()
     .regex(/^([0-9+\-\s]{7,20})?$/),
+  // Students only: Odia script, printed under the English name on certificates (BRQ-16.2).
+  nameOdia: z
+    .string()
+    .trim()
+    .max(120)
+    .regex(/^[଀-୿\s.'-]*$/),
   locale: LocaleSchema,
 });
 type FormValues = z.infer<typeof FormSchema>;
@@ -38,6 +44,7 @@ export function ProfilePage() {
       ? {
           fullName: user.fullName,
           phone: user.student?.phone ?? user.trainer?.phone ?? '',
+          nameOdia: user.student?.nameOdia ?? '',
           locale: user.locale,
         }
       : undefined,
@@ -51,6 +58,7 @@ export function ProfilePage() {
         fullName: values.fullName,
         locale: values.locale,
         ...(hasPhone ? { phone: values.phone || null } : {}),
+        ...(user.student ? { nameOdia: values.nameOdia || null } : {}),
       });
       setUser(updated);
       reset(values);
@@ -102,6 +110,15 @@ export function ProfilePage() {
               autoComplete="tel"
               error={errors.phone && t('validation.phone')}
               {...register('phone')}
+            />
+          )}
+          {user.student && (
+            <Input
+              label={t('nameOdia')}
+              hint={t('nameOdiaHint')}
+              lang="or"
+              error={errors.nameOdia && t('validation.nameOdia')}
+              {...register('nameOdia')}
             />
           )}
           <Select

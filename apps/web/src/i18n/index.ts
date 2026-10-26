@@ -43,8 +43,36 @@ void i18n
     },
   });
 
-i18n.on('languageChanged', (lng) => {
+/**
+ * Noto Sans Oriya / Devanagari (script-only subsets, self-hosted) load only when Odia or Hindi
+ * is chosen, so English users never download them (BRQ-16.3, NFR-10). Without them the device's
+ * own Odia or Devanagari font is used.
+ */
+const scriptFonts: Partial<Record<Locale, () => Promise<unknown[]>>> = {
+  or: () =>
+    Promise.all([
+      import('@fontsource/noto-sans-oriya/oriya-400.css'),
+      import('@fontsource/noto-sans-oriya/oriya-600.css'),
+      import('@fontsource/noto-sans-oriya/oriya-700.css'),
+    ]),
+  hi: () =>
+    Promise.all([
+      import('@fontsource/noto-sans-devanagari/devanagari-400.css'),
+      import('@fontsource/noto-sans-devanagari/devanagari-600.css'),
+      import('@fontsource/noto-sans-devanagari/devanagari-700.css'),
+    ]),
+};
+const loadedFonts = new Set<string>();
+
+function applyLanguage(lng: string) {
   document.documentElement.lang = lng;
-});
+  if (isLocale(lng) && scriptFonts[lng] && !loadedFonts.has(lng)) {
+    loadedFonts.add(lng);
+    void scriptFonts[lng]!().catch(() => loadedFonts.delete(lng));
+  }
+}
+
+i18n.on('languageChanged', applyLanguage);
+if (i18n.resolvedLanguage) applyLanguage(i18n.resolvedLanguage);
 
 export default i18n;

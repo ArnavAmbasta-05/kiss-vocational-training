@@ -36,6 +36,13 @@ export const UpdateProfileSchema = z
     fullName: z.string().trim().min(2).max(120),
     locale: LocaleSchema,
     phone: phone.nullable(),
+    /** Students only: name in Odia script for the certificate (BRQ-16.2). */
+    nameOdia: z
+      .string()
+      .trim()
+      .max(120)
+      .regex(/^[଀-୿\s.'-]+$/, 'Use Odia script')
+      .nullable(),
   })
   .partial()
   .strict();
@@ -53,6 +60,7 @@ export const MeSchema = z.object({
       rollNo: z.string(),
       cgpa: z.string(),
       phone: z.string().nullable(),
+      nameOdia: z.string().nullable(),
     })
     .nullable(),
   trainer: z

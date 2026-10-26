@@ -105,6 +105,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+      # NFR-10: core student pages under 500 KB gzip on first load.
+      - run: pnpm --filter @vtmp/web bundle:check
       # The browser tests drive the real API: give it config, a schema and seed accounts.
       # Job-level env (DATABASE_URL etc.) takes precedence over the copied .env values.
       - run: cp .env.example .env

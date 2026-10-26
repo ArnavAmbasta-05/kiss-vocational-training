@@ -47,4 +47,31 @@ describe('certificate PDF (ADR-06)', () => {
     expect(text.trimEnd().endsWith('%%EOF')).toBe(true);
     expect(pdf.length).toBeGreaterThan(5_000);
   });
+
+  it('prints the optional Odia name line with the Odia font; English stays the language (BRQ-16.2)', async () => {
+    const base = {
+      institution: 'Test Institute',
+      studentName: 'Sasmita Pradhan',
+      rollNo: 'R-1',
+      courseTitle: 'Domestic Electrician',
+      batchName: 'Batch A',
+      startDate: '2026-01-05',
+      endDate: '2026-03-27',
+      grade: 'B' as const,
+      aggregatePercent: 72.5,
+      attendancePercent: 88,
+      issuedAt: new Date('2026-04-01T10:00:00Z'),
+      publicCode: 'ABCDEFGHJKMNPQRS',
+      verifyUrl: 'https://example.test/verify/ABCDEFGHJKMNPQRS',
+    };
+    const plain = (await renderCertificate(base)).toString('latin1');
+    const withOdia = (await renderCertificate({ ...base, nameOdia: 'ସସ୍ମିତା ପ୍ରଧାନ' })).toString(
+      'latin1',
+    );
+    expect(plain).not.toMatch(/NotoSansOriya/);
+    expect(withOdia).toMatch(/NotoSansOriya/);
+    // Anything that isn't Odia script is ignored rather than printed in the wrong font.
+    const latin = (await renderCertificate({ ...base, nameOdia: 'Sasmita' })).toString('latin1');
+    expect(latin).not.toMatch(/NotoSansOriya/);
+  });
 });

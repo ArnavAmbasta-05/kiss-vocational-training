@@ -1,26 +1,26 @@
 {
   "panel": {
-    "title": "",
-    "intro": ""
+    "title": "ସମୟସୂଚୀ ଯାଞ୍ଚ",
+    "intro": "ଏହି ଆବଣ୍ଟନ ପରେ ପ୍ରତ୍ୟେକ ବ୍ୟାଚ୍ କେତେ ପୂର୍ଣ୍ଣ ହେବ, କିଏ ପଢ଼ାନ୍ତି, ଏବଂ ଏହାର ଆଗାମୀ ଅଧିବେଶନରେ ସ୍ଥାନ କିମ୍ବା ପ୍ରଶିକ୍ଷକଙ୍କ କୌଣସି ଧକ୍କା।"
   },
   "capacity": {
-    "OK": "",
-    "NEAR": "",
-    "OVER": ""
+    "OK": "{{capacity}}ରୁ {{projected}} ({{percent}} %)",
+    "NEAR": "ପ୍ରାୟ ପୂର୍ଣ୍ଣ: {{capacity}}ରୁ {{projected}} ({{percent}} %)",
+    "OVER": "କ୍ଷମତାଠାରୁ ଅଧିକ: {{capacity}}ରୁ {{projected}}"
   },
   "clash": {
-    "hard_one": "",
-    "hard_other": "",
-    "soft_one": "",
-    "soft_other": "",
-    "VENUE": "",
-    "TRAINER": "",
-    "more_one": "",
-    "more_other": ""
+    "hard_one": "{{count}}ଟି ଧକ୍କା",
+    "hard_other": "{{count}}ଟି ଧକ୍କା",
+    "soft_one": "{{count}}ଟି ଚେତାବନୀ",
+    "soft_other": "{{count}}ଟି ଚେତାବନୀ",
+    "VENUE": "{{date}}, {{time}}: {{venue}} {{other}} ପାଇଁ ମଧ୍ୟ ବୁକ୍ ହୋଇଛି",
+    "TRAINER": "{{date}}, {{time}}: {{trainer}} {{other}}କୁ ମଧ୍ୟ ପଢ଼ାନ୍ତି",
+    "more_one": "ଆଉ {{count}}",
+    "more_other": "ଆଉ {{count}}"
   },
   "trainers": {
-    "assigned": "",
-    "none": "",
-    "free": ""
+    "assigned": "ପ୍ରଶିକ୍ଷକ: {{names}}",
+    "none": "ଏବେ କୌଣସି ପ୍ରଶିକ୍ଷକ ନିଯୁକ୍ତ ହୋଇନାହାନ୍ତି।",
+    "free": "ପଢ଼ାଇବାକୁ ଉପଲବ୍ଧ: {{names}}"
   }
 }
