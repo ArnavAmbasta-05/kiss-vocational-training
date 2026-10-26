@@ -138,6 +138,17 @@ const AdminOpportunitiesPage = lazy(() =>
   })),
 );
 
+const AnalyticsPage = lazy(() =>
+  import('./features/analytics/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage })),
+);
+
+const AssistantPage = lazy(() =>
+  import('./features/assistant/AssistantPage').then((m) => ({ default: m.AssistantPage })),
+);
+const MaterialsPage = lazy(() =>
+  import('./features/assistant/MaterialsPage').then((m) => ({ default: m.MaterialsPage })),
+);
+
 /** Screens that exist today; every other nav item shows a "coming soon" page until built. */
 const BUILT: Record<string, RouteObject['element']> = {
   '/admin/users': <UsersPage />,
@@ -155,6 +166,9 @@ const BUILT: Record<string, RouteObject['element']> = {
   '/admin/at-risk': <AtRiskPage base="/admin/at-risk" />,
   '/admin/audit': <AuditLogPage />,
   '/admin/opportunities': <AdminOpportunitiesPage />,
+  '/admin/analytics': <AnalyticsPage />,
+  '/admin/materials': <MaterialsPage />,
+  '/student/assistant': <AssistantPage />,
   '/student/opportunities': <MyOpportunitiesPage />,
   '/trainer/batches': <TrainerBatchesPage />,
   '/trainer/sessions': <TrainerSessionsPage />,

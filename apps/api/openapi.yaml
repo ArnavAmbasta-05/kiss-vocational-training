@@ -35,6 +35,8 @@ tags:
   - name: scheduling
   - name: evidence
   - name: opportunities
+  - name: analytics
+  - name: assistant
 paths:
   /health:
     get:
@@ -1658,6 +1660,22 @@ paths:
       responses:
         '200': { description: Run summary }
         '401': { $ref: '#/components/responses/Unauthorized' }
+  /internal/jobs/analytics-refresh:
+    get:
+      tags: [jobs]
+      summary: Nightly refresh of the outcome analytics views, called by Vercel Cron (F20)
+      description: Authorization Bearer CRON_SECRET. Refreshes analytics_batch_outcomes and analytics_course_competency CONCURRENTLY under a job lease (a second run returns refreshed false). POST works the same.
+      security: []
+      responses:
+        '200': { description: refreshed and refreshedAt }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [jobs]
+      summary: Same as GET, for manual runs with the cron secret
+      security: []
+      responses:
+        '200': { description: refreshed and refreshedAt }
+        '401': { $ref: '#/components/responses/Unauthorized' }
   /audit-logs:
     get:
       tags: [audit]
@@ -1905,6 +1923,165 @@ paths:
       summary: Open opportunities ranked by match % = verified required / total required x 100 (BR-22), with missing skills and resources (BRQ-13.2, 13.3)
       responses:
         '200': { description: Ranked matches }
+  /analytics/outcomes:
+    get:
+      tags: [analytics]
+      summary: Outcome analytics (Admin, F20) - completion, certification, attendance, average score, verified competencies and placement rates by course and batch
+      description: Counts come from materialized views refreshed nightly (refreshedAt); rates are computed on read and null when there is nothing to divide by.
+      parameters:
+        - { name: cycleId, in: query, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: 'Totals, courses and batches' }
+  /analytics/outcomes.csv:
+    get:
+      tags: [analytics]
+      summary: The same figures as CSV, one row per batch (Admin)
+      parameters:
+        - { name: cycleId, in: query, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: CSV file
+          content:
+            text/csv: { schema: { type: string } }
+  /analytics/refresh:
+    post:
+      tags: [analytics]
+      summary: Refresh the analytics views now (Admin; the cron does this nightly)
+      responses:
+        '200': { description: refreshed and refreshedAt }
+  /analytics/placements:
+    get:
+      tags: [analytics]
+      summary: Recorded placements, newest first (Admin)
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PageSize' }
+      responses:
+        '200': { description: Page of placements }
+    post:
+      tags: [analytics]
+      summary: Record a placement (job, apprenticeship, internship, self-employment or further study) for a student who finished a batch; audited
+      responses:
+        '201': { description: The placement }
+        '422':
+          description: NOT_FINISHED (the student has no completed batch), OPPORTUNITY_NOT_FOUND, or validation errors
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /analytics/placements/candidates:
+    get:
+      tags: [analytics]
+      summary: Finished batches of the student with this roll number, to pick from when recording a placement (Admin)
+      parameters:
+        - { name: rollNo, in: query, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Candidates }
+  /analytics/placements/{id}:
+    delete:
+      tags: [analytics]
+      summary: Remove a placement recorded by mistake (Admin); audited
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: Removed }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /assistant/status:
+    get:
+      tags: [assistant]
+      summary: Whether the training assistant is on, the student's courses with approved materials, and questions left today (Student, F17)
+      responses:
+        '200': { description: Assistant status }
+  /assistant/ask:
+    post:
+      tags: [assistant]
+      summary: Ask the training assistant (Student, F17, BR-21)
+      description: Checks the switch, the per-student daily limit (assistant.dailyLimitPerUser) and the monthly cap in US dollars (AI_MONTHLY_CAP), then searches approved materials of the student's own courses. Below assistant.minSimilarity it declines (refused NOT_IN_MATERIALS) without calling the model. The model receives only the excerpts, the question and the reply language, never the student's personal data (NFR-13). Practice mode returns multiple-choice questions validated on the server. Every request is logged with excerpts, tokens, cost and latency.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [question]
+              properties:
+                question: { type: string, minLength: 3, maxLength: 1000 }
+                mode: { type: string, enum: [answer, practice, simplify], default: answer }
+      responses:
+        '200':
+          {
+            description: 'Answer or practice questions with numbered sources, or refused: NOT_IN_MATERIALS, NO_COURSE or OFF_TOPIC; plus resources for open skill gaps and questions left today',
+          }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '429':
+          description: ASSISTANT_DAILY_LIMIT
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503':
+          description: AI_DISABLED, ASSISTANT_BUDGET_REACHED or ASSISTANT_UNAVAILABLE
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /assistant/usage:
+    get:
+      tags: [assistant]
+      summary: This month's questions, answers, refusals by reason, tokens, cost against the cap and average latency (Admin, BRQ-17.5)
+      responses:
+        '200': { description: Usage figures }
+  /materials:
+    get:
+      tags: [assistant]
+      summary: Course materials for the assistant, newest first (Admin, BRQ-17.2)
+      parameters:
+        - { name: courseId, in: query, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Materials }
+    post:
+      tags: [assistant]
+      summary: Record an uploaded material as PENDING (Admin); the file must exist under materials/<courseId>/; audited
+      responses:
+        '201': { description: The material }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /materials/upload-url:
+    post:
+      tags: [assistant]
+      summary: A one-file upload target for a PDF, .txt or .md material (Admin; size limit assistant.materialMaxBytes)
+      responses:
+        '200': { description: Upload target }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /materials/{id}/approve:
+    post:
+      tags: [assistant]
+      summary: Extract the text, split it into excerpts, embed them and make the material searchable (Admin); audited
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: The approved material with its excerpt count }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422':
+          description: NO_TEXT (no text layer, e.g. a scan)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /materials/{id}/reject:
+    post:
+      tags: [assistant]
+      summary: Reject a pending material (Admin); audited
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: The rejected material }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /materials/{id}:
+    delete:
+      tags: [assistant]
+      summary: Delete a material and its excerpts (Admin); audited
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: Deleted }
+        '404': { $ref: '#/components/responses/NotFound' }
 components:
   securitySchemes:
     bearerAuth:

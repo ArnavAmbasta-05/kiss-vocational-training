@@ -14,3 +14,5 @@ export * from './audit';
 export * from './scheduling';
 export * from './evidence';
 export * from './opportunities';
+export * from './analytics';
+export * from './assistant';

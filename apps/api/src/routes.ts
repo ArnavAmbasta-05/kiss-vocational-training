@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { internalJobRoutes } from './jobRoutes';
 import {
   assessmentRoutes,
   batchAssessmentRoutes,
@@ -14,6 +15,8 @@ import {
   studentGapRoutes,
 } from './modules/competency/competency.routes';
 import { certificateRenderRoutes, completionRoutes } from './modules/completion/completion.routes';
+import { analyticsRoutes } from './modules/analytics/analytics.routes';
+import { assistantRoutes, materialRoutes } from './modules/assistant/assistant.routes';
 import { auditLogRoutes } from './modules/audit/audit.routes';
 import { authRoutes } from './modules/auth/auth.routes';
 import { adminBatchRoutes, batchRoutes } from './modules/batches/batches.routes';
@@ -22,7 +25,6 @@ import { adminEnrollmentRoutes, enrollmentRoutes } from './modules/enrollments/e
 import { dashboardRoutes } from './modules/dashboard/dashboard.routes';
 import { certificateRoutes, studentCertificateRoutes } from './modules/documents/documents.routes';
 import {
-  internalJobRoutes,
   registerInterventionHooks,
   riskActionRoutes,
   riskFlagRoutes,
@@ -95,6 +97,9 @@ export function v1Routes(): Router {
   router.use('/job-roles', jobRoleRoutes());
   router.use('/opportunities', opportunityRoutes());
   router.use('/students', studentMatchRoutes());
+  router.use('/analytics', analyticsRoutes());
+  router.use('/assistant', assistantRoutes());
+  router.use('/materials', materialRoutes());
   router.use('/students', studentRiskRoutes());
   // F11: saves of attendance, marks and ratings re-evaluate that batch's risk flags.
   registerInterventionHooks();

@@ -101,6 +101,20 @@ enum EvidenceKind {
   LINK
 }
 
+enum PlacementType {
+  JOB
+  APPRENTICESHIP
+  INTERNSHIP
+  SELF_EMPLOYED
+  FURTHER_STUDY
+}
+
+enum MaterialStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum LearningResourceType {
   VIDEO
   DOCUMENT
@@ -152,6 +166,12 @@ model User {
   rubricsCreated       Rubric[]            @relation("RubricCreatedBy")
   opportunitiesCreated Opportunity[]       @relation("OpportunityCreatedBy")
 
+  placementsRecorded PlacementOutcome[] @relation("PlacementRecordedBy")
+
+  materialsUploaded Material[]     @relation("MaterialUploadedBy")
+  materialsApproved Material[]     @relation("MaterialApprovedBy")
+  assistantLogs     AssistantLog[]
+
   @@index([role])
   @@map("users")
 }
@@ -184,6 +204,8 @@ model Student {
   cgpa      Decimal  @db.Decimal(4, 2)
   phone     String?
   photoUrl  String?  @map("photo_url")
+  /// Optional name in Odia script, printed under the English name on certificates (BRQ-16.2).
+  nameOdia  String?  @map("name_odia")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -236,6 +258,8 @@ model Course {
   preferences  EnrollmentPreference[]
   batches      Batch[]
   competencies Competency[]
+
+  materials Material[]
 
   @@index([isActive])
   @@map("courses")
@@ -299,6 +323,8 @@ model Enrollment {
   performanceReports PerformanceReport[]
 
   // Target for BatchStudent's composite FK, so a membership's student always matches.
+  placements PlacementOutcome[]
+
   @@unique([id, studentId])
   @@index([studentId])
   @@index([cycleId, status])
@@ -925,6 +951,8 @@ model Opportunity {
   createdBy User                  @relation("OpportunityCreatedBy", fields: [createdById], references: [id])
   interests OpportunityInterest[]
 
+  placements PlacementOutcome[]
+
   @@index([roleId])
   @@index([closesOn])
   @@index([createdById])
@@ -943,4 +971,102 @@ model OpportunityInterest {
   @@id([opportunityId, studentId])
   @@index([studentId])
   @@map("opportunity_interests")
+}
+
+// ─── R3: outcome analytics (F20) ─────────────────────────────────────────────────
+
+/// BRQ-20.3: what a student did after training (entered by the admin / placement cell).
+/// The analytics materialized views (analytics_batch_outcomes, analytics_course_competency)
+/// are defined in SQL migrations, not here: Prisma does not model views it cannot write.
+model PlacementOutcome {
+  id            String        @id @default(uuid()) @db.Uuid
+  enrollmentId  String        @map("enrollment_id") @db.Uuid
+  opportunityId String?       @map("opportunity_id") @db.Uuid
+  type          PlacementType
+  employer      String
+  roleTitle     String        @map("role_title")
+  placedOn      DateTime      @map("placed_on") @db.Date
+  monthlyIncome Decimal?      @map("monthly_income") @db.Decimal(10, 2)
+  notes         String?
+  recordedById  String        @map("recorded_by_id") @db.Uuid
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  enrollment  Enrollment   @relation(fields: [enrollmentId], references: [id], onDelete: Restrict)
+  opportunity Opportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+  recordedBy  User         @relation("PlacementRecordedBy", fields: [recordedById], references: [id])
+
+  @@index([enrollmentId])
+  @@index([opportunityId])
+  @@index([recordedById])
+  @@map("placement_outcomes")
+}
+
+// ─── R3: AI Training Assistant (F17, ADR-09; off unless AI_ENABLED) ─────────────
+
+/// A course material an admin uploaded (PDF or text). Only APPROVED materials are chunked,
+/// embedded and searchable (BR-21: answers come only from approved materials).
+model Material {
+  id           String         @id @default(uuid()) @db.Uuid
+  courseId     String         @map("course_id") @db.Uuid
+  title        String
+  objectKey    String         @unique @map("object_key")
+  mime         String
+  sizeBytes    Int            @map("size_bytes")
+  status       MaterialStatus @default(PENDING)
+  chunkCount   Int            @default(0) @map("chunk_count")
+  uploadedById String         @map("uploaded_by_id") @db.Uuid
+  approvedById String?        @map("approved_by_id") @db.Uuid
+  approvedAt   DateTime?      @map("approved_at") @db.Timestamptz(3)
+  createdAt    DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  course     Course          @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  uploadedBy User            @relation("MaterialUploadedBy", fields: [uploadedById], references: [id])
+  approvedBy User?           @relation("MaterialApprovedBy", fields: [approvedById], references: [id])
+  chunks     MaterialChunk[]
+
+  @@index([courseId, status])
+  @@index([uploadedById])
+  @@index([approvedById])
+  @@map("materials")
+}
+
+/// ~500-token excerpt of an approved material with its embedding (pgvector, cosine index).
+model MaterialChunk {
+  id         String                      @id @default(uuid()) @db.Uuid
+  materialId String                      @map("material_id") @db.Uuid
+  ordinal    Int
+  content    String
+  tokenCount Int                         @map("token_count")
+  embedding  Unsupported("vector(1024)")
+
+  material Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  @@unique([materialId, ordinal])
+  @@map("material_chunks")
+}
+
+/// One assistant request: what was asked, which excerpts were used, cost and outcome
+/// (BRQ-17.5). Never the student's name or contact details.
+model AssistantLog {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  mode           String
+  question       String
+  chunkIds       String[] @map("chunk_ids") @db.Uuid
+  bestSimilarity Float?   @map("best_similarity")
+  refused        Boolean  @default(false)
+  refusalReason  String?  @map("refusal_reason")
+  inputTokens    Int      @default(0) @map("input_tokens")
+  outputTokens   Int      @default(0) @map("output_tokens")
+  costUsd        Decimal  @default(0) @map("cost_usd") @db.Decimal(10, 6)
+  latencyMs      Int      @default(0) @map("latency_ms")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+  @@map("assistant_logs")
 }

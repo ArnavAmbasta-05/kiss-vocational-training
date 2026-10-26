@@ -106,6 +106,16 @@
     "INVALID_COMPETENCY": "That competency is not part of this course.",
     "ROLE_TITLE_TAKEN": "A job role with this title already exists.",
     "ROLE_NOT_FOUND": "Choose an existing job role.",
-    "OPPORTUNITY_CLOSED": "This opportunity is no longer open."
+    "OPPORTUNITY_CLOSED": "This opportunity is no longer open.",
+    "STUDENTS_ONLY": "Only students have a name in Odia.",
+    "NOT_FINISHED": "Placements are recorded only for students who completed training.",
+    "OPPORTUNITY_NOT_FOUND": "Choose an existing opportunity.",
+    "AI_DISABLED": "The training assistant is not switched on.",
+    "ASSISTANT_DAILY_LIMIT": "You have used all your questions for today. Try again tomorrow.",
+    "ASSISTANT_BUDGET_REACHED": "The assistant has reached its limit for this month.",
+    "ASSISTANT_UNAVAILABLE": "The assistant is busy right now. Try again in a minute.",
+    "NO_TEXT": "No text could be read from this file. Upload a PDF with selectable text or a text file.",
+    "NOT_PENDING": "Only materials waiting for review can be approved or rejected.",
+    "COURSE_NOT_FOUND": "Choose an existing course."
   }
 }
