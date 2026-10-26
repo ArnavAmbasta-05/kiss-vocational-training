@@ -90,6 +90,17 @@ enum InterventionActionType {
   PRACTICE_TASK
 }
 
+enum OpportunityType {
+  INTERNSHIP
+  APPRENTICESHIP
+  JOB
+}
+
+enum EvidenceKind {
+  FILE
+  LINK
+}
+
 enum LearningResourceType {
   VIDEO
   DOCUMENT
@@ -137,6 +148,10 @@ model User {
   interventionsOwned   InterventionAction[] @relation("ActionOwner")
   interventionsCreated InterventionAction[] @relation("ActionCreatedBy")
 
+  evidenceUploaded     PracticalEvidence[] @relation("EvidenceUploadedBy")
+  rubricsCreated       Rubric[]            @relation("RubricCreatedBy")
+  opportunitiesCreated Opportunity[]       @relation("OpportunityCreatedBy")
+
   @@index([role])
   @@map("users")
 }
@@ -181,6 +196,8 @@ model Student {
   competencyRatings CompetencyRating[]
   passportShares    PassportShare[]
   riskFlags         RiskFlag[]
+
+  opportunityInterests OpportunityInterest[]
 
   @@map("students")
 }
@@ -448,6 +465,8 @@ model Assessment {
   results      AssessmentResult[]
   competencies AssessmentCompetency[]
 
+  rubric Rubric?
+
   @@index([batchId])
   @@index([createdById])
   @@map("assessments")
@@ -467,6 +486,8 @@ model AssessmentResult {
   assessment Assessment @relation(fields: [assessmentId], references: [id], onDelete: Restrict)
   student    Student    @relation(fields: [studentId], references: [id], onDelete: Restrict)
   recordedBy User       @relation("ResultRecordedBy", fields: [recordedById], references: [id])
+
+  evidence PracticalEvidence[]
 
   @@unique([assessmentId, studentId])
   @@index([studentId])
@@ -631,6 +652,8 @@ model Competency {
   assessments AssessmentCompetency[]
   ratings     CompetencyRating[]
   resources   LearningResource[]
+
+  evidence PracticalEvidence[]
 
   @@unique([courseId, code])
   @@map("competencies")
@@ -805,4 +828,119 @@ model AllocationPreview {
   @@index([cycleId])
   @@index([expiresAt])
   @@map("allocation_previews")
+}
+
+// ─── R3: practical evidence (F18), career matcher (F13) ─────────────────────────
+
+/// BRQ-18.2: named criteria scored on levels, attached to one practical assessment.
+model Rubric {
+  id           String   @id @default(uuid()) @db.Uuid
+  assessmentId String   @unique @map("assessment_id") @db.Uuid
+  /// [{ key, name, description? }]
+  criteria     Json
+  /// [{ value, label }] in ascending order
+  levels       Json
+  createdById  String   @map("created_by_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  assessment Assessment @relation(fields: [assessmentId], references: [id], onDelete: Restrict)
+  createdBy  User       @relation("RubricCreatedBy", fields: [createdById], references: [id])
+
+  @@index([createdById])
+  @@map("rubrics")
+}
+
+/// BRQ-18.1, 18.3: a file (object storage, ADR-10) or a video link proving a practical result.
+model PracticalEvidence {
+  id           String       @id @default(uuid()) @db.Uuid
+  resultId     String       @map("result_id") @db.Uuid
+  competencyId String?      @map("competency_id") @db.Uuid
+  kind         EvidenceKind
+  /// FILE: server-generated storage key; the file itself never enters the database.
+  objectKey    String?      @unique @map("object_key")
+  /// LINK: an https video link (videos are links only, NFR-14).
+  url          String?
+  fileName     String?      @map("file_name")
+  mime         String?
+  sizeBytes    Int?         @map("size_bytes")
+  /// Rubric scores { criterionKey: level }.
+  scores       Json?
+  note         String?
+  uploadedById String       @map("uploaded_by_id") @db.Uuid
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  result     AssessmentResult @relation(fields: [resultId], references: [id], onDelete: Restrict)
+  competency Competency?      @relation(fields: [competencyId], references: [id], onDelete: Restrict)
+  uploadedBy User             @relation("EvidenceUploadedBy", fields: [uploadedById], references: [id])
+
+  @@index([resultId])
+  @@index([competencyId])
+  @@index([uploadedById])
+  @@map("practical_evidence")
+}
+
+/// BRQ-C.3: a job role defined by required competency codes and levels.
+model JobRole {
+  id          String   @id @default(uuid()) @db.Uuid
+  title       String   @unique
+  description String?
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  competencies  JobRoleCompetency[]
+  opportunities Opportunity[]
+
+  @@map("job_roles")
+}
+
+model JobRoleCompetency {
+  roleId         String @map("role_id") @db.Uuid
+  competencyCode String @map("competency_code")
+  level          Int
+
+  role JobRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, competencyCode])
+  @@map("job_role_competencies")
+}
+
+/// BRQ-13.1: an internship, apprenticeship or job for a role, from a partner.
+model Opportunity {
+  id          String          @id @default(uuid()) @db.Uuid
+  roleId      String          @map("role_id") @db.Uuid
+  title       String
+  type        OpportunityType
+  partner     String
+  location    String?
+  description String?
+  closesOn    DateTime        @map("closes_on") @db.Date
+  isActive    Boolean         @default(true) @map("is_active")
+  createdById String          @map("created_by_id") @db.Uuid
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  role      JobRole               @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  createdBy User                  @relation("OpportunityCreatedBy", fields: [createdById], references: [id])
+  interests OpportunityInterest[]
+
+  @@index([roleId])
+  @@index([closesOn])
+  @@index([createdById])
+  @@map("opportunities")
+}
+
+/// BRQ-13.4: a student's interest in an opportunity (one per student).
+model OpportunityInterest {
+  opportunityId String   @map("opportunity_id") @db.Uuid
+  studentId     String   @map("student_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Restrict)
+  student     Student     @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  @@id([opportunityId, studentId])
+  @@index([studentId])
+  @@map("opportunity_interests")
 }

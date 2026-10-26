@@ -11,3 +11,6 @@ export * from './competency';
 export * from './passport';
 export * from './intervention';
 export * from './audit';
+export * from './scheduling';
+export * from './evidence';
+export * from './opportunities';

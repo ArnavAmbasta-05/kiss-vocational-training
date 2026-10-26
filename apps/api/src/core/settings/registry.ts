@@ -83,6 +83,35 @@ export const SETTINGS = {
     365,
     'Longest a passport share link may last [BRQ-10.3]',
   ),
+  'scheduling.capacityWarnPercent': define(
+    percent,
+    90,
+    'Warn when a batch is at least this % full [BRQ-14.1]',
+  ),
+  'evidence.maxBytes': define(
+    z
+      .number()
+      .int()
+      .min(1)
+      .max(10 * 1024 * 1024),
+    10 * 1024 * 1024,
+    'Largest evidence file in bytes; the database also caps it at 10 MB [BRQ-18.1, NFR-14]',
+  ),
+  'evidence.allowedMime': define(
+    z.array(z.string().regex(/^[a-z]+\/[a-z0-9.+-]+$/)).min(1),
+    ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'],
+    'File types accepted as evidence; videos are links only [BRQ-18.1, NFR-14]',
+  ),
+  'evidence.uploadTtlSeconds': define(
+    z.number().int().min(30).max(3600),
+    600,
+    'How long an evidence upload URL stays valid [TAD §9]',
+  ),
+  'evidence.downloadTtlSeconds': define(
+    z.number().int().min(30).max(3600),
+    300,
+    'How long an evidence download link stays valid [TAD §9]',
+  ),
   'enrollment.maxPreferences': define(
     z.number().int().min(1).max(3),
     3,

@@ -16,6 +16,8 @@ export interface PassportEntry {
   cycleName: string;
   verifiedAt: string;
   verifiedBy: string;
+  /** BRQ-10.2: practical evidence linked to this competency (signed-in passport only). */
+  evidence?: Array<{ id: string; kind: 'FILE' | 'LINK'; label: string }>;
 }
 
 export interface RevokedPassportEntry extends PassportEntry {

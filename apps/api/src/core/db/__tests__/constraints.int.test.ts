@@ -7,7 +7,7 @@ const db = () => prisma();
 afterAll(() => disconnectPrisma());
 
 describe('migrations', () => {
-  it('create every R1 and R2 table on a clean database', async () => {
+  it('create every R1, R2 and R3 table on a clean database', async () => {
     const rows = await db().$queryRaw<{ table_name: string }[]>`
       SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'`;
     const tables = rows.map((r) => r.table_name);
@@ -44,10 +44,15 @@ describe('migrations', () => {
         'passport_shares',
         'risk_flags',
         'intervention_actions',
+        // R3 (Sprint 11)
+        'rubrics',
+        'practical_evidence',
+        'job_roles',
+        'job_role_competencies',
+        'opportunities',
+        'opportunity_interests',
       ]),
     );
-    // R3 tables must not exist yet.
-    expect(tables).not.toContain('job_roles');
   });
 });
 
@@ -283,5 +288,19 @@ describe('batch membership integrity', () => {
         data: { batchId: batch.id, enrollmentId: enrollment.id, studentId: b.student.id },
       }),
     ).rejects.toMatchObject({ code: 'P2003' });
+  });
+});
+
+describe('R3 constraints (TAD §6.2)', () => {
+  it('job role levels are 1–4 and evidence is a file of at most 10 MB or a link, never both', async () => {
+    const role = await db().jobRole.create({ data: { title: `Role ${uid()}` } });
+    await expect(
+      db().jobRoleCompetency.create({ data: { roleId: role.id, competencyCode: 'X', level: 5 } }),
+    ).rejects.toThrow();
+    await expect(
+      db()
+        .$executeRaw`INSERT INTO practical_evidence (id, result_id, kind, url, object_key, uploaded_by_id)
+        VALUES (gen_random_uuid(), gen_random_uuid(), 'LINK', 'https://x', 'evidence/x', gen_random_uuid())`,
+    ).rejects.toThrow(/practical_evidence_file_or_link/);
   });
 });
