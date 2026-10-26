@@ -15,6 +15,112 @@ Read this at the start of every session and update it at the end of every sprint
 
 ---
 
+## Sprint 12 — Multilingual and low-bandwidth (F16), outcome analytics (F20), AI training assistant (F17) (built, 2026-10-26)
+
+### Built
+- **A) Multilingual and low-bandwidth** (F16):
+  - Every Hindi and Odia string is filled in, for all namespaces. `i18n:check` now runs
+    `--strict`, so CI fails on a missing or empty string or a placeholder mismatch.
+    `apps/web/src/locales/REVIEW.md` lists what a native speaker should review.
+  - Noto Sans Oriya and Noto Sans Devanagari (self-hosted, script-only subsets, weights
+    400/600/700) load only when Odia or Hindi is chosen.
+  - Optional Odia name on the student profile (`students.name_odia`, Odia script only; 422
+    `STUDENTS_ONLY` for other roles). Certificates print it under the English name in Noto Sans
+    Oriya.
+  - Bundle budget: `scripts/check-bundle.mjs` reads the Vite manifest and fails CI if a core
+    student page needs more than 500 KB gzip (today 210–227 KB).
+  - e2e `i18n.spec.ts`: Odia sign-in screen in the Odia font; a Hindi choice follows the
+    student to a second device.
+- **B) Outcome analytics** (`modules/analytics`, F20):
+  - Migration `20261026051607_f20_outcome_analytics`: `placement_outcomes` and two materialized
+    views, `analytics_batch_outcomes` and `analytics_course_competency`, refreshed CONCURRENTLY.
+    Rates (completion, certification, attendance, average score, verified competencies,
+    placement) are computed on read by pure functions in `analytics/rules.ts`.
+  - `GET /analytics/outcomes` (+ `.csv`) by course and batch, filtered by cycle;
+    `POST /analytics/refresh`; placements: list, candidates by roll number, record (422
+    `NOT_FINISHED`, `OPPORTUNITY_NOT_FOUND`), delete. All Admin, all changes audited.
+  - Nightly refresh: Vercel Cron `/api/v1/internal/jobs/analytics-refresh` at 21:00 UTC (02:30
+    IST) under a job lease; node-cron locally. Cron routes moved to `src/jobRoutes.ts`.
+  - UI: admin **Outcome analytics** with headline figures, a lazy-loaded bar chart, course and
+    batch tables, CSV export and placement recording.
+- **C) AI training assistant** (`modules/assistant`, F17), off unless `AI_ENABLED`:
+  - Migration `20261026052801_f17_ai_assistant`: pgvector, `materials`, `material_chunks`
+    (`vector(1024)`, HNSW cosine index) and `assistant_logs`. New settings:
+    `assistant.dailyLimitPerUser` (30), `assistant.minSimilarity` (0.4), `assistant.topK` (5),
+    `assistant.chunkTokens` (500), `assistant.chunkOverlapTokens` (50) and
+    `assistant.materialMaxBytes` (10 MB).
+  - Materials (Admin): upload a PDF, .txt or .md straight to the store, then approve or reject.
+    Approval extracts the text (unpdf for PDFs), splits it into ~500-token excerpts with
+    overlap, embeds them and makes them searchable. A scan with no text layer is refused (422
+    `NO_TEXT`). Every step is audited.
+  - `POST /assistant/ask` (Student), in order:
+    - the switch (503 `AI_DISABLED`), the daily limit (429 `ASSISTANT_DAILY_LIMIT`) and the
+      monthly cap (503 `ASSISTANT_BUDGET_REACHED`);
+    - only approved materials of the student's own courses (from their placements, never from
+      the request);
+    - top 5 excerpts by cosine similarity; below 0.4 it declines (`NOT_IN_MATERIALS`) **without
+      calling the model**;
+    - otherwise Claude (`claude-haiku-5-5`) with structured output. The model gets only the
+      excerpts, the question and the reply language (the student's locale), never the
+      student's name, roll number or contact details (NFR-13). Off-topic replies come back as
+      `OFF_TOPIC`.
+    - Practice mode returns MCQs; the server keeps only those with 4 options, a valid answer
+      and a source it sent.
+    - Each reply lists its numbered sources and approved resources for the student's open skill
+      gaps (from F12).
+    - Every request past the guard is logged: question, excerpt ids, best similarity, tokens,
+      cost, latency, refusal reason.
+  - `GET /assistant/status` (Student) and `GET /assistant/usage` (Admin: questions, answers,
+    refusals by reason, tokens, cost against the cap, average latency).
+  - Providers sit behind interfaces: embeddings are Voyage `voyage-3.5` (1024 dims) in
+    production and a word-hashing mock locally; answers are Claude, or a mock that quotes the
+    best excerpt (`ASSISTANT_PROVIDER=mock`, refused in production) for local demos and e2e.
+  - UI: student **Training assistant** (three modes, cited answers with expandable source
+    excerpts, practice questions with Check answer, resources, questions left today, a
+    disclaimer) and admin **Assistant materials** (usage card, upload, review table).
+  - The browser upload helper is shared by evidence and materials (`lib/upload.ts`).
+
+### Deviations
+- **Translations are machine-drafted.** They pass the strict completeness check, but a native
+  Odia and Hindi speaker should review them (`locales/REVIEW.md`) before the pilot.
+- **Embeddings come from Voyage AI** (Anthropic has no embedding model). Production needs
+  `EMBEDDING_PROVIDER=voyage` and `VOYAGE_API_KEY`; the config refuses to start with mock
+  embeddings when the assistant is on in production.
+- **`AI_MONTHLY_CAP` is in US dollars** of model usage per calendar month (IST); 0 keeps the
+  assistant closed even when switched on. Embedding cost is not counted (it is tiny).
+- **Refusals count toward the daily limit**, so the limit also caps retrieval cost.
+- **Deleting a material removes it from search** (rows and excerpts, audited) but leaves the
+  file in the store; the storage adapter has no delete yet.
+- **Jest cannot load PDF.js** (an ES module bundle). Integration tests swap in a stub for PDF
+  text; the e2e test uploads a real PDF and covers unpdf.
+- **Lighthouse was not run.** The bundle budget check stands in for the low-bandwidth target.
+- Fixed a flaky Sprint 11 test: it tampered with the last base64url character of a signed link,
+  which can carry only padding bits and decode to the same signature.
+
+### Known gaps / follow-ups
+- Going live with the assistant needs, in Vercel: `AI_ENABLED=true`, `ANTHROPIC_API_KEY`,
+  `AI_MONTHLY_CAP`, `EMBEDDING_PROVIDER=voyage`, `VOYAGE_API_KEY`. Then upload and approve at
+  least one material per pilot course.
+- The seed adds no materials or placements.
+- `openapi.yaml` still has 9 older lint errors (unquoted commas in descriptions); the new paths
+  add none.
+
+### Definition of done
+- [x] Unit: analytics rates (zero denominators, late as present); chunking (sizes, overlap,
+  empty text); guard order (off, daily limit, cap of 0); similarity threshold; cost.
+- [x] Integration: analytics views and placements; materials (PDF approve with 1024-dim
+  vectors, empty file, wrong-course key, admin only); ask (switch off, cap, daily limit, no
+  model call below the threshold, own course only, no personal data sent, practice
+  validation, off-topic, usage). Full API suite: 46 suites, 360 tests.
+- [x] e2e: `i18n.spec.ts` and `assistant.spec.ts` (admin uploads and approves a real PDF; the
+  student gets a cited answer, checks a practice question and is declined off-topic; axe
+  clean on both pages).
+- [x] lint · typecheck · prettier · `i18n:check --strict` · build · bundle budget
+- [x] openapi.yaml: analytics, placements, assistant, materials and the analytics cron
+- [x] Strings externalized in en, hi and or
+
+---
+
 ## Sprint 11 — Smart scheduling (F14), practical evidence (F18), career matcher (F13) (built, 2026-10-26)
 
 ### Built
@@ -106,8 +212,8 @@ Read this at the start of every session and update it at the end of every sprint
 
 ### Known gaps / follow-ups
 - Production uploads use Vercel Blob client tokens and signed GET URLs. Tests cover the local
-  driver; the Blob path needs one manual check on the live site (upload a photo, open it). A
-  follow-up live workflow can add it.
+  driver. **Checked live on 2026-10-26**: a photo uploaded on the deployed site and opened in a
+  new tab through its signed link.
 - The seed adds no rubric or evidence: they need a trainer's real photos.
 
 ### Definition of done
