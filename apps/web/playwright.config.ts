@@ -26,7 +26,14 @@ export default defineConfig({
           command: 'pnpm --filter @vtmp/api dev',
           cwd: '../..',
           // The whole suite runs from one IP; the per-IP flood limiter would start refusing it.
-          env: { GLOBAL_RATE_LIMIT_PER_15MIN: '50000' },
+          // The assistant runs on mock providers here: no model calls, no API keys.
+          env: {
+            GLOBAL_RATE_LIMIT_PER_15MIN: '50000',
+            AI_ENABLED: 'true',
+            ASSISTANT_PROVIDER: 'mock',
+            EMBEDDING_PROVIDER: 'mock',
+            AI_MONTHLY_CAP: '1',
+          },
           url: 'http://localhost:4000/health',
           reuseExistingServer: !process.env.CI,
           timeout: 60_000,

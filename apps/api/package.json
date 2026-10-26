@@ -22,6 +22,7 @@
     "db:reset": "dotenv -e ../../.env -- prisma migrate reset"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.3.0",
     "@prisma/client": "^5.22.0",
     "@vercel/blob": "^2.8.2",
     "@vtmp/shared": "workspace:*",
@@ -37,6 +38,7 @@
     "pino": "^9.5.0",
     "pino-http": "^10.3.0",
     "qrcode": "1.5.4",
+    "unpdf": "^1.9.1",
     "zod": "^3.24.1"
   },
   "devDependencies": {

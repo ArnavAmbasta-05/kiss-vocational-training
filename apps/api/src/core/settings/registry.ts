@@ -112,6 +112,40 @@ export const SETTINGS = {
     300,
     'How long an evidence download link stays valid [TAD §9]',
   ),
+  'assistant.dailyLimitPerUser': define(
+    z.number().int().min(1).max(500),
+    30,
+    'Assistant questions a student may ask per day [BRQ-17.5, NFR-13]',
+  ),
+  'assistant.minSimilarity': define(
+    z.number().min(0).max(1),
+    0.4,
+    'Below this best-excerpt similarity the assistant declines without calling the model [BR-21]',
+  ),
+  'assistant.topK': define(
+    z.number().int().min(1).max(10),
+    5,
+    'Excerpts retrieved per question [BRQ-17.1]',
+  ),
+  'assistant.chunkTokens': define(
+    z.number().int().min(100).max(2000),
+    500,
+    'Approximate tokens per material excerpt [ADR-09]',
+  ),
+  'assistant.chunkOverlapTokens': define(
+    z.number().int().min(0).max(500),
+    50,
+    'Tokens repeated between neighbouring excerpts [ADR-09]',
+  ),
+  'assistant.materialMaxBytes': define(
+    z
+      .number()
+      .int()
+      .min(1)
+      .max(20 * 1024 * 1024),
+    10 * 1024 * 1024,
+    'Largest course material file (PDF or text) an admin may upload [BRQ-17.2]',
+  ),
   'enrollment.maxPreferences': define(
     z.number().int().min(1).max(3),
     3,

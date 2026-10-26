@@ -9,7 +9,7 @@
   "functions": {
     "api/index.js": {
       "maxDuration": 30,
-      "includeFiles": "{node_modules/.pnpm/@prisma+client*/node_modules/.prisma/client/**,node_modules/.pnpm/pdfkit@*/node_modules/pdfkit/js/data/**,apps/api/assets/**}"
+      "includeFiles": "{node_modules/.pnpm/@prisma+client*/node_modules/.prisma/client/**,node_modules/.pnpm/pdfkit@*/node_modules/pdfkit/js/data/**,apps/api/assets/**,node_modules/.pnpm/unpdf@*/node_modules/unpdf/dist/**}"
     }
   },
   "rewrites": [

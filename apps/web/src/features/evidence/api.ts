@@ -9,6 +9,7 @@ import type {
   UploadTarget,
 } from '@vtmp/shared';
 import { api } from '../../lib/api/client';
+import { uploadToTarget } from '../../lib/upload';
 
 export const useEvidenceSheet = (assessmentId: string) =>
   useQuery({
@@ -38,23 +39,7 @@ async function uploadFile(resultId: string, file: File): Promise<string> {
     contentType: file.type,
     sizeBytes: file.size,
   });
-  if (target.driver === 'vercel-blob') {
-    // Loaded only when needed: the Blob client is not part of the main bundle.
-    const { put } = await import('@vercel/blob/client');
-    await put(target.key, file, {
-      access: 'private',
-      token: target.clientToken,
-      contentType: file.type,
-    });
-  } else {
-    const res = await fetch(target.url, {
-      method: 'PUT',
-      headers: { 'Content-Type': file.type },
-      body: file,
-    });
-    if (!res.ok) throw new Error(`Upload failed (${res.status})`);
-  }
-  return target.key;
+  return uploadToTarget(target, file);
 }
 
 export type NewEvidence =

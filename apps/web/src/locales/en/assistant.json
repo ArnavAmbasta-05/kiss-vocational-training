@@ -1,0 +1,91 @@
+{
+  "title": "Training assistant",
+  "intro": "Ask about your course. Answers come only from the materials your institute has approved, and each answer shows the excerpts it used.",
+  "off": "The training assistant is not switched on yet.",
+  "noMaterials": "Your course has no approved materials yet. Ask your trainer.",
+  "courses": "Course materials: {{list}}",
+  "modeLabel": "What do you need?",
+  "mode": {
+    "answer": "Answer my question",
+    "simplify": "Explain it simply",
+    "practice": "Practice questions"
+  },
+  "questionLabel": "Your question",
+  "placeholder": {
+    "answer": "For example: Which gloves should I wear for arc welding?",
+    "simplify": "For example: What does earthing mean?",
+    "practice": "For example: Welding safety"
+  },
+  "remaining_one": "{{count}} question left today (of {{limit}})",
+  "remaining_other": "{{count}} questions left today (of {{limit}})",
+  "tooShort": "Write a question of at least 3 characters.",
+  "ask": "Ask",
+  "disclaimer": "The assistant can make mistakes. Check safety steps with your trainer.",
+  "answers": "Answers",
+  "sources": "From your course materials",
+  "sourceN": "Source {{n}}",
+  "resources": "Practise these skills",
+  "refused": {
+    "NOT_IN_MATERIALS": "I could not find this in your course materials. Try other words, or ask your trainer.",
+    "NO_COURSE": "Your course has no approved materials yet. Ask your trainer.",
+    "OFF_TOPIC": "I can only help with questions about your course."
+  },
+  "check": "Check answer",
+  "correct": "Correct!",
+  "wrong": "Not quite. The answer is: {{answer}}.",
+  "admin": {
+    "title": "Assistant materials",
+    "intro": "Upload course notes as PDF or text. The assistant uses a material only after you approve it, and students only see materials from their own course.",
+    "usage": {
+      "title": "Usage in {{month}}",
+      "on": "On",
+      "offBadge": "Off",
+      "offHint": "The assistant is switched off in the server settings. You can still prepare materials.",
+      "questions": "Questions",
+      "answered": "Answered",
+      "refused": "Declined",
+      "cost": "Cost / monthly cap",
+      "tokens": "Tokens in / out",
+      "latency": "Average reply time",
+      "ms": "{{ms}} ms"
+    },
+    "refusal": {
+      "NOT_IN_MATERIALS": "Not in materials",
+      "NO_COURSE": "No materials",
+      "OFF_TOPIC": "Off topic"
+    },
+    "upload": {
+      "title": "Add a material",
+      "course": "Course",
+      "chooseCourse": "Choose a course",
+      "name": "Title",
+      "file": "File",
+      "hint": "PDF with selectable text, .txt or .md. Scanned pages cannot be read.",
+      "missing": "Choose a course, enter a title and pick a file.",
+      "submit": "Upload for review",
+      "done": "Uploaded. Approve it to make it searchable."
+    },
+    "table": {
+      "heading": "Materials",
+      "title": "Material",
+      "status": "Status",
+      "excerpts": "Excerpts",
+      "added": "Added",
+      "actions": "Actions",
+      "empty": "No materials yet."
+    },
+    "status": {
+      "PENDING": "Waiting for review",
+      "APPROVED": "Approved",
+      "REJECTED": "Rejected"
+    },
+    "approve": "Approve",
+    "reject": "Reject",
+    "delete": "Delete",
+    "deleteNamed": "Delete {{title}}",
+    "confirmDelete": "Delete “{{title}}”? The assistant will stop using it.",
+    "approved": "“{{title}}” is now searchable.",
+    "rejected": "“{{title}}” was rejected.",
+    "deleted": "Material deleted."
+  }
+}
