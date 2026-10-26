@@ -144,7 +144,8 @@
       "SAT": "Saturday"
     },
     "attendance": "Attendance",
-    "attendanceFor": "Attendance for the session on {{when}}"
+    "attendanceFor": "Attendance for the session on {{when}}",
+    "freeSlots": "Free times nearby (choose one to use it):"
   },
   "allocation": {
     "title": "Run allocation",

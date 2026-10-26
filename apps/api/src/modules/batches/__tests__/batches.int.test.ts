@@ -36,7 +36,7 @@ describe('admin batches (BRQ-4.1)', () => {
       capacity: 1,
       startDate: '2027-01-04',
       endDate: '2027-03-31',
-      venue: 'Workshop A',
+      venue: `Workshop A ${uid()}`,
     };
     const created = await request(app).post('/api/v1/admin/batches').set(admin).send(body);
     expect(created.status).toBe(201);
@@ -215,7 +215,7 @@ describe('sessions (BRQ-4.3)', () => {
     });
     expect(single.status).toBe(201);
     expect(single.body[0]).toMatchObject({
-      venue: 'Workshop A',
+      venue: b.venue,
       status: 'SCHEDULED',
       topic: 'Safety basics',
     });

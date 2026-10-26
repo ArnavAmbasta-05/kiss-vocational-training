@@ -1,0 +1,26 @@
+{
+  "panel": {
+    "title": "Scheduling check",
+    "intro": "How full each batch will be after this allocation, who teaches it, and any venue or trainer clashes in its upcoming sessions."
+  },
+  "capacity": {
+    "OK": "{{projected}} of {{capacity}} ({{percent}} %)",
+    "NEAR": "Nearly full: {{projected}} of {{capacity}} ({{percent}} %)",
+    "OVER": "Over capacity: {{projected}} of {{capacity}}"
+  },
+  "clash": {
+    "hard_one": "{{count}} clash",
+    "hard_other": "{{count}} clashes",
+    "soft_one": "{{count}} warning",
+    "soft_other": "{{count}} warnings",
+    "VENUE": "{{date}}, {{time}}: {{venue}} is also booked by {{other}}",
+    "TRAINER": "{{date}}, {{time}}: {{trainer}} also teaches {{other}}",
+    "more_one": "and {{count}} more",
+    "more_other": "and {{count}} more"
+  },
+  "trainers": {
+    "assigned": "Trainers: {{names}}",
+    "none": "No trainer assigned yet.",
+    "free": "Free to teach it: {{names}}"
+  }
+}

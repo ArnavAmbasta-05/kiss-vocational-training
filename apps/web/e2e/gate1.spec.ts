@@ -55,7 +55,7 @@ async function rawMaterial(request: APIRequestContext) {
         capacity: 3,
         startDate: day(-3),
         endDate: day(-1),
-        venue: 'Workshop G',
+        venue: `Workshop G ${s}`,
       },
     }),
   );

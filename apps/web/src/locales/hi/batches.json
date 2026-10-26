@@ -144,7 +144,8 @@
       "SAT": ""
     },
     "attendance": "",
-    "attendanceFor": ""
+    "attendanceFor": "",
+    "freeSlots": ""
   },
   "allocation": {
     "title": "",

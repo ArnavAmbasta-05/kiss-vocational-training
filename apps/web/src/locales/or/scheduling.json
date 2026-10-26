@@ -1,0 +1,26 @@
+{
+  "panel": {
+    "title": "",
+    "intro": ""
+  },
+  "capacity": {
+    "OK": "",
+    "NEAR": "",
+    "OVER": ""
+  },
+  "clash": {
+    "hard_one": "",
+    "hard_other": "",
+    "soft_one": "",
+    "soft_other": "",
+    "VENUE": "",
+    "TRAINER": "",
+    "more_one": "",
+    "more_other": ""
+  },
+  "trainers": {
+    "assigned": "",
+    "none": "",
+    "free": ""
+  }
+}

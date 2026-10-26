@@ -198,7 +198,7 @@ export async function createBatch(
       capacity,
       startDate: new Date('2027-01-04'),
       endDate: new Date('2027-03-31'),
-      venue: 'Workshop A',
+      venue: `Workshop A ${uid()}`,
     },
   });
 }
@@ -220,7 +220,7 @@ export async function createActiveBatch(
       capacity: 30,
       startDate: new Date(Date.now() - 30 * 86_400_000),
       endDate: new Date(Date.now() + 60 * 86_400_000),
-      venue: 'Workshop C',
+      venue: `Workshop C ${uid()}`,
       status: 'ACTIVE',
     },
   });
@@ -254,7 +254,7 @@ export async function createActiveBatch(
           batchId: batch.id,
           startsAt,
           endsAt: new Date(startsAt.getTime() + 7_200_000),
-          venue: 'Workshop C',
+          venue: batch.venue,
         },
       }),
     );
@@ -343,7 +343,7 @@ export async function createCycleCourseBatch(db: PrismaClient) {
       capacity: 25,
       startDate: new Date('2027-01-04'),
       endDate: new Date('2027-03-31'),
-      venue: 'Workshop A',
+      venue: `Workshop A ${uid()}`,
     },
   });
   return { cycle, course, batch };

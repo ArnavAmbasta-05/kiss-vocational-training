@@ -18,6 +18,7 @@ import { prisma, type Tx } from '../../core/db';
 import { AppError } from '../../core/errors';
 import { settings } from '../../core/settings';
 import * as enrollments from '../enrollments/enrollments.service';
+import { clashesFor, type BookedSlot } from './rules';
 import { expandRecurring, MAX_GENERATED_SESSIONS } from './sessionsSchedule';
 
 const day = (d: Date) => d.toISOString().slice(0, 10);
@@ -181,6 +182,16 @@ export async function namesOf(
     select: { id: true, name: true, status: true },
   });
   return new Map(rows.map((b) => [b.id, b]));
+}
+
+/** A batch's course and status (F18 checks competencies against the course). */
+export async function courseOf(
+  batchId: string,
+): Promise<{ courseId: string; status: BatchStatus } | null> {
+  return prisma().batch.findUnique({
+    where: { id: batchId },
+    select: { courseId: true, status: true },
+  });
 }
 
 /** Ids of batches in a status (e.g. the daily F11 run over ACTIVE batches). */
@@ -581,6 +592,142 @@ export async function unassignTrainer(
 
 // ─── Admin: sessions (BRQ-4.3) ─────────────────────────────────────────────────
 
+// ─── Scheduling clashes (BR-20, BRQ-14.2) ──────────────────────────────────────
+
+export interface Booking extends BookedSlot {
+  id: string;
+  batchId: string;
+  batchName: string;
+  trainerNames: Map<string, string>;
+}
+
+/**
+ * Sessions (not cancelled) overlapping [from, to) that use one of these venues or trainers, with
+ * the trainers who teach each one (named on the session, else the batch's assigned trainers).
+ * Pass the transaction client to read inside a locked transaction.
+ */
+export async function bookingsOverlapping(
+  db: Tx | ReturnType<typeof prisma>,
+  window: { from: Date; to: Date },
+  filter: { venues: string[]; trainerIds: string[]; excludeSessionIds?: string[] },
+): Promise<Booking[]> {
+  const venues = [...new Set(filter.venues.map((v) => v.trim()).filter(Boolean))];
+  const trainerIds = [...new Set(filter.trainerIds)];
+  if (venues.length === 0 && trainerIds.length === 0) return [];
+  const rows = await db.trainingSession.findMany({
+    where: {
+      status: { not: 'CANCELLED' },
+      startsAt: { lt: window.to },
+      endsAt: { gt: window.from },
+      ...(filter.excludeSessionIds?.length ? { id: { notIn: filter.excludeSessionIds } } : {}),
+      OR: [
+        ...venues.map((v) => ({ venue: { equals: v, mode: 'insensitive' as const } })),
+        ...(trainerIds.length
+          ? [
+              { trainerId: { in: trainerIds } },
+              { trainerId: null, batch: { trainers: { some: { trainerId: { in: trainerIds } } } } },
+            ]
+          : []),
+      ],
+    },
+    select: {
+      id: true,
+      batchId: true,
+      startsAt: true,
+      endsAt: true,
+      venue: true,
+      trainerId: true,
+      trainer: { select: { user: { select: { fullName: true } } } },
+      batch: {
+        select: {
+          name: true,
+          trainers: {
+            select: {
+              trainerId: true,
+              trainer: { select: { user: { select: { fullName: true } } } },
+            },
+          },
+        },
+      },
+    },
+  });
+  return rows.map((r) => {
+    const names = new Map<string, string>();
+    if (r.trainerId) names.set(r.trainerId, r.trainer?.user.fullName ?? '');
+    else for (const t of r.batch.trainers) names.set(t.trainerId, t.trainer.user.fullName);
+    return {
+      id: r.id,
+      batchId: r.batchId,
+      batchName: r.batch.name,
+      startsAt: r.startsAt,
+      endsAt: r.endsAt,
+      venue: r.venue,
+      explicitTrainerId: r.trainerId,
+      trainerIds: [...names.keys()],
+      trainerNames: names,
+    };
+  });
+}
+
+/** Trainers assigned to a batch (ids and names), for the scheduling advisor. */
+export async function assignedTrainers(
+  batchId: string,
+): Promise<Array<{ id: string; fullName: string }>> {
+  const rows = await prisma().trainerAssignment.findMany({
+    where: { batchId },
+    select: { trainerId: true, trainer: { select: { user: { select: { fullName: true } } } } },
+  });
+  return rows.map((r) => ({ id: r.trainerId, fullName: r.trainer.user.fullName }));
+}
+
+/** A batch's sessions that have not been cancelled and have not ended yet. */
+export async function upcomingSessions(
+  batchId: string,
+  now = new Date(),
+): Promise<
+  Array<{ id: string; startsAt: Date; endsAt: Date; venue: string; trainerId: string | null }>
+> {
+  return prisma().trainingSession.findMany({
+    where: { batchId, status: { not: 'CANCELLED' }, endsAt: { gt: now } },
+    orderBy: { startsAt: 'asc' },
+    select: { id: true, startsAt: true, endsAt: true, venue: true, trainerId: true },
+  });
+}
+
+/** Capacity facts for the scheduling advisor (BRQ-14.1). */
+export async function capacityOf(
+  batchIds: string[],
+): Promise<
+  Map<
+    string,
+    { name: string; capacity: number; enrolled: number; courseTitle: string; venue: string }
+  >
+> {
+  const rows = await prisma().batch.findMany({
+    where: { id: { in: batchIds } },
+    select: {
+      id: true,
+      name: true,
+      capacity: true,
+      venue: true,
+      course: { select: { title: true } },
+      _count: { select: { students: true } },
+    },
+  });
+  return new Map(
+    rows.map((b) => [
+      b.id,
+      {
+        name: b.name,
+        capacity: b.capacity,
+        enrolled: b._count.students,
+        courseTitle: b.course.title,
+        venue: b.venue,
+      },
+    ]),
+  );
+}
+
 export async function createSessions(
   actor: Actor,
   batchId: string,
@@ -633,13 +780,48 @@ export async function createSessions(
       throw AppError.unprocessable('TRAINER_NOT_ASSIGNED', 'Assign the trainer to the batch first');
   }
 
+  const venue = input.venue ?? batch.venue;
   return withAudit(actor, async (tx, log) => {
+    // BR-20: serialise scheduling so two admins can't book the same slot at once, then refuse
+    // hard clashes (same venue, or the same trainer named on both sessions).
+    await tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtext('schedule'))`;
+    const window = {
+      from: new Date(Math.min(...slots.map((x) => x.startsAt.getTime()))),
+      to: new Date(Math.max(...slots.map((x) => x.endsAt.getTime()))),
+    };
+    const booked = await bookingsOverlapping(tx, window, {
+      venues: [venue],
+      trainerIds: input.trainerId ? [input.trainerId] : [],
+    });
+    const explicit = input.trainerId ?? null;
+    const hard = slots.flatMap((slot, i) =>
+      clashesFor(
+        { ...slot, venue, explicitTrainerId: explicit, trainerIds: explicit ? [explicit] : [] },
+        booked,
+      )
+        .filter((c) => c.hard)
+        .map((c) => ({ i, c })),
+    );
+    if (hard.length) {
+      throw AppError.conflict(
+        'SCHEDULE_CLASH',
+        hard[0]!.c.kind === 'VENUE'
+          ? `${venue} is already booked by ${hard[0]!.c.other.batchName} at that time`
+          : `The trainer already teaches ${hard[0]!.c.other.batchName} at that time`,
+        hard.slice(0, 20).map(({ i, c }) => ({
+          path: `sessions[${i}]`,
+          message: `${c.kind} clash with ${c.other.batchName} ${c.other.startsAt.toISOString()}–${c.other.endsAt.toISOString()}${
+            c.kind === 'VENUE' ? ` at ${c.other.venue}` : ''
+          }`,
+        })),
+      );
+    }
     await tx.trainingSession.createMany({
       data: slots.map((s) => ({
         batchId,
         startsAt: s.startsAt,
         endsAt: s.endsAt,
-        venue: input.venue ?? batch.venue,
+        venue,
         topic: input.topic ?? null,
         trainerId: input.trainerId ?? null,
       })),

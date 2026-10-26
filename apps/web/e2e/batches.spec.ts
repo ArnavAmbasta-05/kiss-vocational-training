@@ -54,7 +54,7 @@ async function setup(request: APIRequestContext) {
         capacity: 2,
         startDate: day(7),
         endDate: day(60),
-        venue: 'Workshop B',
+        venue: `Workshop B ${s}`,
       },
     })
   ).json();

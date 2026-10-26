@@ -104,3 +104,69 @@ export function allocate(
     },
   };
 }
+
+// ─── Scheduling (BR-20, BRQ-14.2) ─────────────────────────────────────────────
+
+export interface TimedSlot {
+  startsAt: Date;
+  endsAt: Date;
+}
+
+/** BR-20 overlap test: startA < endB && startB < endA. A session ending as another starts is fine. */
+export function overlaps(a: TimedSlot, b: TimedSlot): boolean {
+  return a.startsAt < b.endsAt && b.startsAt < a.endsAt;
+}
+
+/** Venues compare case- and space-insensitively ("Workshop  A" is "workshop a"). */
+export function sameVenue(a: string, b: string): boolean {
+  const norm = (v: string) => v.trim().replace(/\s+/g, ' ').toLowerCase();
+  return norm(a) === norm(b);
+}
+
+export interface BookedSlot extends TimedSlot {
+  venue: string;
+  /** Trainer named on the session itself, if any. */
+  explicitTrainerId: string | null;
+  /** Who teaches it: the named trainer, otherwise every trainer assigned to the batch. */
+  trainerIds: readonly string[];
+}
+
+export interface SlotClash<T extends BookedSlot> {
+  kind: 'VENUE' | 'TRAINER';
+  /**
+   * Hard clashes block saving: the same venue, or the same trainer named on both sessions.
+   * A trainer who only teaches through batch assignment gives a soft warning.
+   */
+  hard: boolean;
+  other: T;
+  trainerId?: string;
+}
+
+/** Every clash between one slot and a set of other bookings (BR-20). */
+export function clashesFor<T extends BookedSlot>(
+  slot: BookedSlot,
+  others: readonly T[],
+): Array<SlotClash<T>> {
+  const out: Array<SlotClash<T>> = [];
+  for (const other of others) {
+    if (!overlaps(slot, other)) continue;
+    if (sameVenue(slot.venue, other.venue)) out.push({ kind: 'VENUE', hard: true, other });
+    for (const t of slot.trainerIds) {
+      if (!other.trainerIds.includes(t)) continue;
+      const hard = slot.explicitTrainerId === t && other.explicitTrainerId === t;
+      out.push({ kind: 'TRAINER', hard, other, trainerId: t });
+    }
+  }
+  return out;
+}
+
+/** BRQ-14.1: how full a batch is or will be. Bounds: ≥ warnAt % is NEAR, over 100 % is OVER. */
+export function capacityLevel(
+  projected: number,
+  capacity: number,
+  warnAtPercent: number,
+): { percent: number; level: 'OK' | 'NEAR' | 'OVER' } {
+  const percent = capacity > 0 ? Math.round((projected * 10_000) / capacity) / 100 : 100;
+  const level = projected > capacity ? 'OVER' : percent >= warnAtPercent ? 'NEAR' : 'OK';
+  return { percent, level };
+}

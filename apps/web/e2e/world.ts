@@ -61,7 +61,7 @@ export async function setupActiveBatch(request: APIRequestContext) {
         capacity: 5,
         startDate: day(-5),
         endDate: day(50),
-        venue: 'Workshop C',
+        venue: `Workshop C ${s}`,
       },
     }),
   );

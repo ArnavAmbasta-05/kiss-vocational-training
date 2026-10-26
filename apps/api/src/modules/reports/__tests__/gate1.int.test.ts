@@ -81,7 +81,7 @@ describe('Gate 1: enrollment → certificate, fully audited', () => {
           capacity: 5,
           startDate: day(-5),
           endDate: day(50),
-          venue: 'Workshop G',
+          venue: `Workshop G ${s}`,
         }),
       201,
     );

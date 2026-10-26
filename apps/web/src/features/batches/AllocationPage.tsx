@@ -8,6 +8,7 @@ import { useErrorMessage } from '../../lib/api/useErrorMessage';
 import { relativeTime } from '../../lib/format';
 import { useAdminCycles } from '../admin-courses/api';
 import { useConfirmAllocation, usePreviewAllocation } from './api';
+import { ScheduleAdvicePanel } from '../scheduling/ScheduleAdvice';
 import { FillBar } from './bits';
 
 type Fill = AllocationPreview['batches'][number];
@@ -179,6 +180,10 @@ export function AllocationPage() {
               rowKey={(b) => b.batchId}
             />
           </Card>
+
+          <ScheduleAdvicePanel
+            fills={preview.batches.map((b) => ({ batchId: b.batchId, added: b.added }))}
+          />
 
           <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
             <Card title={t('allocation.assignmentsHeading')}>
