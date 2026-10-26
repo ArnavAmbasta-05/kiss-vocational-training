@@ -157,7 +157,11 @@ describe('uploads (BRQ-18.1, NFR-14, TAD §9)', () => {
       .set('Content-Type', 'image/png')
       .send(PNG)
       .expect(403);
-    const tampered = link().replace(/.$/, (c) => (c === 'A' ? 'B' : 'A'));
+    // Change a middle character: the last base64url character carries padding bits, so
+    // changing it can decode to the same bytes.
+    const good = link();
+    const mid = Math.floor(good.length * 0.75);
+    const tampered = good.slice(0, mid) + (good[mid] === 'A' ? 'Q' : 'A') + good.slice(mid + 1);
     await request(app).put(tampered).set('Content-Type', 'image/png').send(PNG).expect(403);
 
     await request(app).put(link()).set('Content-Type', 'image/png').send(PNG).expect(201);
