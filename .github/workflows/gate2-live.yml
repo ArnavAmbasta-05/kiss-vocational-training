@@ -1,0 +1,58 @@
+name: Gate 2 on the live site
+
+# Release 2 acceptance (BRD §15, Gate 2) against the deployed site:
+#   - passport.spec.ts on a phone (Pixel 7): QR verification (F15), Skill Passport share and
+#     revoke (F10), certificate revocation shown publicly without the reason.
+#   - competency.spec.ts on desktop: admin defines competencies, trainer rates, the student sees
+#     the gap and what to practise (F12).
+#   - intervention.spec.ts on desktop: marking an absence flags the student (F11), the trainer
+#     agrees an action, the student sees the support card, the admin finds it in the audit log.
+# It CREATES data there (cycles, courses, batches, test students, a certificate, a risk flag),
+# so it never runs on push: start it by hand from the Actions tab, or
+# `gh workflow run gate2-live.yml`.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: gate2-live
+  cancel-in-progress: false
+
+jobs:
+  gate2:
+    name: Gate 2 against PUBLIC_BASE_URL
+    if: vars.PUBLIC_BASE_URL != ''
+    runs-on: ubuntu-latest
+    env:
+      E2E_BASE_URL: ${{ vars.PUBLIC_BASE_URL }}
+      E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Wait for the API (free tier may be asleep)
+        run: |
+          for i in $(seq 1 30); do
+            curl -fsS "$E2E_BASE_URL/api/v1/health" && exit 0
+            sleep 10
+          done
+          exit 1
+      - run: pnpm --filter @vtmp/web exec playwright install --with-deps chromium
+      # No retries: a retry would repeat sign-ins and create a second set of test data.
+      - name: F10 + F15 on a phone (employer scans the QR)
+        run: pnpm --filter @vtmp/web exec playwright test passport.spec.ts --project=mobile --retries=0
+      - name: F12 on desktop (competencies, ratings, skill gaps)
+        if: success() || failure()
+        run: pnpm --filter @vtmp/web exec playwright test competency.spec.ts --project=desktop --retries=0
+      - name: F11 + F19 on desktop (flag, action, student card, audit log)
+        if: success() || failure()
+        run: pnpm --filter @vtmp/web exec playwright test intervention.spec.ts --project=desktop --retries=0
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: gate2-live-report
+          path: apps/web/playwright-report
+          retention-days: 7
