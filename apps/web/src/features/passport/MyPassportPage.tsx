@@ -17,6 +17,7 @@ import {
 import { useToast } from '../../components/toast';
 import { useErrorMessage } from '../../lib/api/useErrorMessage';
 import { formatDate, formatDay } from '../../lib/format';
+import { openEvidence } from '../evidence/api';
 import {
   downloadPassportPdf,
   useCreateShare,
@@ -105,6 +106,8 @@ export function MyPassportPage() {
 function SkillList({ items }: { items: PassportEntry[] }) {
   const { t, i18n } = useTranslation(['passport', 'competency']);
   const lng = i18n.resolvedLanguage ?? 'en';
+  const toast = useToast();
+  const errorMessage = useErrorMessage();
   if (items.length === 0) return <EmptyState title={t('noSkills')} />;
   return (
     <ul className="grid gap-3 sm:grid-cols-2" data-testid="passport-skills">
@@ -123,6 +126,29 @@ function SkillList({ items }: { items: PassportEntry[] }) {
           <p className="mt-1 text-xs text-slate-600">
             {t('verifiedOn', { date: formatDate(e.verifiedAt, lng), name: e.verifiedBy })}
           </p>
+          {e.evidence && e.evidence.length > 0 && (
+            <div className="mt-2">
+              <p className="text-xs font-medium text-slate-700">{t('evidence')}</p>
+              <ul className="mt-1 flex flex-wrap gap-1">
+                {e.evidence.map((ev) => (
+                  <li key={ev.id}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-label={t('openEvidence', { name: ev.label, skill: e.title })}
+                      onClick={() =>
+                        void openEvidence(ev.id).catch((err: unknown) =>
+                          toast.show({ tone: 'error', title: errorMessage(err) }),
+                        )
+                      }
+                    >
+                      {ev.kind === 'LINK' ? t('videoLink') : ev.label}
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </li>
       ))}
     </ul>

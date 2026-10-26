@@ -12,6 +12,7 @@ import { AppError } from '../../core/errors';
 import { settings } from '../../core/settings';
 import * as competency from '../competency/competency.service';
 import * as documents from '../documents/documents.service';
+import * as evidence from '../evidence/evidence.service';
 import * as users from '../users/users.service';
 
 /**
@@ -21,15 +22,19 @@ import * as users from '../users/users.service';
 
 /** BRQ-10.1, 10.2, 10.4: every verified competency across cycles, practical apart from theory. */
 export async function passport(studentId: string): Promise<Passport> {
-  const [student, entries, certificates] = await Promise.all([
+  const [student, entries, certificates, proof] = await Promise.all([
     users.studentProfile(studentId),
     competency.verifiedEntries(studentId),
     documents.forStudent(studentId),
+    evidence.forPassport(studentId),
   ]);
   if (!student) throw AppError.notFound('Student not found');
   return {
     student,
-    practical: entries.active.filter((e) => e.mode === 'PRACTICAL'),
+    // BRQ-10.2: practical skills carry links to their evidence (F18) when there is any.
+    practical: entries.active
+      .filter((e) => e.mode === 'PRACTICAL')
+      .map((e) => ({ ...e, evidence: proof.get(e.competencyId) ?? [] })),
     theory: entries.active.filter((e) => e.mode === 'THEORY'),
     revoked: entries.revoked,
     certificates: certificates.map((c) => ({

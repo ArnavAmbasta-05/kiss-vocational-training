@@ -1,6 +1,9 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { createHmac, timingSafeEqual } from 'node:crypto';
+import { mkdir, readFile, stat as fsStat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { get, put } from '@vercel/blob';
+import { get, head, issueSignedToken, presignUrl, put } from '@vercel/blob';
+import { generateClientTokenFromReadWriteToken } from '@vercel/blob/client';
+import type { UploadTarget } from '@vtmp/shared';
 import { config } from '../config';
 
 /**
@@ -12,6 +15,18 @@ export interface Storage {
   put(key: string, body: Buffer, contentType: string): Promise<void>;
   /** Null when there is no object under this key. */
   get(key: string): Promise<Buffer | null>;
+  /** Size and type of a stored object; null when there is none. */
+  stat(key: string): Promise<{ size: number; contentType: string } | null>;
+  /**
+   * Lets the browser upload one object straight to the store (never through the API function,
+   * whose request body is capped), limited to this key, type and size, until it expires.
+   */
+  uploadTarget(
+    key: string,
+    rules: { contentType: string; maxBytes: number; ttlSeconds: number },
+  ): Promise<UploadTarget>;
+  /** A short-lived URL that downloads one private object (TAD §9). */
+  signedUrl(key: string, ttlSeconds: number): Promise<{ url: string; expiresAt: string }>;
 }
 
 const KEY = /^[a-z0-9][a-z0-9/_.-]*$/;
@@ -19,14 +34,57 @@ function checkKey(key: string) {
   if (!KEY.test(key) || key.includes('..')) throw new Error('Invalid storage key');
 }
 
+// ─── Local driver capability URLs (development and tests) ──────────────────────
+
+export interface LocalGrant {
+  op: 'put' | 'get';
+  key: string;
+  /** put only: the exact content type and the size limit. */
+  contentType?: string;
+  maxBytes?: number;
+  /** ms since epoch */
+  exp: number;
+}
+
+const b64 = (b: Buffer) => b.toString('base64url');
+const signingKey = () => `local-storage:${config().JWT_SECRET}`;
+
+/** Signs a grant for the local driver's /api/v1/files/:token route (HMAC-SHA256). */
+export function signLocalGrant(grant: LocalGrant): string {
+  const body = b64(Buffer.from(JSON.stringify(grant)));
+  const mac = b64(createHmac('sha256', signingKey()).update(body).digest());
+  return `${body}.${mac}`;
+}
+
+/** Verifies a local grant; null when tampered with, malformed or expired. */
+export function verifyLocalGrant(token: string, now = Date.now()): LocalGrant | null {
+  const [body, mac] = token.split('.');
+  if (!body || !mac) return null;
+  const expected = createHmac('sha256', signingKey()).update(body).digest();
+  const given = Buffer.from(mac, 'base64url');
+  if (given.length !== expected.length || !timingSafeEqual(given, expected)) return null;
+  try {
+    const grant = JSON.parse(Buffer.from(body, 'base64url').toString('utf8')) as LocalGrant;
+    if (typeof grant.exp !== 'number' || grant.exp <= now) return null;
+    checkKey(grant.key);
+    return grant;
+  } catch {
+    return null;
+  }
+}
+
+const filesUrl = (token: string) => `${config().PUBLIC_BASE_URL}/api/v1/files/${token}`;
+
 /** Development and tests: files under STORAGE_LOCAL_DIR (git-ignored). */
 function localStorage(root: string): Storage {
   const file = (key: string) => path.join(path.resolve(root), ...key.split('/'));
+  const meta = (key: string) => `${file(key)}.meta.json`;
   return {
-    async put(key, body) {
+    async put(key, body, contentType) {
       checkKey(key);
       await mkdir(path.dirname(file(key)), { recursive: true });
       await writeFile(file(key), body);
+      await writeFile(meta(key), JSON.stringify({ contentType }));
     },
     async get(key) {
       checkKey(key);
@@ -36,6 +94,39 @@ function localStorage(root: string): Storage {
         if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
         throw err;
       }
+    },
+    async stat(key) {
+      checkKey(key);
+      try {
+        const [st, m] = await Promise.all([fsStat(file(key)), readFile(meta(key), 'utf8')]);
+        return {
+          size: st.size,
+          contentType: (JSON.parse(m) as { contentType: string }).contentType,
+        };
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
+        throw err;
+      }
+    },
+    async uploadTarget(key, rules) {
+      checkKey(key);
+      const exp = Date.now() + rules.ttlSeconds * 1000;
+      const token = signLocalGrant({
+        op: 'put',
+        key,
+        contentType: rules.contentType,
+        maxBytes: rules.maxBytes,
+        exp,
+      });
+      return { driver: 'local', key, url: filesUrl(token), expiresAt: new Date(exp).toISOString() };
+    },
+    async signedUrl(key, ttlSeconds) {
+      checkKey(key);
+      const exp = Date.now() + ttlSeconds * 1000;
+      return {
+        url: filesUrl(signLocalGrant({ op: 'get', key, exp })),
+        expiresAt: new Date(exp).toISOString(),
+      };
     },
   };
 }
@@ -58,6 +149,52 @@ function vercelBlobStorage(token: string): Storage {
       const res = await get(key, { access: 'private', token, useCache: false });
       if (!res || res.statusCode !== 200) return null;
       return Buffer.from(await new Response(res.stream).arrayBuffer());
+    },
+    async stat(key) {
+      checkKey(key);
+      try {
+        const h = await head(key, { token });
+        return { size: h.size, contentType: h.contentType };
+      } catch (err) {
+        if ((err as Error).name === 'BlobNotFoundError') return null;
+        throw err;
+      }
+    },
+    async uploadTarget(key, rules) {
+      checkKey(key);
+      const validUntil = Date.now() + rules.ttlSeconds * 1000;
+      const clientToken = await generateClientTokenFromReadWriteToken({
+        token,
+        pathname: key,
+        allowedContentTypes: [rules.contentType],
+        maximumSizeInBytes: rules.maxBytes,
+        validUntil,
+        addRandomSuffix: false,
+        allowOverwrite: false,
+      });
+      return {
+        driver: 'vercel-blob',
+        key,
+        clientToken,
+        expiresAt: new Date(validUntil).toISOString(),
+      };
+    },
+    async signedUrl(key, ttlSeconds) {
+      checkKey(key);
+      const validUntil = Date.now() + ttlSeconds * 1000;
+      const signed = await issueSignedToken({
+        token,
+        pathname: key,
+        operations: ['get'],
+        validUntil,
+      });
+      const { presignedUrl } = await presignUrl(signed, {
+        operation: 'get',
+        pathname: key,
+        access: 'private',
+        validUntil,
+      });
+      return { url: presignedUrl, expiresAt: new Date(validUntil).toISOString() };
     },
   };
 }

@@ -53,5 +53,8 @@
     "certificateId": "Certificate ID {{code}}",
     "grade": "Grade {{grade}}",
     "issued": "Issued {{date}}"
-  }
+  },
+  "evidence": "Evidence",
+  "videoLink": "Video link",
+  "openEvidence": "Open {{name}}, evidence for {{skill}}"
 }

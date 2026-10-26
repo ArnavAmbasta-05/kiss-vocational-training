@@ -118,6 +118,15 @@ export function AssessmentsPanel({
           >
             {t('assessments.marks')}
           </Link>
+          {a.mode === 'PRACTICAL' && a.recorded > 0 && (
+            <Link
+              to={`${marksBase}/${a.id}/evidence`}
+              aria-label={t('assessments.evidenceFor', { title: a.title })}
+              className="inline-flex h-8 items-center rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-800 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
+            >
+              {t('assessments.evidence')}
+            </Link>
+          )}
           {editable && (
             <Button
               size="sm"

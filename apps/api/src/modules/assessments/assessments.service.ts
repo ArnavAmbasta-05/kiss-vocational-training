@@ -341,6 +341,42 @@ export async function batchScores(
   return byStudent;
 }
 
+/** Where a recorded result belongs (F18 evidence, ownership checks); null when unknown. */
+export async function resultContext(resultId: string): Promise<{
+  resultId: string;
+  assessmentId: string;
+  batchId: string;
+  studentId: string;
+  mode: AssessmentDto['mode'];
+} | null> {
+  const r = await prisma().assessmentResult.findUnique({
+    where: { id: resultId },
+    select: {
+      id: true,
+      studentId: true,
+      assessment: { select: { id: true, batchId: true, mode: true } },
+    },
+  });
+  return r
+    ? {
+        resultId: r.id,
+        assessmentId: r.assessment.id,
+        batchId: r.assessment.batchId,
+        studentId: r.studentId,
+        mode: r.assessment.mode,
+      }
+    : null;
+}
+
+/** Result ids of an assessment by student (F18 evidence sheet). */
+export async function resultIds(assessmentId: string): Promise<Map<string, string>> {
+  const rows = await prisma().assessmentResult.findMany({
+    where: { assessmentId },
+    select: { id: true, studentId: true },
+  });
+  return new Map(rows.map((r) => [r.studentId, r.id]));
+}
+
 // ─── Progress milestones (BRQ-6.3) ─────────────────────────────────────────────
 
 export async function progress(batchId: string, studentId?: string): Promise<ProgressDto[]> {

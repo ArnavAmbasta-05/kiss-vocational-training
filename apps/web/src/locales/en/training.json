@@ -79,7 +79,9 @@
     "saved": "Assessment saved",
     "save": "Save",
     "cancel": "Cancel",
-    "invalid": "Check this field"
+    "invalid": "Check this field",
+    "evidence": "Evidence",
+    "evidenceFor": "Evidence for {{title}}"
   },
   "marks": {
     "title": "Marks: {{title}}",

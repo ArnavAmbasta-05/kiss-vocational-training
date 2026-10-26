@@ -251,6 +251,9 @@ describe('approve → certificate (TAD §8.1)', () => {
     setStorageForTests({
       put: () => Promise.reject(new Error('storage down')),
       get: () => Promise.resolve(null),
+      stat: () => Promise.resolve(null),
+      uploadTarget: () => Promise.reject(new Error('storage down')),
+      signedUrl: () => Promise.reject(new Error('storage down')),
     });
 
     const res = await approve(w, s.enrollmentId);
