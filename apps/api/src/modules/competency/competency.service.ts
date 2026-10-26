@@ -725,3 +725,19 @@ export async function revokeVerification(actor: Actor, ratingId: string, reason:
   });
   return { ratingId, revoked: true };
 }
+
+// ─── Career matcher support (F13: BRQ-C.3) ─────────────────────────────────────
+
+/** A title for each competency code (upper-case), from any course that defines it. */
+export async function titlesByCode(codes: string[]): Promise<Map<string, string>> {
+  const wanted = [...new Set(codes.map((c) => c.toUpperCase()))];
+  if (wanted.length === 0) return new Map();
+  const rows = await prisma().competency.findMany({
+    where: { code: { in: wanted, mode: 'insensitive' } },
+    orderBy: { createdAt: 'asc' },
+    select: { code: true, title: true },
+  });
+  const out = new Map<string, string>();
+  for (const r of rows) if (!out.has(r.code.toUpperCase())) out.set(r.code.toUpperCase(), r.title);
+  return out;
+}
