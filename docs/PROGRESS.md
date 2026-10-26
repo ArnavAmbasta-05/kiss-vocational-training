@@ -15,6 +15,149 @@ Read this at the start of every session and update it at the end of every sprint
 
 ---
 
+## Sprint 11 — Smart scheduling (F14), practical evidence (F18), career matcher (F13) (built, 2026-10-26)
+
+### Built
+- **R3 tables**: migration `20261026033923_r3_evidence_opportunities` adds `rubrics`,
+  `practical_evidence`, `job_roles`, `job_role_competencies`, `opportunities` and
+  `opportunity_interests`. DB checks: role levels 1–4; evidence is either a stored file
+  (≤ 10 MB) or a link, never both. New settings: `scheduling.capacityWarnPercent` (90),
+  `evidence.maxBytes` (10 MB), `evidence.allowedMime` (JPEG, PNG, WebP, PDF),
+  `evidence.uploadTtlSeconds` (600) and `evidence.downloadTtlSeconds` (300).
+- **A) Scheduling advisor** (`modules/scheduling-advisor`, F14):
+  - BR-20 rules in `batches/rules.ts`: `overlaps` (startA < endB && startB < endA, so back to
+    back is fine), `sameVenue` (case and space insensitive), `clashesFor` and `capacityLevel`.
+    All are unit-tested.
+  - Session creation (core) now refuses hard clashes with 409 `SCHEDULE_CLASH`, listing each
+    clash. It takes a transaction advisory lock, so two admins can't book the same slot at once.
+  - `POST /scheduling/check` (Admin, read-only) reports, per batch:
+    - capacity after adding students (NEAR ≥ 90 %, OVER > 100 %);
+    - venue and trainer clashes of proposed and upcoming sessions;
+    - free nearby slots of the same length, within the 08:00–19:00 working day, for each
+      clashing proposed session;
+    - free trainers, specialisation matches first.
+  - UI: a "Scheduling check" panel in the allocation preview, and an inline clash message in
+    the schedule-sessions dialog with clickable free times.
+- **B) Practical evidence** (`modules/evidence`, F18):
+  - `PUT/GET /assessments/:id/rubric` (named criteria and ascending levels, practical
+    assessments only).
+  - `POST /evidence/upload-url` checks type and size against Settings (422 `UNSUPPORTED_TYPE` /
+    `FILE_TOO_LARGE`). It returns a one-file target under a server-chosen key:
+    - production: a Vercel Blob **client token** scoped to that key, type and size;
+    - development and tests: an HMAC-signed local URL.
+
+    The browser uploads directly, never through the API function.
+  - `POST /results/:id/evidence` records the file or https video link, the course competency it
+    proves (BRQ-18.3) and rubric scores. Checks:
+    - the file must exist in the store under the result's prefix, with an allowed type and size;
+    - a file attaches once.
+
+    Audited.
+  - `GET /evidence/:id/url` returns a 5-minute signed link (`presignUrl` on Blob). It is for the
+    batch's trainers, admins and the student the evidence belongs to.
+  - `GET /assessments/:id/evidence` returns the trainer's sheet.
+  - Core `files` route `/api/v1/files/:token` stands in for Blob locally (404 in production).
+    Storage adapter: `stat`, `uploadTarget` and `signedUrl` for both drivers.
+  - The signed-in Skill Passport lists evidence under each verified practical competency
+    (BRQ-10.2). Public share links don't.
+  - UI:
+    - an "Evidence" link on practical assessments;
+    - a rubric editor with a sensible default;
+    - per-student evidence with Open;
+    - an add dialog with a drop zone, client-side photo compression (≤ 1600 px, JPEG 0.8 above
+      400 KB), competency and rubric scores.
+
+    The Blob client is lazy-loaded (its own 27 kB chunk).
+- **C) Career matcher** (`modules/opportunities`, F13):
+  - Admin CRUD for job roles (competency codes and levels, BRQ-C.3) and opportunities
+    (internship, apprenticeship or job; partner; closes on).
+  - `GET /students/me/matches` ranks open opportunities by match % = verified required ÷ total
+    required × 100 (BR-22; pure `matchPercent`, `evaluateRole`, `rankMatches`, unit-tested).
+    Missing skills come with the level reached so far and approved resources from the gap
+    analyzer (BRQ-13.3).
+  - Interest: `POST/DELETE /opportunities/:id/interest` (idempotent; 409 once closed).
+  - Admin sees interested students with their match % and a CSV export (BRQ-13.4).
+  - UI:
+    - student **Opportunities**: match rings with the number in text, missing skills with
+      resources, and an "I'm interested" toggle;
+    - admin **Opportunities**: tabs for opportunities (status filter, edit, interested list
+      with CSV) and job roles.
+- **Seed**: three job roles built from the seeded competency codes and four demo opportunities
+  (idempotent, audited).
+
+### Deviations
+- **Trainer double-booking blocks only when the trainer is named on both sessions.** A session
+  with no named trainer is taught by the batch's assigned trainers. Blocking every overlap
+  through assignment would reject real schedules, such as the seeded trainer, who teaches the
+  live pilot batch and every demo batch. Those overlaps are shown as warnings by the advisor
+  instead. Venue clashes always block.
+- **Upload "pre-signed URL" in production is a Vercel Blob client token** (the store chosen in
+  Sprint 6), scoped to one key, type, size and 10 minutes. Downloads use Blob's signed GET URLs.
+  The local driver issues HMAC-signed URLs with the same rules, so tests exercise the flow
+  without Vercel.
+- **Evidence is not deleted** once attached; it backs marks (BR-12). A wrong upload stays with
+  its audit row, and the trainer adds a correct one.
+- **Public shared passports don't show evidence.** Photos of students stay behind sign-in (BR-15
+  spirit). The signed-in passport and the PDF owner see them.
+- **The advisor's free trainers are suggestions only.** Assigning a trainer stays on the batch
+  screen.
+- **Tests**: fixtures and e2e now use a unique venue per run, so the new clash check never
+  collides across runs of the shared test databases.
+
+### Known gaps / follow-ups
+- Production uploads use Vercel Blob client tokens and signed GET URLs. Tests cover the local
+  driver; the Blob path needs one manual check on the live site (upload a photo, open it). A
+  follow-up live workflow can add it.
+- The seed adds no rubric or evidence: they need a trainer's real photos.
+
+### Definition of done
+- [x] Unit:
+  - overlap boundaries (end == start is not a clash; containment and identical times clash);
+  - venue normalisation;
+  - hard vs soft trainer clashes;
+  - capacity 85/90/100/105 %;
+  - match % (1/3 = 33.33, 2/3 = 66.67, 0 required = 0);
+  - role evaluation (below level is missing, above counts, case-insensitive codes);
+  - ranking.
+- [x] API:
+  - **Scheduling**:
+    - venue clash → 409; back to back is allowed;
+    - named trainer clash → 409 with nothing saved;
+    - a cancelled session frees the slot;
+    - the advisor reports capacity NEAR/OVER, the clash with free 2-hour slots that don't
+      overlap, free trainers, and a soft warning that doesn't block;
+    - admin only;
+    - inverted times → 422.
+  - **Evidence**:
+    - rubric save, and THEORY → 422;
+    - wrong MIME and oversized (10 MB + 1) refused before upload; 10 MB exactly allowed;
+    - the upload link enforces its type and size, works once, and refuses expired or
+      tampered tokens;
+    - only staff of the batch or an admin get links;
+    - attach checks a missing upload, another result's key, a duplicate, http links, another
+      course's competency and invalid scores;
+    - attaching is audited;
+    - signed links expire within 5 minutes and are refused after expiry; a put grant can't read;
+    - the classmate is refused;
+    - the passport shows the evidence.
+  - **Opportunities**:
+    - roles with upper-case codes and titles; duplicate title → 409;
+    - open/closed status;
+    - ranking (100 % before 33.33 %) with missing skills and levels; closed opportunities hidden;
+    - interest is idempotent; the admin list shows match % and the CSV; withdrawing works;
+    - closed → 409;
+    - students can't manage roles or opportunities.
+  - DB constraints for R3 (level range, file-or-link).
+- [x] e2e (desktop + mobile, axe):
+  - a clashing session is refused, a suggested free time is chosen and saved;
+  - the trainer creates a rubric and uploads a photo with scores;
+  - the student sees the evidence in the passport and a 100 % match, and marks interest;
+  - the admin sees the interested student.
+- [x] API_TESTS (336, 42 suites) · E2E_TESTS (39) · lint · format · typecheck · build · i18n
+  keys in sync · openapi.yaml (116 paths)
+
+---
+
 ## Sprint 10 — Early Intervention (F11) and audit viewer (F19) → GATE 2 (done, Gate 2 passed 2026-10-26)
 
 ### Built
