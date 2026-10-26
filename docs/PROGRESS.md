@@ -15,7 +15,7 @@ Read this at the start of every session and update it at the end of every sprint
 
 ---
 
-## Sprint 10 — Early Intervention (F11) and audit viewer (F19) → GATE 2 (built, 2026-10-24)
+## Sprint 10 — Early Intervention (F11) and audit viewer (F19) → GATE 2 (done, Gate 2 passed 2026-10-26)
 
 ### Built
 - **Risk rules** (`modules/intervention/rules.ts`, pure, unit-tested at the BRD boundaries):
@@ -135,9 +135,11 @@ Locally (CI-equivalent), all pass:
 - [x] **F15** (§9.6): the QR target shows Valid with the name; an unknown ID shows Not found;
       a revoked certificate shows Revoked without the reason. The employer view runs on a
       phone viewport in the mobile project (`passport.spec.ts`).
-- [ ] **On the deployed build**: push, wait for CI and the deploy, set `CRON_SECRET` in
-      Vercel, then run the live checks (verify page, passport share/revoke, at-risk flow,
-      audit log). R3 starts only after this.
+- [x] **On the deployed build** (2026-10-26, workflow `gate2-live.yml`, run 40264378707, all
+      green): `passport.spec.ts` on a phone (F10, F15), `competency.spec.ts` (F12) and
+      `intervention.spec.ts` (F11, F19) on desktop, against `PUBLIC_BASE_URL`. `CRON_SECRET` is
+      set in Vercel (Production) and redeployed; the cron route refuses calls without it (401).
+      **Gate 2 passed: R3 (Sprint 11) may start.**
 
 ### Definition of done
 - [x] Unit: risk boundaries (74.99/75.00, 79.99/80.00, 49.99/50, 39.99/40, 15.00/14.99 drop,
