@@ -93,6 +93,8 @@ Read this at the start of every session and update it at the end of every sprint
   file in the store; the storage adapter has no delete yet.
 - **Jest cannot load PDF.js** (an ES module bundle). Integration tests swap in a stub for PDF
   text; the e2e test uploads a real PDF and covers unpdf.
+- **unpdf is pinned to 1.4.0.** Later releases bundle a PDF.js that needs Node 22; the stack
+  (CI and Vercel) runs Node 20.
 - **Lighthouse was not run.** The bundle budget check stands in for the low-bandwidth target.
 - Fixed a flaky Sprint 11 test: it tampered with the last base64url character of a signed link,
   which can carry only padding bits and decode to the same signature.
