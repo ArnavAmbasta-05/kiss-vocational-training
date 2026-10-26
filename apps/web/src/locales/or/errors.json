@@ -92,6 +92,20 @@
     "FLAG_CLOSED": "",
     "DUE_IN_PAST": "",
     "INVALID_OWNER": "",
-    "COMPLETED_IN_FUTURE": ""
+    "COMPLETED_IN_FUTURE": "",
+    "SCHEDULE_CLASH": "",
+    "UNSUPPORTED_TYPE": "",
+    "FILE_TOO_LARGE": "",
+    "NOT_PRACTICAL": "",
+    "NO_RUBRIC": "",
+    "INVALID_SCORES": "",
+    "INVALID_KEY": "",
+    "UPLOAD_NOT_FOUND": "",
+    "ALREADY_ATTACHED": "",
+    "ALREADY_UPLOADED": "",
+    "INVALID_COMPETENCY": "",
+    "ROLE_TITLE_TAKEN": "",
+    "ROLE_NOT_FOUND": "",
+    "OPPORTUNITY_CLOSED": ""
   }
 }

@@ -123,6 +123,21 @@ const AuditLogPage = lazy(() =>
   import('./features/audit/AuditLogPage').then((m) => ({ default: m.AuditLogPage })),
 );
 
+const EvidencePage = lazy(() =>
+  import('./features/evidence/EvidencePage').then((m) => ({ default: m.EvidencePage })),
+);
+
+const MyOpportunitiesPage = lazy(() =>
+  import('./features/opportunities/MyOpportunitiesPage').then((m) => ({
+    default: m.MyOpportunitiesPage,
+  })),
+);
+const AdminOpportunitiesPage = lazy(() =>
+  import('./features/opportunities/AdminOpportunitiesPage').then((m) => ({
+    default: m.AdminOpportunitiesPage,
+  })),
+);
+
 /** Screens that exist today; every other nav item shows a "coming soon" page until built. */
 const BUILT: Record<string, RouteObject['element']> = {
   '/admin/users': <UsersPage />,
@@ -139,6 +154,8 @@ const BUILT: Record<string, RouteObject['element']> = {
   '/trainer/at-risk': <AtRiskPage base="/trainer/at-risk" />,
   '/admin/at-risk': <AtRiskPage base="/admin/at-risk" />,
   '/admin/audit': <AuditLogPage />,
+  '/admin/opportunities': <AdminOpportunitiesPage />,
+  '/student/opportunities': <MyOpportunitiesPage />,
   '/trainer/batches': <TrainerBatchesPage />,
   '/trainer/sessions': <TrainerSessionsPage />,
   '/trainer/assessments': <TrainerAssessmentsPage />,
@@ -159,12 +176,20 @@ const EXTRA: Partial<Record<Role, RouteObject[]>> = {
     { path: 'batches/:batchId', element: <BatchDetailPage admin /> },
     { path: 'sessions/:sessionId', element: <AttendancePage /> },
     { path: 'assessments/:assessmentId', element: <MarksPage /> },
+    {
+      path: 'assessments/:assessmentId/evidence',
+      element: <EvidencePage back="/admin/batches" />,
+    },
     { path: 'at-risk/:flagId', element: <FlagDetailPage back="/admin/at-risk" /> },
   ],
   TRAINER: [
     { path: 'batches/:batchId', element: <BatchDetailPage admin={false} /> },
     { path: 'sessions/:sessionId', element: <AttendancePage back="/trainer/sessions" /> },
     { path: 'assessments/:assessmentId', element: <MarksPage back="/trainer/assessments" /> },
+    {
+      path: 'assessments/:assessmentId/evidence',
+      element: <EvidencePage back="/trainer/assessments" />,
+    },
     { path: 'at-risk/:flagId', element: <FlagDetailPage back="/trainer/at-risk" /> },
   ],
 };

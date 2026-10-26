@@ -28,7 +28,8 @@
       "training": "",
       "certificates": "",
       "skills": "",
-      "passport": ""
+      "passport": "",
+      "opportunities": ""
     },
     "trainer": {
       "batches": "",
@@ -47,7 +48,8 @@
       "reports": "",
       "competencies": "",
       "atRisk": "",
-      "audit": ""
+      "audit": "",
+      "opportunities": ""
     }
   },
   "actions": {

@@ -92,6 +92,20 @@
     "FLAG_CLOSED": "This flag is already closed.",
     "DUE_IN_PAST": "The due date cannot be in the past.",
     "INVALID_OWNER": "The owner must be one of the batch's trainers or an admin.",
-    "COMPLETED_IN_FUTURE": "The completion time cannot be in the future."
+    "COMPLETED_IN_FUTURE": "The completion time cannot be in the future.",
+    "SCHEDULE_CLASH": "That time clashes with another session at the same venue or for the same trainer.",
+    "UNSUPPORTED_TYPE": "Upload a JPEG, PNG or WebP photo or a PDF. Add videos as links.",
+    "FILE_TOO_LARGE": "The file is too large. The limit is 10 MB.",
+    "NOT_PRACTICAL": "Evidence and rubrics are for practical assessments only.",
+    "NO_RUBRIC": "Create a rubric for this assessment before scoring.",
+    "INVALID_SCORES": "Scores must use the rubric criteria and levels.",
+    "INVALID_KEY": "That upload does not belong to this student.",
+    "UPLOAD_NOT_FOUND": "The upload did not finish. Please try again.",
+    "ALREADY_ATTACHED": "This file is already attached.",
+    "ALREADY_UPLOADED": "This upload link was already used. Please try again.",
+    "INVALID_COMPETENCY": "That competency is not part of this course.",
+    "ROLE_TITLE_TAKEN": "A job role with this title already exists.",
+    "ROLE_NOT_FOUND": "Choose an existing job role.",
+    "OPPORTUNITY_CLOSED": "This opportunity is no longer open."
   }
 }

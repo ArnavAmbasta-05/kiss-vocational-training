@@ -28,7 +28,8 @@
       "training": "My training",
       "certificates": "Certificates",
       "skills": "My skill gaps",
-      "passport": "Skill Passport"
+      "passport": "Skill Passport",
+      "opportunities": "Opportunities"
     },
     "trainer": {
       "batches": "My batches",
@@ -47,7 +48,8 @@
       "reports": "Reports",
       "competencies": "Competencies",
       "atRisk": "At-risk students",
-      "audit": "Audit log"
+      "audit": "Audit log",
+      "opportunities": "Opportunities"
     }
   },
   "actions": {

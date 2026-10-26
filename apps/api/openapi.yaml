@@ -32,6 +32,9 @@ tags:
   - name: intervention
   - name: audit
   - name: jobs
+  - name: scheduling
+  - name: evidence
+  - name: opportunities
 paths:
   /health:
     get:
@@ -736,6 +739,11 @@ paths:
           content:
             application/json:
               schema: { type: array, items: { $ref: '#/components/schemas/Session' } }
+        '409':
+          description: 'SCHEDULE_CLASH (BR-20): the venue, or a trainer named on the session, is already booked at an overlapping time; details list each clash. Nothing is saved.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
   /admin/batches/{batchId}/sessions/{sessionId}:
     patch:
@@ -1682,6 +1690,221 @@ paths:
           description: CSV file
           content:
             text/csv: {}
+  /scheduling/check:
+    post:
+      tags: [scheduling]
+      summary: Smart scheduling advisor (Admin, F14) - capacity, clashes and suggestions; read-only
+      description: For each batch, capacity after adding students (NEAR at or above scheduling.capacityWarnPercent, OVER above 100 %), venue and trainer clashes of its proposed and upcoming sessions (BR-20, startA < endB && startB < endA; hard = same venue or the same trainer named on both sessions, soft = a trainer who only teaches through batch assignment), nearby free slots for clashing proposed sessions, and free trainers when none is assigned or a trainer clashes.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [batches]
+              properties:
+                batches:
+                  type: array
+                  maxItems: 50
+                  items:
+                    type: object
+                    required: [batchId]
+                    properties:
+                      batchId: { type: string, format: uuid }
+                      addStudents: { type: integer, minimum: 0, default: 0 }
+                      sessions:
+                        type: array
+                        maxItems: 200
+                        items:
+                          type: object
+                          required: [startsAt, endsAt]
+                          properties:
+                            startsAt: { type: string, format: date-time }
+                            endsAt: { type: string, format: date-time }
+                            venue: { type: string }
+                            trainerId: { type: string, format: uuid }
+      responses:
+        '200': { description: 'Advice per batch: capacity, clashes, trainers and suggestions' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /files/{token}:
+    get:
+      tags: [evidence]
+      summary: Local storage driver only - download through a signed link
+      description: The token is an HMAC-signed grant (key, operation, expiry); no session. Expired, tampered or upload grants get 403. With the Vercel Blob driver this route is 404 and links point at the store.
+      security: []
+      parameters:
+        - { name: token, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: The file }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    put:
+      tags: [evidence]
+      summary: Local storage driver only - upload through a signed link
+      description: The body is the file. Content-Type must equal the grant's type and the size must be within its limit (422); a link works once (409).
+      security: []
+      parameters:
+        - { name: token, in: path, required: true, schema: { type: string } }
+      responses:
+        '201': { description: Stored }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /evidence/upload-url:
+    post:
+      tags: [evidence]
+      summary: Get a one-file upload target for practical evidence (trainer of the batch, admin; F18)
+      description: Type must be in evidence.allowedMime (images and PDF; videos are links only) and size at most evidence.maxBytes (10 MB), else 422 UNSUPPORTED_TYPE / FILE_TOO_LARGE. Production returns a Vercel Blob client token scoped to one server-chosen key, type and size; development returns a signed local URL. The browser uploads directly; the file never passes through the API.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [resultId, fileName, contentType, sizeBytes]
+              properties:
+                resultId: { type: string, format: uuid }
+                fileName: { type: string }
+                contentType: { type: string }
+                sizeBytes: { type: integer }
+      responses:
+        '200': { description: 'Upload target: { driver, key, clientToken | url, expiresAt }' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /evidence/{evidenceId}/url:
+    get:
+      tags: [evidence]
+      summary: A short-lived signed link to open evidence (staff of the batch, admin, or the student it belongs to)
+      parameters:
+        - { name: evidenceId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: '{ url, expiresAt } (evidence.downloadTtlSeconds)' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /results/{resultId}/evidence:
+    post:
+      tags: [evidence]
+      summary: Attach an uploaded file or a video link, the competency it proves and rubric scores (BRQ-18.1-18.3)
+      description: FILE keys must be under this result's prefix (422 INVALID_KEY) and exist in the store with an allowed type and size (422 UPLOAD_NOT_FOUND); a file attaches once (409). LINK must be https. Scores must use the rubric's criteria and levels (422 INVALID_SCORES / NO_RUBRIC). Audited.
+      parameters:
+        - { name: resultId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '201': { description: The evidence }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /assessments/{assessmentId}/rubric:
+    get:
+      tags: [evidence]
+      summary: The rubric of a practical assessment (null when none)
+      parameters:
+        - { name: assessmentId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Rubric or null }
+    put:
+      tags: [evidence]
+      summary: Create or replace the rubric - named criteria and ascending levels (BRQ-18.2)
+      parameters:
+        - { name: assessmentId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: The rubric }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /assessments/{assessmentId}/evidence:
+    get:
+      tags: [evidence]
+      summary: The assessment's recorded results with their evidence, rubric and the course's practical competencies
+      parameters:
+        - { name: assessmentId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Evidence sheet }
+  /job-roles:
+    get:
+      tags: [opportunities]
+      summary: Job roles with their required competency codes and levels (Admin, BRQ-C.3)
+      responses:
+        '200': { description: Job roles }
+    post:
+      tags: [opportunities]
+      summary: Create a job role (codes are stored upper-case; title unique, 409 ROLE_TITLE_TAKEN)
+      responses:
+        '201': { description: The role }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /job-roles/{id}:
+    put:
+      tags: [opportunities]
+      summary: Replace a job role's title, description, status and requirements
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: The role }
+  /opportunities:
+    get:
+      tags: [opportunities]
+      summary: Opportunities (Admin), soonest closing first
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PageSize' }
+        - {
+            name: status,
+            in: query,
+            schema: { type: string, enum: [OPEN, CLOSED, ALL], default: ALL },
+          }
+      responses:
+        '200': { description: Page of opportunities }
+    post:
+      tags: [opportunities]
+      summary: Publish an internship, apprenticeship or job for a role (BRQ-13.1)
+      responses:
+        '201': { description: The opportunity }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /opportunities/{id}:
+    put:
+      tags: [opportunities]
+      summary: Edit an opportunity
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: The opportunity }
+  /opportunities/{id}/interested:
+    get:
+      tags: [opportunities]
+      summary: Interested students with their current match %, best match first (Admin, BRQ-13.4)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Interested students }
+  /opportunities/{id}/interested.csv:
+    get:
+      tags: [opportunities]
+      summary: The same list as CSV (Admin)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: CSV file
+          content:
+            text/csv: {}
+  /opportunities/{id}/interest:
+    post:
+      tags: [opportunities]
+      summary: Mark interest (Student, idempotent); 409 OPPORTUNITY_CLOSED once closed
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: '{ interested: true }' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [opportunities]
+      summary: Withdraw interest (Student)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: '{ interested: false }' }
+  /students/me/matches:
+    get:
+      tags: [opportunities]
+      summary: Open opportunities ranked by match % = verified required / total required x 100 (BR-22), with missing skills and resources (BRQ-13.2, 13.3)
+      responses:
+        '200': { description: Ranked matches }
 components:
   securitySchemes:
     bearerAuth:

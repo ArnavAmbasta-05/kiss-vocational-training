@@ -29,6 +29,18 @@ import {
   studentRiskRoutes,
 } from './modules/intervention/intervention.routes';
 import { shareRoutes, studentPassportRoutes } from './modules/passport/passport.routes';
+import {
+  assessmentEvidenceRoutes,
+  evidenceRoutes,
+  resultEvidenceRoutes,
+} from './modules/evidence/evidence.routes';
+import { fileRoutes } from './modules/files/files.routes';
+import {
+  jobRoleRoutes,
+  opportunityRoutes,
+  studentMatchRoutes,
+} from './modules/opportunities/opportunities.routes';
+import { schedulingRoutes } from './modules/scheduling-advisor/scheduling.routes';
 import { publicRoutes } from './modules/verification/verification.routes';
 import { healthRoutes } from './modules/health/health.routes';
 import { notificationRoutes } from './modules/notifications/notifications.routes';
@@ -43,6 +55,8 @@ export function v1Routes(): Router {
   router.use('/public', publicRoutes());
   // Scheduled jobs: secret-protected, no user session (Vercel Cron in production).
   router.use('/internal/jobs', internalJobRoutes());
+  // Local storage driver only: signed upload/download links (the token is the capability).
+  router.use('/files', fileRoutes());
   router.use('/health', healthRoutes());
   router.use('/auth', authRoutes());
   router.use('/users', meRoutes());
@@ -74,6 +88,13 @@ export function v1Routes(): Router {
   router.use('/passport', shareRoutes());
   router.use('/risk-flags', riskFlagRoutes());
   router.use('/risk-actions', riskActionRoutes());
+  router.use('/scheduling', schedulingRoutes());
+  router.use('/evidence', evidenceRoutes());
+  router.use('/results', resultEvidenceRoutes());
+  router.use('/assessments', assessmentEvidenceRoutes());
+  router.use('/job-roles', jobRoleRoutes());
+  router.use('/opportunities', opportunityRoutes());
+  router.use('/students', studentMatchRoutes());
   router.use('/students', studentRiskRoutes());
   // F11: saves of attendance, marks and ratings re-evaluate that batch's risk flags.
   registerInterventionHooks();
