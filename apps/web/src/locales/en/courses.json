@@ -10,6 +10,9 @@
     "caption": "Courses offered in this cycle",
     "viewDetails": "View details",
     "applyNow": "Apply",
+    "applied": "Applied · choice {{rank}}",
+    "viewApplication": "View my application",
+    "changeChoices": "Change my choices",
     "back": "Back to courses"
   },
   "fields": {

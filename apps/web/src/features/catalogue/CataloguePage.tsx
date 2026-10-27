@@ -1,18 +1,33 @@
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { INACTIVE_ENROLLMENT_STATUSES } from '@vtmp/shared';
 import { Badge, Card, EmptyState, Input, PageSkeleton } from '../../components/ui';
 import { useErrorMessage } from '../../lib/api/useErrorMessage';
+import { useMyEnrollments } from '../enrollment/api';
+import { StatusBadge } from '../enrollment/StatusBadge';
 import { useCatalogue } from './api';
 import { WindowBadge } from './WindowBadge';
 
-/** Student course catalogue (BRQ-2.2): cards with seats, window state and countdown. */
+const secondaryLink =
+  'inline-flex h-9 items-center rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-800 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600';
+
+/**
+ * Student course catalogue (BRQ-2.2): cards with seats, window state and countdown. Courses the
+ * student has already applied for in this cycle show the application's status instead of Apply.
+ */
 export function CataloguePage() {
   const { t } = useTranslation('courses');
   const errorMessage = useErrorMessage();
   // ?cycle= picks another open cycle; without it the newest cycle with offerings is shown.
   const [params] = useSearchParams();
   const { data, isPending, isError, error } = useCatalogue(params.get('cycle') ?? undefined);
+  const mine = useMyEnrollments();
+  const application = mine.data?.find(
+    (e) => e.cycleId === data?.cycle?.id && !INACTIVE_ENROLLMENT_STATUSES.includes(e.status),
+  );
+  const choiceOf = (courseId: string) =>
+    application?.preferences.find((p) => p.courseId === courseId)?.rank;
   const inCycle = data?.cycle ? `cycle=${data.cycle.id}` : '';
   const [search, setSearch] = useState('');
   const [openOnly, setOpenOnly] = useState(false);
@@ -58,7 +73,7 @@ export function CataloguePage() {
         </label>
       </div>
 
-      {isPending ? (
+      {isPending || mine.isPending ? (
         <PageSkeleton />
       ) : isError ? (
         <EmptyState title={errorMessage(error)} />
@@ -71,57 +86,90 @@ export function CataloguePage() {
           className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
           aria-label={t('catalogue.caption')}
         >
-          {courses.map((c) => (
-            <li key={c.id}>
-              <Card className="flex h-full flex-col" title={c.title} headingLevel={2}>
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-600">
-                  {c.code}
-                </p>
-                <p className="mt-2 line-clamp-3 flex-1 text-sm text-slate-700">{c.description}</p>
-                <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <dt className="text-slate-600">{t('fields.duration')}</dt>
-                    <dd className="font-medium text-slate-900">
-                      {t('fields.durationValue', { count: c.durationWeeks })}
-                    </dd>
+          {courses.map((c) => {
+            const choice = choiceOf(c.id);
+            return (
+              <li key={c.id}>
+                <Card className="flex h-full flex-col" title={c.title} headingLevel={2}>
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-600">
+                    {c.code}
+                  </p>
+                  <p className="mt-2 line-clamp-3 flex-1 text-sm text-slate-700">{c.description}</p>
+                  <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <dt className="text-slate-600">{t('fields.duration')}</dt>
+                      <dd className="font-medium text-slate-900">
+                        {t('fields.durationValue', { count: c.durationWeeks })}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-slate-600">{t('fields.seatsRemaining')}</dt>
+                      <dd>
+                        {c.seatsRemaining > 0 ? (
+                          <Badge tone={c.seatsRemaining <= 5 ? 'warning' : 'neutral'}>
+                            {t('fields.seatsLeft', { count: c.seatsRemaining })}
+                          </Badge>
+                        ) : (
+                          <Badge tone="danger">{t('fields.full')}</Badge>
+                        )}
+                      </dd>
+                    </div>
+                  </dl>
+                  <div className="mt-3">
+                    <WindowBadge offering={c.offering} />
                   </div>
-                  <div>
-                    <dt className="text-slate-600">{t('fields.seatsRemaining')}</dt>
-                    <dd>
-                      {c.seatsRemaining > 0 ? (
-                        <Badge tone={c.seatsRemaining <= 5 ? 'warning' : 'neutral'}>
-                          {t('fields.seatsLeft', { count: c.seatsRemaining })}
-                        </Badge>
-                      ) : (
-                        <Badge tone="danger">{t('fields.full')}</Badge>
-                      )}
-                    </dd>
-                  </div>
-                </dl>
-                <div className="mt-3">
-                  <WindowBadge offering={c.offering} />
-                </div>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Link
-                    to={`/student/courses/${c.id}?${inCycle}`}
-                    className="inline-flex h-9 items-center rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-800 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600"
-                    aria-label={`${t('catalogue.viewDetails')}: ${c.title}`}
-                  >
-                    {t('catalogue.viewDetails')}
-                  </Link>
-                  {c.offering?.windowState === 'OPEN' && (
-                    <Link
-                      to={`/student/enrollment/apply?courseId=${c.id}&${inCycle}`}
-                      className="inline-flex h-9 items-center rounded-md bg-brand-700 px-3 text-sm font-medium text-white hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
-                      aria-label={`${t('catalogue.applyNow')}: ${c.title}`}
+                  {application && choice !== undefined && (
+                    <div
+                      className="mt-3 flex flex-wrap items-center gap-2 text-sm"
+                      data-testid="applied-badge"
                     >
-                      {t('catalogue.applyNow')}
-                    </Link>
+                      <Badge tone="info">{t('catalogue.applied', { rank: choice })}</Badge>
+                      <StatusBadge status={application.status} />
+                    </div>
                   )}
-                </div>
-              </Card>
-            </li>
-          ))}
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Link
+                      to={`/student/courses/${c.id}?${inCycle}`}
+                      className={secondaryLink}
+                      aria-label={`${t('catalogue.viewDetails')}: ${c.title}`}
+                    >
+                      {t('catalogue.viewDetails')}
+                    </Link>
+                    {application && choice !== undefined ? (
+                      <Link
+                        to="/student/enrollment"
+                        className={secondaryLink}
+                        aria-label={`${t('catalogue.viewApplication')}: ${c.title}`}
+                      >
+                        {t('catalogue.viewApplication')}
+                      </Link>
+                    ) : application ? (
+                      application.editable &&
+                      c.offering?.windowState === 'OPEN' && (
+                        <Link
+                          to={`/student/enrollment/apply?edit=${application.id}&${inCycle}`}
+                          className={secondaryLink}
+                          aria-label={`${t('catalogue.changeChoices')}: ${c.title}`}
+                        >
+                          {t('catalogue.changeChoices')}
+                        </Link>
+                      )
+                    ) : (
+                      c.offering?.windowState === 'OPEN' && (
+                        <Link
+                          to={`/student/enrollment/apply?courseId=${c.id}&${inCycle}`}
+                          className="inline-flex h-9 items-center rounded-md bg-brand-700 px-3 text-sm font-medium text-white hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
+                          aria-label={`${t('catalogue.applyNow')}: ${c.title}`}
+                        >
+                          {t('catalogue.applyNow')}
+                        </Link>
+                      )
+                    )}
+                  </div>
+                </Card>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

@@ -51,6 +51,20 @@ test.describe('Sprint 3: apply → approve → see APPROVED', () => {
     await expect(card.getByText('Pending review').first()).toBeVisible();
     await expectNoSeriousA11yViolations(page);
 
+    // Courses: the applied course says so, and no course offers a second application.
+    await page.goto('/student/courses');
+    const applied = page.getByTestId('applied-badge');
+    await expect(applied).toHaveCount(1);
+    await expect(applied).toContainText('Applied · choice 1');
+    await expect(applied).toContainText('Pending review');
+    await expect(page.getByRole('link', { name: /^Apply:/ })).toHaveCount(0);
+    await expectNoSeriousA11yViolations(page);
+    await page
+      .getByRole('link', { name: /^View my application:/ })
+      .first()
+      .click();
+    await expect(page).toHaveURL('/student/enrollment');
+
     // Admin: find the application and approve it.
     const adminContext = await browser.newContext();
     const admin = await adminContext.newPage();
