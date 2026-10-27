@@ -373,6 +373,25 @@ describe('admin review (BRQ-3.3, BR-12)', () => {
     expect(byStatus.body.meta.total).toBe(0);
   });
 
+  it('lists the latest applications first', async () => {
+    const admin = await signedIn(Role.ADMIN);
+    const { cycle, students } = await pending(3);
+    // Spread the submissions out so the order does not depend on insert timing.
+    for (const [i, s] of students.entries()) {
+      await prisma().enrollment.update({
+        where: { id: s.enrollmentId },
+        data: { submittedAt: new Date(Date.UTC(2026, 0, 1 + i)) },
+      });
+    }
+    const res = await request(app)
+      .get('/api/v1/admin/enrollments')
+      .query({ cycleId: cycle.id })
+      .set(admin.auth);
+    expect(res.body.data.map((e: { id: string }) => e.id)).toEqual(
+      students.map((s) => s.enrollmentId).reverse(),
+    );
+  });
+
   it('is admin-only', async () => {
     const trainer = await signedIn(Role.TRAINER);
     const student = await signedIn(Role.STUDENT);

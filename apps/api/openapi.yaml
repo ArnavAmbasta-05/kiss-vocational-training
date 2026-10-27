@@ -197,6 +197,44 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
+  /admin/users/bulk-status:
+    post:
+      tags: [admin-users]
+      summary: Deactivate or reactivate several users at once (Admin)
+      description: >-
+        One transaction with one audit row per changed record; an unknown id rolls it all back
+        (404). Records already in the requested state are left alone. Accepts Idempotency-Key.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ids, isActive]
+              properties:
+                ids:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  uniqueItems: true
+                  items: { type: string, format: uuid }
+                isActive: { type: boolean }
+      responses:
+        '200':
+          description: Number of records changed
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [updated]
+                properties:
+                  updated: { type: integer }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
   /admin/users/{id}:
     patch:
       tags: [admin-users]
@@ -221,6 +259,20 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/UserSummary' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [admin-users]
+      summary: Permanently delete an account that has no history (Admin)
+      description: >-
+        For accounts created by mistake. Anything with activity (applications, training records,
+        decisions, audit entries) is refused with 409 USER_IN_USE and can only be deactivated.
+        Admins cannot delete themselves (409 CANNOT_DELETE_SELF).
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: Deleted }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
@@ -291,6 +343,43 @@ paths:
         '201': { description: Created }
         '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
+  /admin/courses/bulk-status:
+    post:
+      tags: [admin-courses]
+      summary: Deactivate or reactivate several courses (BRQ-2.1) at once (Admin)
+      description: >-
+        One transaction with one audit row per changed record; an unknown id rolls it all back
+        (404). Records already in the requested state are left alone. Accepts Idempotency-Key.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ids, isActive]
+              properties:
+                ids:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  uniqueItems: true
+                  items: { type: string, format: uuid }
+                isActive: { type: boolean }
+      responses:
+        '200':
+          description: Number of records changed
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [updated]
+                properties:
+                  updated: { type: integer }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
   /admin/courses/{id}:
     patch:
       tags: [admin-courses]
@@ -299,6 +388,19 @@ paths:
         - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
       responses:
         { '200': { description: Updated }, '404': { $ref: '#/components/responses/NotFound' } }
+    delete:
+      tags: [admin-courses]
+      summary: Permanently delete a course nothing refers to yet (Admin, BRQ-2.1)
+      description: >-
+        For courses created by mistake. A course that has been offered, applied for or taught is
+        refused with 409 COURSE_IN_USE and can only be deactivated.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: Deleted }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /admin/cycles:
     get:
       tags: [admin-courses]
@@ -423,7 +525,7 @@ paths:
   /admin/enrollments:
     get:
       tags: [admin-enrollments]
-      summary: Review queue, oldest first (Admin)
+      summary: Review queue, newest first (Admin)
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/PageSize'

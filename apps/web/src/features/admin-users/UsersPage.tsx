@@ -15,7 +15,9 @@ import {
 import { useToast } from '../../components/toast';
 import { useErrorMessage } from '../../lib/api/useErrorMessage';
 import { useAuth } from '../../lib/auth';
-import { useUpdateUser, useUsers, type UserFilters } from './api';
+import { usePersistentState } from '../../lib/usePersistentState';
+import { useSelection } from '../../lib/useSelection';
+import { useDeleteUser, useSetUsersActive, useUpdateUser, useUsers, type UserFilters } from './api';
 import { CreateUserModal } from './CreateUserModal';
 
 function useDebounced<T>(value: T, ms: number): T {
@@ -27,21 +29,75 @@ function useDebounced<T>(value: T, ms: number): T {
   return debounced;
 }
 
+const isSavedFilters = (v: unknown): v is Pick<UserFilters, 'role' | 'isActive'> => {
+  const f = v as Partial<UserFilters> | null;
+  return (
+    !!f &&
+    ['', ...ROLES].includes(f.role as string) &&
+    ['', 'true', 'false'].includes(f.isActive as string)
+  );
+};
+
 export function UsersPage() {
   const { t } = useTranslation(['users', 'common']);
   const { user: me } = useAuth();
   const toast = useToast();
   const errorMessage = useErrorMessage();
   const [search, setSearch] = useState('');
-  const [filters, setFilters] = useState<UserFilters>({ page: 1, q: '', role: '', isActive: '' });
+  // Role and status filters are remembered on this device; inactive accounts are hidden by
+  // default so the list shows the people who actually use the portal.
+  const [saved, setSaved] = usePersistentState<Pick<UserFilters, 'role' | 'isActive'>>(
+    'admin-users.filters',
+    { role: '', isActive: 'true' },
+    isSavedFilters,
+  );
+  const [filters, setFilters] = useState<UserFilters>({ page: 1, q: '', ...saved });
   const [creating, setCreating] = useState(false);
   const [confirming, setConfirming] = useState<UserSummary | null>(null);
+  const [deleting, setDeleting] = useState<UserSummary | null>(null);
   const update = useUpdateUser();
+  const setMany = useSetUsersActive();
+  const remove = useDeleteUser();
+  const { selected, toggle, toggleAll, clear } = useSelection();
 
   const q = useDebounced(search, 300);
   useEffect(() => setFilters((f) => ({ ...f, q, page: 1 })), [q]);
+  useEffect(
+    () => setSaved({ role: filters.role, isActive: filters.isActive }),
+    [filters.role, filters.isActive, setSaved],
+  );
+  // A new result set clears the selection so bulk actions never hit rows the admin can't see.
+  useEffect(clear, [filters, clear]);
 
   const { data, isPending, isError, error, isFetching } = useUsers(filters);
+  const selectable = (data?.data ?? []).filter((u) => u.id !== me?.id);
+  const selectableIds = selectable.map((u) => u.id);
+  const selectedIds = selectableIds.filter((id) => selected.has(id));
+  const allSelected = selectable.length > 0 && selectedIds.length === selectable.length;
+
+  const bulk = async (isActive: boolean) => {
+    try {
+      const { updated } = await setMany.mutateAsync({ ids: selectedIds, isActive });
+      toast.show({
+        tone: 'success',
+        title: t(isActive ? 'bulkReactivated' : 'bulkDeactivated', { count: updated }),
+      });
+      clear();
+    } catch (err) {
+      toast.show({ tone: 'error', title: errorMessage(err) });
+    }
+  };
+
+  const confirmDelete = async (target: UserSummary) => {
+    try {
+      await remove.mutateAsync(target.id);
+      toast.show({ tone: 'success', title: t('deleted', { name: target.fullName }) });
+    } catch (err) {
+      toast.show({ tone: 'error', title: errorMessage(err) });
+    } finally {
+      setDeleting(null);
+    }
+  };
 
   const setActive = async (target: UserSummary, isActive: boolean) => {
     try {
@@ -67,6 +123,29 @@ export function UsersPage() {
 
   const columns: Column<UserSummary>[] = [
     {
+      key: 'select',
+      header: (
+        <input
+          type="checkbox"
+          aria-label={t('selectAll')}
+          checked={allSelected}
+          disabled={selectable.length === 0}
+          onChange={() => toggleAll(selectableIds)}
+          className="h-4 w-4 rounded border-slate-400"
+        />
+      ),
+      render: (u) =>
+        u.id === me?.id ? null : (
+          <input
+            type="checkbox"
+            aria-label={t('selectRow', { name: u.fullName })}
+            checked={selected.has(u.id)}
+            onChange={() => toggle(u.id)}
+            className="h-4 w-4 rounded border-slate-400"
+          />
+        ),
+    },
+    {
       key: 'name',
       header: t('columns.name'),
       render: (u) => <span className="font-medium text-slate-900">{u.fullName}</span>,
@@ -80,24 +159,36 @@ export function UsersPage() {
       header: <span className="sr-only">{t('columns.actions')}</span>,
       align: 'right',
       render: (u) =>
-        u.id === me?.id ? null : u.isActive ? (
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => setConfirming(u)}
-            aria-label={`${t('deactivate')}: ${u.fullName}`}
-          >
-            {t('deactivate')}
-          </Button>
-        ) : (
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => void setActive(u, true)}
-            aria-label={`${t('reactivate')}: ${u.fullName}`}
-          >
-            {t('reactivate')}
-          </Button>
+        u.id === me?.id ? null : (
+          <div className="flex flex-wrap justify-end gap-2 sm:flex-nowrap">
+            {u.isActive ? (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setConfirming(u)}
+                aria-label={`${t('deactivate')}: ${u.fullName}`}
+              >
+                {t('deactivate')}
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => void setActive(u, true)}
+                aria-label={`${t('reactivate')}: ${u.fullName}`}
+              >
+                {t('reactivate')}
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setDeleting(u)}
+              aria-label={`${t('delete')}: ${u.fullName}`}
+            >
+              {t('delete')}
+            </Button>
+          </div>
         ),
     },
   ];
@@ -149,6 +240,27 @@ export function UsersPage() {
           ]}
         />
       </div>
+
+      {selectedIds.length > 0 && (
+        <div
+          role="region"
+          aria-label={t('selected', { count: selectedIds.length })}
+          className="sticky top-16 z-20 flex flex-wrap items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 p-3"
+        >
+          <span className="text-sm font-medium text-brand-900">
+            {t('selected', { count: selectedIds.length })}
+          </span>
+          <Button size="sm" onClick={() => void bulk(false)} loading={setMany.isPending}>
+            {t('deactivateSelected')}
+          </Button>
+          <Button size="sm" variant="secondary" onClick={() => void bulk(true)}>
+            {t('reactivateSelected')}
+          </Button>
+          <Button size="sm" variant="ghost" onClick={clear}>
+            {t('clearSelection')}
+          </Button>
+        </div>
+      )}
 
       {isPending ? (
         <PageSkeleton />
@@ -214,6 +326,28 @@ export function UsersPage() {
         }
       >
         <p className="text-sm text-slate-700">{t('confirmDeactivate.body')}</p>
+      </Modal>
+
+      <Modal
+        open={!!deleting}
+        onClose={() => setDeleting(null)}
+        title={t('confirmDelete.title', { name: deleting?.fullName ?? '' })}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setDeleting(null)}>
+              {t('common:actions.cancel')}
+            </Button>
+            <Button
+              variant="danger"
+              loading={remove.isPending}
+              onClick={() => deleting && void confirmDelete(deleting)}
+            >
+              {t('confirmDelete.confirm')}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-slate-700">{t('confirmDelete.body')}</p>
       </Modal>
     </div>
   );

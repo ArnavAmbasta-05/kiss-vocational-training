@@ -94,6 +94,55 @@ Read this at the start of every session and update it at the end of every sprint
 
 ---
 
+## After Sprint 13 — Admin clean-up, applied courses, phones and translations (2026-10-27)
+
+### Built
+- **Latest applications first:** the admin review queue (`GET /admin/enrollments`) is ordered
+  newest first (ties by id), and the page intro says so in all three languages.
+- **Applied courses in Courses:** the student catalogue marks each course in the student's active
+  application for that cycle with *Applied · choice N* and the application's status, and offers
+  *View my application* (or *Change my choices* while it can still be edited) instead of *Apply*.
+- **Admin clean-up of courses and users** (BRQ-2.1 for courses):
+  - lists show active records only by default, with a status filter and (courses) search;
+  - select rows, or all shown, and deactivate or reactivate them in one go:
+    `POST /admin/courses/bulk-status` and `POST /admin/users/bulk-status` (one transaction, one
+    audit row per changed record, unknown id → 404 and nothing changes, Idempotency-Key, never
+    yourself; deactivating users ends their sessions);
+  - `DELETE /admin/courses/:id` and `DELETE /admin/users/:id` remove only records with no
+    history (created by mistake). Anything referenced is refused with 409 `COURSE_IN_USE` /
+    `USER_IN_USE` and can only be deactivated. Seven foreign keys to users are `ON DELETE SET
+    NULL` in the database (enrollment decider, session trainer, setting editor, rating
+    verifier/reviser, resource and material approver), so the service checks those explicitly
+    before deleting; every other reference blocks the delete itself. Audited `COURSE_DELETED` /
+    `USER_DELETED` in the same transaction.
+- **Phones and per-device settings:** the shared `Table` shows each row as a card below the `sm`
+  breakpoint (explicit table roles keep screen readers and tests working). List filters (users
+  role/status, courses status, enrollments status, catalogue *open only*) are remembered per
+  device in `localStorage` via `usePersistentState` (no personal data; falls back to defaults
+  when storage is blocked).
+- **Translations:** one term per idea across files (Hindi पाठ्यक्रम instead of कोर्स in the
+  assistant and errors, Odia ବ୍ୟବହାରକାରୀ for "user"); clearer Hindi confirmation messages;
+  a *Standard terms* glossary in `apps/web/src/locales/REVIEW.md`.
+- Tests: +10 API tests (newest-first order, bulk status, safe delete including the SET NULL
+  case), +3 Playwright tests (applied badge, course clean-up, deleting a mistaken account);
+  the access-matrix snapshot gains the 4 new admin-only routes (163 routes with the automatic-approval ones).
+
+### Deviations from BRD/TAD (and why)
+- The review queue was oldest first ("in the order they arrived"); the team asked for the
+  latest applications first. Allocation order is unchanged (it never used the queue order).
+
+### Known gaps / follow-ups
+- Odia ଅଧିବେଶନ for a training session is flagged for the native-speaker review (ସେସନ୍ may read
+  more naturally).
+- Hand-built tables (competency matrix, audit log, sessions grid) still scroll sideways on
+  phones; they are grids, not lists.
+
+### Definition of done
+- [x] lint · [x] typecheck · [x] tests · [x] openapi.yaml · [x] seed (no new data needed) ·
+  [x] strings externalized (en, hi, or)
+
+---
+
 ## Sprint 13 — Hardening, quality and final submission (built, 2026-10-26)
 
 ### Built

@@ -456,11 +456,11 @@ export async function adminList(
     },
   } satisfies Prisma.EnrollmentInclude;
   const [rows, total] = await prisma().$transaction([
-    // Oldest first: applications are reviewed in the order they arrived.
+    // Newest first, so the latest applications are at the top of the review queue.
     prisma().enrollment.findMany({
       where,
       include,
-      orderBy: { submittedAt: 'asc' },
+      orderBy: [{ submittedAt: 'desc' }, { id: 'asc' }],
       skip: page.skip,
       take: page.take,
     }),

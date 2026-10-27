@@ -2,6 +2,8 @@ import { Prisma } from '@prisma/client';
 import type {
   AdminCreateUserInput,
   AdminUpdateUserInput,
+  BulkStatusInput,
+  BulkStatusResult,
   ChangePasswordInput,
   Me,
   Paginated,
@@ -252,6 +254,108 @@ export async function updateUser(
     });
     return toSummary(user);
   });
+}
+
+/**
+ * Deactivates or reactivates several accounts in one transaction (admin clean-up). The same
+ * rules as one at a time: never yourself, deactivation ends sessions, reactivation unlocks.
+ */
+export async function setUsersActive(
+  actor: Actor & { userId: string },
+  input: BulkStatusInput,
+): Promise<BulkStatusResult> {
+  if (!input.isActive && input.ids.includes(actor.userId)) {
+    throw AppError.conflict('CANNOT_DEACTIVATE_SELF', 'You cannot deactivate your own account');
+  }
+  return withAudit(actor, async (tx, log) => {
+    const before = await tx.user.findMany({
+      where: { id: { in: input.ids } },
+      select: { id: true, isActive: true },
+    });
+    if (before.length !== input.ids.length) throw AppError.notFound('User not found');
+    const ids = before.filter((u) => u.isActive !== input.isActive).map((u) => u.id);
+    if (ids.length === 0) return { updated: 0 };
+    await tx.user.updateMany({
+      where: { id: { in: ids } },
+      data: {
+        isActive: input.isActive,
+        ...(input.isActive ? { failedLoginCount: 0, lockedUntil: null } : {}),
+      },
+    });
+    if (!input.isActive) for (const id of ids) await revokeUserSessions(tx, id);
+    await log.many(
+      ids.map((id) => ({
+        action: input.isActive ? 'USER_REACTIVATED' : 'USER_DEACTIVATED',
+        entity: 'User',
+        entityId: id,
+        oldValue: { isActive: !input.isActive },
+        newValue: { isActive: input.isActive },
+      })),
+    );
+    return { updated: ids.length };
+  });
+}
+
+const userInUse = () =>
+  AppError.conflict(
+    'USER_IN_USE',
+    'This account already has activity (applications, training records or actions), so it cannot be deleted. Deactivate it instead.',
+  );
+
+/**
+ * Permanently removes an account that has no history yet (e.g. created by mistake). Sessions,
+ * notifications and idempotency keys go with it; anything else keeps the account, which can
+ * then only be deactivated. The references below would be silently set to NULL by the
+ * database, so they are checked first; every other reference blocks the delete itself.
+ */
+export async function deleteUser(actor: Actor & { userId: string }, userId: string): Promise<void> {
+  if (userId === actor.userId) {
+    throw AppError.conflict('CANNOT_DELETE_SELF', 'You cannot delete your own account');
+  }
+  try {
+    await withAudit(actor, async (tx, log) => {
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        select: {
+          ...summarySelect,
+          trainer: { select: { employeeCode: true, _count: { select: { sessions: true } } } },
+          _count: {
+            select: {
+              enrollmentDecisions: true,
+              settingsUpdated: true,
+              ratingsVerified: true,
+              ratingsRevoked: true,
+              resourcesApproved: true,
+              materialsApproved: true,
+            },
+          },
+        },
+      });
+      if (!user) throw AppError.notFound('User not found');
+      const nulled = Object.values(user._count).reduce((a, b) => a + b, 0);
+      if (nulled + (user.trainer?._count.sessions ?? 0) > 0) throw userInUse();
+      await tx.student.deleteMany({ where: { userId } });
+      await tx.trainer.deleteMany({ where: { userId } });
+      await tx.user.delete({ where: { id: userId } });
+      await log({
+        action: 'USER_DELETED',
+        entity: 'User',
+        entityId: userId,
+        oldValue: {
+          email: user.email,
+          fullName: user.fullName,
+          role: user.role,
+          rollNo: user.student?.rollNo ?? null,
+          employeeCode: user.trainer?.employeeCode ?? null,
+        },
+      });
+    });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2003') {
+      throw userInUse();
+    }
+    throw err;
+  }
 }
 
 /** Active accounts per role (admin dashboard, BRQ-9.1). */

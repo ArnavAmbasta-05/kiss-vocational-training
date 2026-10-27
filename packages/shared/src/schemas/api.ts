@@ -41,3 +41,24 @@ export const HealthResponseSchema = z.object({
   time: z.string(),
 });
 export type HealthResponse = z.infer<typeof HealthResponseSchema>;
+
+/** Most records one admin bulk status change may touch. */
+export const BULK_STATUS_MAX = 100;
+
+/** Deactivate or reactivate several records at once (admin clean-up of courses and users). */
+export const BulkStatusSchema = z
+  .object({
+    ids: z
+      .array(z.string().uuid())
+      .min(1)
+      .max(BULK_STATUS_MAX)
+      .refine((ids) => new Set(ids).size === ids.length, { message: 'Duplicate ids' }),
+    isActive: z.boolean(),
+  })
+  .strict();
+export type BulkStatusInput = z.infer<typeof BulkStatusSchema>;
+
+export interface BulkStatusResult {
+  /** Records whose status changed; ones already in the requested state are left alone. */
+  updated: number;
+}

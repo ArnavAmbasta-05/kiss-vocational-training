@@ -102,6 +102,59 @@ test.describe('admin user management', () => {
     await expect(row).toHaveCount(1);
     await row.getByRole('button', { name: /Deactivate/ }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Deactivate' }).click();
+    await expect(
+      page.getByRole('status').filter({ hasText: 'E2E Student was deactivated' }),
+    ).toBeVisible();
+    // The list shows active accounts by default, so the account moves to the Inactive filter.
+    await expect(row).toHaveCount(0);
+    await page.getByLabel('Status').selectOption({ label: 'Inactive' });
     await expect(row.getByText('Inactive')).toBeVisible();
+
+    // The device remembers the filter on the next visit.
+    await page.reload();
+    await expect(page.getByLabel('Status')).toHaveValue('false');
+    await page.getByLabel('Status').selectOption({ label: 'Active' });
+  });
+
+  test('admin deletes an account created by mistake', async ({ page }) => {
+    const suffix = Date.now().toString(36);
+    const email = `e2e-mistake-${suffix}@kiss-vtmp.test`;
+    await signIn(page, ACCOUNTS.ADMIN);
+    await page.getByRole('link', { name: 'Users' }).first().click();
+    await page.getByRole('button', { name: 'Add user' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Add user' });
+    await dialog.getByLabel('Full name').fill('Mistaken Entry');
+    await dialog.getByLabel('Email').fill(email);
+    await dialog.getByLabel('Initial password').fill('E2e-Start-Pass1');
+    await dialog.getByLabel('Roll number').fill(`DEL-${suffix}`);
+    await dialog.getByLabel('CGPA').fill('6.5');
+    await dialog.getByRole('button', { name: 'Create account' }).click();
+    await expect(dialog).toBeHidden();
+
+    await page.getByLabel('Search by name, email, roll number or employee code').fill(email);
+    const row = page.getByRole('row', { name: /Mistaken Entry/ });
+    await expect(row).toHaveCount(1);
+    await row.getByRole('button', { name: 'Delete: Mistaken Entry' }).click();
+    const confirm = page.getByRole('dialog', { name: 'Delete Mistaken Entry?' });
+    await expectNoSeriousA11yViolations(page);
+    await confirm.getByRole('button', { name: 'Delete account' }).click();
+    await expect(
+      page.getByRole('status').filter({ hasText: 'Mistaken Entry was deleted' }),
+    ).toBeVisible();
+    await page.getByLabel('Status').selectOption({ label: 'Any status' });
+    await expect(row).toHaveCount(0);
+
+    // An account with history is kept: the seeded trainer can only be deactivated.
+    await page
+      .getByLabel('Search by name, email, roll number or employee code')
+      .fill(ACCOUNTS.TRAINER);
+    const trainer = page.getByRole('row').filter({ hasText: ACCOUNTS.TRAINER });
+    await expect(trainer).toHaveCount(1);
+    await trainer.getByRole('button', { name: /^Delete:/ }).click();
+    await page.getByRole('button', { name: 'Delete account' }).click();
+    await expect(
+      page.getByRole('alert').filter({ hasText: 'cannot be deleted. Deactivate it instead.' }),
+    ).toBeVisible();
+    await expect(trainer).toHaveCount(1);
   });
 });

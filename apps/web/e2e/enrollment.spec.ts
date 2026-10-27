@@ -44,6 +44,7 @@ test.describe('Sprint 3: apply → approve → see APPROVED', () => {
     await expect(page.getByRole('link', { name: /^Apply:/ })).toHaveCount(0);
     await cycle.selectOption({ index: 1 });
     await expect(page).toHaveURL(/[?&]cycle=/);
+    const cycleId = new URL(page.url()).searchParams.get('cycle');
     await expectNoSeriousA11yViolations(page);
     await page
       .getByRole('link', { name: /^Apply:/ })
@@ -57,6 +58,20 @@ test.describe('Sprint 3: apply → approve → see APPROVED', () => {
     const card = page.getByTestId('enrollment-card');
     await expect(card.getByText('Pending review').first()).toBeVisible();
     await expectNoSeriousA11yViolations(page);
+
+    // Courses: the applied course says so, and no course offers a second application.
+    await page.goto(`/student/courses?cycle=${cycleId}`);
+    const applied = page.getByTestId('applied-badge');
+    await expect(applied).toHaveCount(1);
+    await expect(applied).toContainText('Applied · choice 1');
+    await expect(applied).toContainText('Pending review');
+    await expect(page.getByRole('link', { name: /^Apply:/ })).toHaveCount(0);
+    await expectNoSeriousA11yViolations(page);
+    await page
+      .getByRole('link', { name: /^View my application:/ })
+      .first()
+      .click();
+    await expect(page).toHaveURL('/student/enrollment');
 
     // Admin: find the application and approve it.
     const adminContext = await browser.newContext();
@@ -118,5 +133,57 @@ test.describe('Sprint 3: apply → approve → see APPROVED', () => {
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Courses & cycles');
     await expect(page.getByRole('cell', { name: 'Solar PV Installer' }).first()).toBeVisible();
     await expectNoSeriousA11yViolations(page);
+  });
+
+  test('admin tidies the course list: bulk deactivate, then delete an unused course', async ({
+    page,
+    request,
+  }) => {
+    const login = await request.post('/api/v1/auth/login', {
+      data: { email: ACCOUNTS.ADMIN, password: SEED_PASSWORD },
+    });
+    const { accessToken } = (await login.json()) as { accessToken: string };
+    const s = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const title = `Tidy ${s}`;
+    for (const n of [1, 2]) {
+      const res = await request.post('/api/v1/admin/courses', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        data: {
+          code: `T${n}-${s}`.slice(0, 20),
+          title: `${title} ${n}`,
+          description: 'Created by the clean-up test.',
+          durationWeeks: 2,
+          seatCapacity: 5,
+        },
+      });
+      expect(res.status()).toBe(201);
+    }
+
+    await signIn(page, ACCOUNTS.ADMIN);
+    await page.goto('/admin/courses');
+    // The cycles table below lists active courses too, so look only at the courses table.
+    const courses = page.getByRole('region', { name: 'All courses' });
+    await page.getByLabel('Search by title or code').fill(title);
+    await expect(courses.getByRole('row', { name: new RegExp(title) })).toHaveCount(2);
+    await page.getByLabel('Select all courses shown').check();
+    await expect(page.getByText('2 courses selected')).toBeVisible();
+    await expectNoSeriousA11yViolations(page);
+    await page.getByRole('button', { name: 'Deactivate selected' }).click();
+    await expect(
+      page.getByRole('status').filter({ hasText: '2 courses deactivated' }),
+    ).toBeVisible();
+    await expect(courses.getByRole('row', { name: new RegExp(title) })).toHaveCount(0);
+
+    await page.getByLabel('Status').selectOption({ label: 'Inactive courses' });
+    await expect(courses.getByRole('row', { name: new RegExp(title) })).toHaveCount(2);
+    await page.getByRole('button', { name: `Delete: ${title} 1` }).click();
+    await page
+      .getByRole('dialog', { name: `Delete ${title} 1?` })
+      .getByRole('button', { name: 'Delete course' })
+      .click();
+    await expect(
+      page.getByRole('status').filter({ hasText: `${title} 1 was deleted` }),
+    ).toBeVisible();
+    await expect(courses.getByRole('row', { name: new RegExp(title) })).toHaveCount(1);
   });
 });

@@ -1,5 +1,6 @@
 import type { Request } from 'express';
 import type {
+  BulkStatusInput,
   CourseCreateInput,
   CourseUpdateInput,
   CycleCreateInput,
@@ -55,6 +56,15 @@ export const createCourse = asyncHandler(async (req, res) => {
 
 export const updateCourse = asyncHandler(async (req, res) => {
   res.json(await service.updateCourse(actor(req), req.params.id!, req.body as CourseUpdateInput));
+});
+
+export const setCoursesActive = asyncHandler(async (req, res) => {
+  res.json(await service.setCoursesActive(actor(req), req.body as BulkStatusInput));
+});
+
+export const deleteCourse = asyncHandler(async (req, res) => {
+  await service.deleteCourse(actor(req), req.params.id!);
+  res.status(204).end();
 });
 
 export const createCycle = asyncHandler(async (req, res) => {

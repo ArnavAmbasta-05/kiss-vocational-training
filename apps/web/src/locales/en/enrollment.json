@@ -55,7 +55,7 @@
   },
   "admin": {
     "title": "Enrollments",
-    "intro": "Applications that meet your automatic approval rules are approved as soon as students submit them. Review the rest in the order they arrived: approve, reject with a reason, or waitlist, one at a time or in bulk.",
+    "intro": "Applications that meet your automatic approval rules are approved as soon as students submit them. The rest are listed newest first: approve, reject with a reason, or waitlist, one at a time or in bulk.",
     "cycle": "Cycle",
     "course": "Course",
     "allCourses": "All courses",

@@ -2,6 +2,7 @@ import type { Request } from 'express';
 import type {
   AdminCreateUserInput,
   AdminUpdateUserInput,
+  BulkStatusInput,
   ChangePasswordInput,
   UpdateProfileInput,
   UserListQuery,
@@ -37,4 +38,13 @@ export const update = asyncHandler(async (req, res) => {
   res.json(
     await usersService.updateUser(actor(req), req.params.id!, req.body as AdminUpdateUserInput),
   );
+});
+
+export const setActive = asyncHandler(async (req, res) => {
+  res.json(await usersService.setUsersActive(actor(req), req.body as BulkStatusInput));
+});
+
+export const remove = asyncHandler(async (req, res) => {
+  await usersService.deleteUser(actor(req), req.params.id!);
+  res.status(204).end();
 });

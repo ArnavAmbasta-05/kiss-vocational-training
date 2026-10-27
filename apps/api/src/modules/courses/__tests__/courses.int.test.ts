@@ -104,6 +104,101 @@ describe('admin courses, cycles and windows (BRQ-2.1, 2.3)', () => {
   });
 });
 
+describe('admin course clean-up (BRQ-2.1)', () => {
+  async function newCourse(admin: { auth: Record<string, string> }) {
+    const res = await request(app)
+      .post('/api/v1/admin/courses')
+      .set(admin.auth)
+      .send({
+        code: `cln-${uid()}`.slice(0, 20),
+        title: 'Clean-up Course',
+        description: 'A course created to test clean-up.',
+        durationWeeks: 4,
+        seatCapacity: 10,
+      });
+    expect(res.status).toBe(201);
+    return res.body.id as string;
+  }
+
+  it('deactivates and reactivates several courses at once, auditing each one', async () => {
+    const admin = await auth(Role.ADMIN);
+    const ids = [await newCourse(admin), await newCourse(admin)];
+    const off = await request(app)
+      .post('/api/v1/admin/courses/bulk-status')
+      .set(admin.auth)
+      .send({ ids, isActive: false });
+    expect(off.status).toBe(200);
+    expect(off.body).toEqual({ updated: 2 });
+    const rows = await prisma().course.findMany({ where: { id: { in: ids } } });
+    expect(rows.every((c) => !c.isActive)).toBe(true);
+    expect(
+      await prisma().auditLog.count({
+        where: { action: 'COURSE_DEACTIVATED', entityId: { in: ids }, userId: admin.user.id },
+      }),
+    ).toBe(2);
+
+    // Already inactive: nothing changes and nothing is audited again.
+    const again = await request(app)
+      .post('/api/v1/admin/courses/bulk-status')
+      .set(admin.auth)
+      .send({ ids, isActive: false });
+    expect(again.body).toEqual({ updated: 0 });
+
+    const on = await request(app)
+      .post('/api/v1/admin/courses/bulk-status')
+      .set(admin.auth)
+      .send({ ids, isActive: true });
+    expect(on.body).toEqual({ updated: 2 });
+  });
+
+  it('rolls back the whole bulk change when one id is unknown', async () => {
+    const admin = await auth(Role.ADMIN);
+    const id = await newCourse(admin);
+    const res = await request(app)
+      .post('/api/v1/admin/courses/bulk-status')
+      .set(admin.auth)
+      .send({ ids: [id, '00000000-0000-4000-8000-000000000000'], isActive: false });
+    expect(res.status).toBe(404);
+    expect((await prisma().course.findUniqueOrThrow({ where: { id } })).isActive).toBe(true);
+  });
+
+  it('deletes an unused course, but refuses one that has been offered (409 COURSE_IN_USE)', async () => {
+    const admin = await auth(Role.ADMIN);
+    const unused = await newCourse(admin);
+    const del = await request(app).delete(`/api/v1/admin/courses/${unused}`).set(admin.auth);
+    expect(del.status).toBe(204);
+    expect(await prisma().course.findUnique({ where: { id: unused } })).toBeNull();
+    expect(
+      await prisma().auditLog.count({ where: { action: 'COURSE_DELETED', entityId: unused } }),
+    ).toBe(1);
+    const gone = await request(app).delete(`/api/v1/admin/courses/${unused}`).set(admin.auth);
+    expect(gone.status).toBe(404);
+
+    const { courses } = await createOpenCycle(prisma(), 1);
+    const offered = courses[0]!.id;
+    const refused = await request(app).delete(`/api/v1/admin/courses/${offered}`).set(admin.auth);
+    expect(refused.status).toBe(409);
+    expect(refused.body.error.code).toBe('COURSE_IN_USE');
+    expect(await prisma().course.findUnique({ where: { id: offered } })).not.toBeNull();
+  });
+
+  it('is admin-only', async () => {
+    const trainer = await auth(Role.TRAINER);
+    const id = '00000000-0000-4000-8000-000000000000';
+    expect(
+      (await request(app).delete(`/api/v1/admin/courses/${id}`).set(trainer.auth)).status,
+    ).toBe(403);
+    expect(
+      (
+        await request(app)
+          .post('/api/v1/admin/courses/bulk-status')
+          .set(trainer.auth)
+          .send({ ids: [id], isActive: false })
+      ).status,
+    ).toBe(403);
+  });
+});
+
 describe('catalogue (BRQ-2.2)', () => {
   it('lets students choose among cycles that offer active courses and have not ended', async () => {
     const db = prisma();

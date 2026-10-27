@@ -3,12 +3,13 @@ import { z } from 'zod';
 import {
   AdminCreateUserSchema,
   AdminUpdateUserSchema,
+  BulkStatusSchema,
   ChangePasswordSchema,
   UpdateProfileSchema,
   UserListQuerySchema,
 } from '@vtmp/shared';
 import { authenticate, authorize } from '../../core/auth';
-import { validate } from '../../core/middleware';
+import { idempotency, validate } from '../../core/middleware';
 import * as controller from './users.controller';
 
 const IdParams = z.object({ id: z.string().uuid() });
@@ -32,10 +33,17 @@ export function adminUserRoutes(): Router {
   router.use(authenticate, authorize('ADMIN'));
   router.get('/', validate({ query: UserListQuerySchema }), controller.list);
   router.post('/', validate({ body: AdminCreateUserSchema }), controller.create);
+  router.post(
+    '/bulk-status',
+    validate({ body: BulkStatusSchema }),
+    idempotency(),
+    controller.setActive,
+  );
   router.patch(
     '/:id',
     validate({ params: IdParams, body: AdminUpdateUserSchema }),
     controller.update,
   );
+  router.delete('/:id', validate({ params: IdParams }), controller.remove);
   return router;
 }

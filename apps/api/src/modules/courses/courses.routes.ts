@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import {
+  BulkStatusSchema,
   CatalogueQuerySchema,
   CourseCreateSchema,
   CourseUpdateSchema,
@@ -9,7 +10,7 @@ import {
   OfferingUpsertSchema,
 } from '@vtmp/shared';
 import { authenticate, authorize } from '../../core/auth';
-import { validate } from '../../core/middleware';
+import { idempotency, validate } from '../../core/middleware';
 import * as controller from './courses.controller';
 
 const IdParams = z.object({ id: z.string().uuid() });
@@ -43,11 +44,18 @@ export function adminCourseRoutes(): Router {
   router.use(authenticate, authorize('ADMIN'));
   router.get('/courses', controller.listCourses);
   router.post('/courses', validate({ body: CourseCreateSchema }), controller.createCourse);
+  router.post(
+    '/courses/bulk-status',
+    validate({ body: BulkStatusSchema }),
+    idempotency(),
+    controller.setCoursesActive,
+  );
   router.patch(
     '/courses/:id',
     validate({ params: IdParams, body: CourseUpdateSchema }),
     controller.updateCourse,
   );
+  router.delete('/courses/:id', validate({ params: IdParams }), controller.deleteCourse);
   router.get('/cycles', controller.cycles);
   router.post('/cycles', validate({ body: CycleCreateSchema }), controller.createCycle);
   router.patch(
