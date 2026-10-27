@@ -83,6 +83,12 @@ describe('public certificate verification (F15, BRQ-15.2–15.5)', () => {
       status: 'VALID',
       revokedOn: null,
     });
+    const own = await prisma().student.findUniqueOrThrow({
+      where: { id: w.students[0]!.studentId },
+    });
+    for (const value of [w.students[0]!.user.email, own.rollNo]) {
+      expect(JSON.stringify(res.body)).not.toContain(value);
+    }
     expect(res.headers['cache-control']).toBe('no-cache');
     // Lower-case input is accepted too; the count rises in the background.
     await verify(w.cert.publicCode.toLowerCase()).expect(200);
@@ -262,6 +268,13 @@ describe('share links (BRQ-10.3, BR-15)', () => {
     const text = JSON.stringify(view.body);
     for (const forbidden of ['marks', 'attendance', 'email', 'phone', 'rollNo', 'aggregate']) {
       expect(text).not.toContain(forbidden);
+    }
+    // Values too, not only key names: no contact details or roll number anywhere.
+    const own = await prisma().student.findUniqueOrThrow({
+      where: { id: w.students[0]!.studentId },
+    });
+    for (const value of [w.students[0]!.user.email, own.rollNo]) {
+      expect(text).not.toContain(value);
     }
 
     // Only its owner can revoke it.

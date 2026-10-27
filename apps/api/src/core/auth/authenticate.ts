@@ -46,10 +46,12 @@ export const authenticate: RequestHandler = (req, _res, next) => {
 };
 
 /** Allows only the listed roles (BRQ-1.2). Must run after authenticate. */
-export function authorize(...roles: Role[]): RequestHandler {
-  return (req, _res, next) => {
+export function authorize(...roles: Role[]): RequestHandler & { allowedRoles: Role[] } {
+  const handler: RequestHandler = (req, _res, next) => {
     if (!req.user) return next(AppError.unauthorized());
     if (!roles.includes(req.user.role)) return next(AppError.forbidden());
     next();
   };
+  // Read by the security suite, which checks every route against its roles.
+  return Object.assign(handler, { allowedRoles: roles });
 }
