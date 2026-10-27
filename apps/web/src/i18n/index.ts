@@ -27,9 +27,10 @@ void i18n
     supportedLngs: [...LOCALES],
     fallbackLng: DEFAULT_LOCALE,
     load: 'languageOnly',
-    // Only what every screen needs is fetched up front; a page's own namespace loads with the
-    // page (components suspend until it arrives). Saves ~25 requests on slow phones (NFR-10).
-    ns: ['common', 'errors'],
+    // Only what every screen and the app shell (header bell, account menu, sign-in) need is
+    // fetched up front; a page's own namespace loads with the page (it suspends inside the
+    // page, never the shell, so focus and layout stay put). Saves ~20 requests (NFR-10).
+    ns: ['common', 'errors', 'auth', 'notifications'],
     defaultNS: 'common',
     // Untranslated strings are "" in or/hi files; fall back to English instead of blank.
     returnEmptyString: false,

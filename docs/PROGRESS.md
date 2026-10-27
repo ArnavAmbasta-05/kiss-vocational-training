@@ -74,8 +74,11 @@ Read this at the start of every session and update it at the end of every sprint
   - Every foreign key is indexed (now a test).
   - The audit log (which only grows) gets an `(action, created_at)` index, and its filter
     lists read distinct values through the index: 31 ms → 4 ms on 200,000 rows.
-  - Only the `common` and `errors` translations load up front: 37 → 13 requests on the
-    sign-in page.
+  - Only the translations every screen and the app shell need (`common`, `errors`, `auth`,
+    `notifications`) load up front; each page loads its own: 37 → 14 requests on the sign-in
+    page. A first version preloaded only two, and the deployed smoke test caught the header
+    briefly swapping for a spinner (losing focus) on a slow connection; a regression test now
+    slows every page namespace down and checks focus stays put.
 - **Accessibility** (`e2e/a11y.spec.ts`): axe on every sidebar page of every role and the
   public pages (0 serious issues); the attendance workflow with the keyboard only, desktop and
   phone; no page scrolls sideways at 360 px.
@@ -119,7 +122,7 @@ Read this at the start of every session and update it at the end of every sprint
 - [x] lint · typecheck · prettier · `i18n:check --strict` · `docs:check` · build · bundle budget
 - [x] API: 49 suites, 381 tests passing; coverage 91.22 % statements, 73.43 % branches,
   90.93 % functions, 93.12 % lines
-- [x] e2e: 63 tests passing locally on desktop and phone (including a11y and security specs)
+- [x] e2e: 65 tests passing locally on desktop and phone (including a11y and security specs)
 - [x] openapi.yaml valid (0 errors); Postman collection regenerated
 - [x] Seed: records the analytics refresh; screenshots come from a fresh seed
 - [x] Strings externalized in en, hi and or

@@ -41,11 +41,11 @@ the bundle budget and the full browser suite, then a smoke test of the deployed 
 | --- | --- |
 | API unit + integration | **49 suites, 381 tests, all passing** |
 | API coverage (statements / branches / functions / lines) | **91.22 % / 73.43 % / 90.93 % / 93.12 %** |
-| Browser (desktop + phone) | **63 tests, all passing** (journeys, security, accessibility) |
+| Browser (desktop + phone) | **65 tests, all passing** (journeys, security, accessibility) |
 | Accessibility | every page of every role: **0 serious or critical issues** |
 | Traceability | **99 of 99** BRQs and BRs cited by a test or CI check |
 | Lighthouse, `/verify` (mobile, slow 4G) | score 100, LCP 0.9 s, 11 KB |
-| Lighthouse, sign-in shell | score 94, LCP 2.6 s, 216 KB, 13 requests |
+| Lighthouse, sign-in shell | score 94, LCP 2.6 s, 216 KB, 14 requests |
 | Live site, first request after idle | 2.66 s (cold start); 0.4–0.6 s warm |
 
 Coverage is measured with `jest --coverage` over the API. Branch coverage is lower because
