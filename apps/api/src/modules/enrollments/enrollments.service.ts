@@ -2,6 +2,8 @@ import { Prisma } from '@prisma/client';
 import type {
   AdminEnrollmentQuery,
   AdminEnrollmentRow,
+  AutoApproval,
+  AutoApproveRunResult,
   Enrollment,
   EnrollmentHistoryEntry,
   EnrollmentStatus,
@@ -18,7 +20,7 @@ import { settings } from '../../core/settings';
 import * as coursesService from '../courses/courses.service';
 import { isWindowOpen } from '../courses/rules';
 import { notify } from '../notifications/notifications.service';
-import { REVIEW_TARGET, canReview, isEditable, preferenceCountProblem } from './rules';
+import { REVIEW_TARGET, canReview, isEditable, preferenceCountProblem, screen } from './rules';
 
 export interface StudentActor extends Actor {
   userId: string;
@@ -38,6 +40,7 @@ const enrollmentInclude = {
           code: true,
           title: true,
           isActive: true,
+          prerequisites: true,
           offerings: {
             select: {
               cycleId: true,
@@ -133,6 +136,156 @@ const duplicate = () =>
     'You already have an active application for this training cycle',
   );
 
+// ─── Automatic approval (BRQ-3.3) ─────────────────────────────────────────────
+
+/** The admin's automatic approval switch and rules (Settings, CLAUDE.md rule 4). */
+export async function autoApproval(): Promise<AutoApproval> {
+  const s = await settings.getMany([
+    'enrollment.autoApprove',
+    'enrollment.autoApproveMinCgpa',
+    'enrollment.autoApproveManualIfPrerequisites',
+  ]);
+  return {
+    enabled: s['enrollment.autoApprove'],
+    minCgpa: s['enrollment.autoApproveMinCgpa'],
+    manualIfPrerequisites: s['enrollment.autoApproveManualIfPrerequisites'],
+  };
+}
+
+/** PUT /admin/enrollments/auto-approval: each changed setting is stored with its audit row. */
+export async function setAutoApproval(actor: Actor, input: AutoApproval): Promise<AutoApproval> {
+  const before = await autoApproval();
+  if (before.enabled !== input.enabled) {
+    await settings.set(actor, 'enrollment.autoApprove', input.enabled);
+  }
+  if (before.minCgpa !== input.minCgpa) {
+    await settings.set(actor, 'enrollment.autoApproveMinCgpa', input.minCgpa);
+  }
+  if (before.manualIfPrerequisites !== input.manualIfPrerequisites) {
+    await settings.set(
+      actor,
+      'enrollment.autoApproveManualIfPrerequisites',
+      input.manualIfPrerequisites,
+    );
+  }
+  return autoApproval();
+}
+
+const coursesOf = (e: EnrollmentRow) =>
+  e.preferences.map((p) => ({ title: p.course.title, prerequisites: p.course.prerequisites }));
+
+const AUTO_APPROVED = {
+  type: 'ENROLLMENT_APPROVED' as const,
+  title: 'Application approved',
+};
+
+/**
+ * Inside the student's own transaction: approves a just-submitted (or edited) application that
+ * meets every automatic approval rule, with its audit row and the student's notification.
+ * Returns the row unchanged when the switch is off or a rule holds it for a person.
+ */
+async function approveIfEligible(
+  tx: Tx,
+  log: AuditFn,
+  row: EnrollmentRow,
+  facts: { cgpa: number; userId: string; rules: AutoApproval },
+): Promise<EnrollmentRow> {
+  if (!facts.rules.enabled) return row;
+  if (screen({ cgpa: facts.cgpa, courses: coursesOf(row) }, facts.rules).length > 0) return row;
+  const changed = await tx.enrollment.updateMany({
+    where: { id: row.id, status: 'PENDING' },
+    data: { status: 'APPROVED', reason: null, decidedAt: new Date(), decidedById: null },
+  });
+  if (changed.count !== 1) return row;
+  await log({
+    action: 'ENROLLMENT_APPROVED',
+    entity: 'Enrollment',
+    entityId: row.id,
+    oldValue: { status: 'PENDING' },
+    newValue: { status: 'APPROVED', by: 'AUTO_APPROVAL' },
+  });
+  await notify(tx, [
+    {
+      userId: facts.userId,
+      ...AUTO_APPROVED,
+      body: `Your application for ${row.cycle.name} was updated.`,
+      data: { cycleName: row.cycle.name },
+      link: '/student/enrollment',
+    },
+  ]);
+  return tx.enrollment.findUniqueOrThrow({ where: { id: row.id }, include: enrollmentInclude });
+}
+
+/** Facts about the applying student, read before any transaction (one pooled connection). */
+async function applicantFacts(studentId: string) {
+  const [rules, student] = await Promise.all([
+    autoApproval(),
+    prisma().student.findUniqueOrThrow({
+      where: { id: studentId },
+      select: { cgpa: true, userId: true },
+    }),
+  ]);
+  return { rules, cgpa: Number(student.cgpa), userId: student.userId };
+}
+
+/**
+ * POST /admin/enrollments/auto-approve: applies the rules to every application of a cycle
+ * still pending (e.g. right after switching automatic approval on), whether or not the switch
+ * is on. One set-based update, so thousands of rows fit in a serverless request.
+ */
+export async function runAutoApproval(
+  actor: Actor,
+  cycleId: string,
+): Promise<AutoApproveRunResult> {
+  await coursesService.getCycle(cycleId);
+  const rules = await autoApproval();
+  const pending = await prisma().enrollment.findMany({
+    where: { cycleId, status: 'PENDING' },
+    include: { ...enrollmentInclude, student: { select: { cgpa: true, userId: true } } },
+  });
+  const eligible = pending.filter(
+    (e) => screen({ cgpa: Number(e.student.cgpa), courses: coursesOf(e) }, rules).length === 0,
+  );
+  if (eligible.length === 0) return { approved: 0, stillPending: pending.length };
+
+  const approved = await withAudit(
+    actor,
+    async (tx, log) => {
+      // Only rows still pending now: a concurrent manual decision wins.
+      const done = await tx.$queryRaw<Array<{ id: string }>>`
+        UPDATE enrollments
+        SET status = 'APPROVED', reason = NULL, decided_at = now(),
+            decided_by_id = ${actor.userId}::uuid, updated_at = now()
+        WHERE id = ANY(${eligible.map((e) => e.id)}::uuid[]) AND status = 'PENDING'
+        RETURNING id`;
+      const ids = new Set(done.map((d) => d.id));
+      const rows = eligible.filter((e) => ids.has(e.id));
+      await log.many(
+        rows.map((e) => ({
+          action: 'ENROLLMENT_APPROVED',
+          entity: 'Enrollment',
+          entityId: e.id,
+          oldValue: { status: 'PENDING' },
+          newValue: { status: 'APPROVED', by: 'AUTO_APPROVAL_RUN' },
+        })),
+      );
+      await notify(
+        tx,
+        rows.map((e) => ({
+          userId: e.student.userId,
+          ...AUTO_APPROVED,
+          body: `Your application for ${e.cycle.name} was updated.`,
+          data: { cycleName: e.cycle.name },
+          link: '/student/enrollment',
+        })),
+      );
+      return rows.length;
+    },
+    { timeoutMs: 30_000 },
+  );
+  return { approved, stillPending: pending.length - approved };
+}
+
 // ─── Student actions (BRQ-3.1, 3.2, 3.4) ───────────────────────────────────────
 
 export async function submit(
@@ -142,6 +295,7 @@ export async function submit(
   await coursesService.getCycle(input.cycleId);
   await assertPreferenceCount(input.courseIds);
   await assertWindowsOpen(input.cycleId, input.courseIds);
+  const facts = await applicantFacts(actor.studentId);
   try {
     return await withAudit(actor, async (tx, log) => {
       const created = await tx.enrollment.create({
@@ -160,7 +314,7 @@ export async function submit(
         entityId: created.id,
         newValue: { status: created.status, courseIds: input.courseIds },
       });
-      return toDto(created);
+      return toDto(await approveIfEligible(tx, log, created, facts));
     });
   } catch (err) {
     // BR-01 is enforced by the partial unique index; map its violation to the business error.
@@ -197,6 +351,7 @@ export async function updatePreferences(
   assertEditable(before);
   await assertPreferenceCount(courseIds);
   await assertWindowsOpen(before.cycleId, courseIds);
+  const facts = await applicantFacts(actor.studentId);
   return withAudit(actor, async (tx, log) => {
     // Guard against a concurrent review: only replace preferences while still pending.
     const still = await tx.enrollment.updateMany({
@@ -224,7 +379,7 @@ export async function updatePreferences(
       oldValue: { courseIds: before.preferences.map((p) => p.course.id) },
       newValue: { courseIds },
     });
-    return toDto(updated);
+    return toDto(await approveIfEligible(tx, log, updated, facts));
   });
 }
 
@@ -312,9 +467,15 @@ export async function adminList(
     prisma().enrollment.count({ where }),
   ]);
   const now = new Date();
+  const rules = await autoApproval();
   return paginated(
     rows.map((e) => ({
       ...toDto(e, now),
+      // While automatic approval is on: why this one waits for a person.
+      needsReview:
+        rules.enabled && e.status === 'PENDING'
+          ? screen({ cgpa: Number(e.student.cgpa), courses: coursesOf(e) }, rules)
+          : null,
       student: {
         id: e.student.id,
         rollNo: e.student.rollNo,

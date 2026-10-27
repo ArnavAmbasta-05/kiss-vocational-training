@@ -146,6 +146,21 @@ export const SETTINGS = {
     10 * 1024 * 1024,
     'Largest course material file (PDF or text) an admin may upload [BRQ-17.2]',
   ),
+  'enrollment.autoApprove': define(
+    z.boolean(),
+    false,
+    'Approve applications that pass the rules below as soon as they are submitted [BRQ-3.3]',
+  ),
+  'enrollment.autoApproveMinCgpa': define(
+    z.number().min(0).max(10),
+    0,
+    'Lowest CGPA approved automatically; 0 = no minimum [BRQ-3.3]',
+  ),
+  'enrollment.autoApproveManualIfPrerequisites': define(
+    z.boolean(),
+    true,
+    'Applications naming a course with prerequisites wait for an admin [BRQ-3.3]',
+  ),
   'enrollment.maxPreferences': define(
     z.number().int().min(1).max(3),
     3,

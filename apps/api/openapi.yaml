@@ -482,6 +482,48 @@ paths:
         - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
         - $ref: '#/components/parameters/IdempotencyKey'
       responses: { '200': { description: WAITLISTED } }
+  /admin/enrollments/auto-approval:
+    get:
+      tags: [admin-enrollments]
+      summary: 'Automatic approval rules (Admin, BRQ-3.3): enabled, minCgpa (0 = none), manualIfPrerequisites'
+      responses:
+        '200': { description: The rules }
+    put:
+      tags: [admin-enrollments]
+      summary: 'Change the automatic approval rules (Admin); each changed setting is audited'
+      description: When enabled, an application that passes every rule is approved as soon as the student submits (or edits) it, audited with by AUTO_APPROVAL, and the student is notified. Applications that fail a rule stay PENDING; the admin list shows why (needsReview).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enabled, minCgpa, manualIfPrerequisites]
+              properties:
+                enabled: { type: boolean }
+                minCgpa: { type: number, minimum: 0, maximum: 10 }
+                manualIfPrerequisites: { type: boolean }
+      responses:
+        '200': { description: The saved rules }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /admin/enrollments/auto-approve:
+    post:
+      tags: [admin-enrollments]
+      summary: 'Apply the saved rules to every application of a cycle still pending (Admin); one set-based update, audited, students notified'
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cycleId]
+              properties:
+                cycleId: { type: string, format: uuid }
+      responses:
+        '200': { description: 'approved and stillPending counts' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /admin/enrollments/bulk:
     post:
       tags: [admin-enrollments]

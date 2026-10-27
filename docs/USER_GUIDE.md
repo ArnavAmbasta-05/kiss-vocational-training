@@ -175,9 +175,14 @@ Counts, completion rate, escalated students, the application funnel and grade ch
 
 ![Enrollments](screenshots/admin-enrollments.jpg)
 
-1. **Enrollments**: approve, waitlist or reject applications (rejection needs a reason the
-   student sees).
-2. **Batches → Run allocation**: preview the automatic allocation (by preference rank, then the
+1. **Enrollments → Automatic approval**: switch it on and set the rules (minimum CGPA; whether
+   courses with prerequisites need your review). From then on every application that meets
+   the rules is approved the moment the student submits it, and the student is told at once.
+   **Approve eligible pending applications** applies the rules to what is already waiting.
+2. **Enrollments**: the applications that don't meet the rules wait in the list with the reason
+   ("CGPA 5.20 is below 6.00", "Electrician has prerequisites"). Approve, waitlist or reject
+   them, one at a time or in bulk (rejection needs a reason the student sees).
+3. **Batches → Run allocation**: preview the automatic allocation (by preference rank, then the
    tie-break rule in Settings), check the scheduling advice (capacity, clashes, free slots and
    trainers), then **Confirm allocation**. Nothing changes until you confirm.
 

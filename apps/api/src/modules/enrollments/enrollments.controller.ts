@@ -1,6 +1,8 @@
 import type { Request } from 'express';
 import type {
   AdminEnrollmentQuery,
+  AutoApproval,
+  AutoApproveRunInput,
   BulkReviewInput,
   EnrollmentSubmitInput,
   EnrollmentUpdateInput,
@@ -55,4 +57,17 @@ export const bulk = asyncHandler(async (req, res) => {
   const { ids, action, reason } = req.body as BulkReviewInput;
   const data = await service.review(adminActor(req), ids, action, reason);
   res.json({ action, count: data.length, data });
+});
+
+export const autoApproval = asyncHandler(async (_req, res) => {
+  res.set('Cache-Control', 'no-store').json(await service.autoApproval());
+});
+
+export const setAutoApproval = asyncHandler(async (req, res) => {
+  res.json(await service.setAutoApproval(adminActor(req), req.body as AutoApproval));
+});
+
+export const runAutoApproval = asyncHandler(async (req, res) => {
+  const { cycleId } = req.body as AutoApproveRunInput;
+  res.json(await service.runAutoApproval(adminActor(req), cycleId));
 });

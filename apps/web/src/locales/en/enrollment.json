@@ -55,7 +55,7 @@
   },
   "admin": {
     "title": "Enrollments",
-    "intro": "Review applications in the order they arrived. Approve, reject with a reason, or waitlist, one at a time or in bulk.",
+    "intro": "Applications that meet your automatic approval rules are approved as soon as students submit them. Review the rest in the order they arrived: approve, reject with a reason, or waitlist, one at a time or in bulk.",
     "cycle": "Cycle",
     "course": "Course",
     "allCourses": "All courses",
@@ -105,6 +105,31 @@
       "summary": "Page {{page}} of {{totalPages}} · {{total}} applications",
       "previous": "Previous page",
       "next": "Next page"
+    },
+    "auto": {
+      "title": "Automatic approval",
+      "on": "On",
+      "off": "Off",
+      "intro": "When this is on, every application that meets the rules below is approved the moment a student submits it, and the student is told at once. Applications that don’t meet them wait here for you, with the reason.",
+      "enabled": "Approve applications automatically",
+      "minCgpa": "Minimum CGPA",
+      "minCgpaHint": "0 means no minimum.",
+      "minInvalid": "Enter a number from 0 to 10",
+      "manualIfPrerequisites": "Courses with prerequisites need my review (the system can’t check them)",
+      "save": "Save rules",
+      "saved": "Automatic approval rules saved",
+      "saveFirst": "Save the rules before approving what is already pending.",
+      "runNow": "Approve eligible pending applications",
+      "confirmTitle": "Approve eligible applications?",
+      "confirmBody": "Every pending application in {{cycle}} that meets the saved rules will be approved now and the students told. The rest stay pending for you.",
+      "confirm": "Approve eligible",
+      "cancel": "Cancel",
+      "ran_one": "{{count}} application approved · {{pending}} still need review",
+      "ran_other": "{{count}} applications approved · {{pending}} still need review"
+    },
+    "needsReview": {
+      "cgpa": "Needs review: CGPA {{cgpa}} is below {{min}}",
+      "prerequisites": "Needs review: {{course}} has prerequisites"
     }
   }
 }

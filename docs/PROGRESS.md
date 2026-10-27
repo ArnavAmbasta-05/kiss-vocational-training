@@ -45,6 +45,37 @@ Read this at the start of every session and update it at the end of every sprint
 
 ---
 
+## After Sprint 13 — Automatic enrollment approval (2026-10-27)
+
+- **Why:** with about 2,000 applications a cycle, approving each by hand is pointless work. The
+  BRD (BRQ-3.3) wants the admin in control, not reading every form.
+- **What:** an *Automatic approval* card on the admin Enrollments page:
+  - **Switch** (`enrollment.autoApprove`, off by default).
+  - **Minimum CGPA** (`enrollment.autoApproveMinCgpa`, 0 = none).
+  - **"Courses with prerequisites need my review"** (`enrollment.autoApproveManualIfPrerequisites`,
+    on). Prerequisites are free text, so the system can't check them.
+  - All three are Settings rows, audited when changed.
+- **How it behaves:**
+  - When on, an application that passes every rule (pure `screen()` in
+    `enrollments/rules.ts`, unit-tested at the 5.99 / 6.00 boundary) is approved in the
+    student's own submit (or edit) transaction. It is audited with `by: AUTO_APPROVAL`, and the
+    student is notified.
+  - Anything else stays Pending. The admin list shows why (`needsReview`: "CGPA 5.20 is below
+    6.00", "Electrician has prerequisites").
+  - *Approve eligible pending applications* applies the saved rules to what is already pending
+    in a cycle. It is one set-based `UPDATE … RETURNING` with bulk audit rows and notifications,
+    so thousands of rows fit in one serverless request. A concurrent manual decision wins.
+- **API:** `GET/PUT /admin/enrollments/auto-approval`, `POST /admin/enrollments/auto-approve`
+  (Admin only; the access-matrix snapshot was updated for the three new routes). openapi.yaml
+  and Postman are updated.
+- **Tests:** 5 unit tests and 4 integration tests: approved on submit with audit and
+  notification; held with reasons; a run approving 2 of 3 then doing nothing on a re-run;
+  rules validated, audited, admin-only.
+- **Strings:** English, Hindi and Odia. User guide updated.
+- **Off by default.** Switch it on in production from the Enrollments page (no deploy needed).
+
+---
+
 ## After Sprint 13 — Students choose the training cycle (2026-10-27)
 
 - **Found by the team:** a new demo cycle (Oct 27, 2026 – Oct 27, 2027) with a course and a

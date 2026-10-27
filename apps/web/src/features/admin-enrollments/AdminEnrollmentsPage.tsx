@@ -17,6 +17,7 @@ import { formatDate } from '../../lib/format';
 import { useAdminCourses, useAdminCycles } from '../admin-courses/api';
 import { StatusBadge } from '../enrollment/StatusBadge';
 import { useAdminEnrollments, useReview, type EnrollmentFilters } from './api';
+import { AutoApprovalCard } from './AutoApprovalCard';
 
 const REVIEWABLE = new Set(['PENDING', 'WAITLISTED']);
 
@@ -147,6 +148,16 @@ export function AdminEnrollmentsPage() {
         <div className="flex flex-col gap-1">
           <StatusBadge status={r.status} />
           {r.reason && <span className="text-xs text-slate-600">{r.reason}</span>}
+          {r.needsReview?.map((n) => (
+            <span
+              key={`${n.code}-${n.code === 'HAS_PREREQUISITES' ? n.course : ''}`}
+              className="text-xs text-amber-800"
+            >
+              {n.code === 'CGPA_BELOW_MIN'
+                ? t('admin.needsReview.cgpa', { cgpa: n.cgpa.toFixed(2), min: n.min.toFixed(2) })
+                : t('admin.needsReview.prerequisites', { course: n.course })}
+            </span>
+          ))}
         </div>
       ),
     },
@@ -196,6 +207,11 @@ export function AdminEnrollmentsPage() {
         <h1 className="text-2xl font-bold text-slate-900">{t('admin.title')}</h1>
         <p className="mt-1 max-w-2xl text-sm text-slate-700">{t('admin.intro')}</p>
       </div>
+
+      <AutoApprovalCard
+        cycleId={filters.cycleId}
+        cycleName={cycles.data?.find((c) => c.id === filters.cycleId)?.name ?? ''}
+      />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Select

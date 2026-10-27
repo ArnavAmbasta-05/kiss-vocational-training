@@ -1,4 +1,4 @@
-import type { EnrollmentStatus, ReviewAction } from '@vtmp/shared';
+import type { EnrollmentStatus, ReviewAction, ScreeningReason } from '@vtmp/shared';
 
 export const REVIEW_TARGET: Record<ReviewAction, EnrollmentStatus> = {
   APPROVE: 'APPROVED',
@@ -32,4 +32,31 @@ export function preferenceCountProblem(courseIds: readonly string[], max: number
 /** A student may edit or withdraw only while PENDING and every chosen course's window is open. */
 export function isEditable(status: EnrollmentStatus, allWindowsOpen: boolean): boolean {
   return status === 'PENDING' && allWindowsOpen;
+}
+
+/**
+ * BRQ-3.3 automatic approval: the reasons an application must wait for a person, in the
+ * admin's rules (Settings). No reasons means it is approved automatically. CGPA is compared to
+ * two decimals, so 6.00 meets a minimum of 6.
+ */
+export function screen(
+  application: {
+    cgpa: number;
+    courses: ReadonlyArray<{ title: string; prerequisites: string | null }>;
+  },
+  rules: { minCgpa: number; manualIfPrerequisites: boolean },
+): ScreeningReason[] {
+  const reasons: ScreeningReason[] = [];
+  const cgpa = Math.round(application.cgpa * 100) / 100;
+  if (rules.minCgpa > 0 && cgpa < rules.minCgpa) {
+    reasons.push({ code: 'CGPA_BELOW_MIN', cgpa, min: rules.minCgpa });
+  }
+  if (rules.manualIfPrerequisites) {
+    for (const c of application.courses) {
+      const prerequisites = c.prerequisites?.trim();
+      if (prerequisites)
+        reasons.push({ code: 'HAS_PREREQUISITES', course: c.title, prerequisites });
+    }
+  }
+  return reasons;
 }
