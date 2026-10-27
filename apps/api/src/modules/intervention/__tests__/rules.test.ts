@@ -1,4 +1,12 @@
-import { flagStep, riskLevel, sameRisk, shouldEscalate, type RiskFacts } from '../rules';
+import {
+  flagStep,
+  inTraining,
+  riskLevel,
+  runOrder,
+  sameRisk,
+  shouldEscalate,
+  type RiskFacts,
+} from '../rules';
 
 const T = {
   mediumAttendanceBelow: 80,
@@ -139,5 +147,31 @@ describe('flag lifecycle (BR-17)', () => {
     expect(shouldEscalate({ ...flag, escalatedAt: days(1) }, now, 14)).toBe(false);
     expect(shouldEscalate({ ...flag, level: 'MEDIUM' }, now, 14)).toBe(false);
     expect(shouldEscalate({ ...flag, clearSince: days(1) }, now, 14)).toBe(false);
+  });
+});
+
+describe('runOrder (daily run catch-up)', () => {
+  const fixed = () => 0.5;
+  it('puts batches a partial run left over first, in their old order', () => {
+    expect(runOrder(['a', 'b', 'c', 'd'], ['c', 'a'], fixed).slice(0, 2)).toEqual(['c', 'a']);
+  });
+  it('drops left-over ids that are no longer active and repeats nothing', () => {
+    const order = runOrder(['a', 'b'], ['x', 'b', 'b'], fixed);
+    expect(order[0]).toBe('b');
+    expect([...order].sort()).toEqual(['a', 'b']);
+  });
+  it('visits every active batch exactly once with nothing left over', () => {
+    expect(runOrder(['a', 'b', 'c'], [], Math.random).sort()).toEqual(['a', 'b', 'c']);
+    expect(runOrder([], ['a'], Math.random)).toEqual([]);
+  });
+});
+
+describe('inTraining (BR-16 scope)', () => {
+  it('evaluates allocated and active students only', () => {
+    expect(inTraining('ALLOCATED')).toBe(true);
+    expect(inTraining('ACTIVE')).toBe(true);
+    for (const s of ['COMPLETED', 'CERTIFIED', 'NOT_COMPLETED', 'WITHDRAWN', undefined]) {
+      expect(inTraining(s)).toBe(false);
+    }
   });
 });

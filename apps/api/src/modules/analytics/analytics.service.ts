@@ -65,17 +65,31 @@ const counts = (r: BatchRow): OutcomeCounts => ({
  * Refreshes the outcome views (nightly cron, or an admin's "Refresh now"). CONCURRENTLY keeps
  * them readable while they rebuild. Returns false when another refresh holds the lease.
  */
-export async function refresh(): Promise<{ refreshed: boolean; refreshedAt: string | null }> {
-  const run = await withJobLease(REFRESH_JOB, LEASE_MS, async () => {
-    await prisma().$executeRawUnsafe(
-      'REFRESH MATERIALIZED VIEW CONCURRENTLY analytics_batch_outcomes',
-    );
-    await prisma().$executeRawUnsafe(
-      'REFRESH MATERIALIZED VIEW CONCURRENTLY analytics_course_competency',
-    );
-    return true;
-  });
-  return { refreshed: run.ran, refreshedAt: await refreshedAt() };
+export async function refresh(): Promise<{
+  refreshed: boolean;
+  refreshedAt: string | null;
+  missedRuns: number;
+}> {
+  const run = await withJobLease(
+    REFRESH_JOB,
+    LEASE_MS,
+    async () => {
+      await prisma().$executeRawUnsafe(
+        'REFRESH MATERIALIZED VIEW CONCURRENTLY analytics_batch_outcomes',
+      );
+      await prisma().$executeRawUnsafe(
+        'REFRESH MATERIALIZED VIEW CONCURRENTLY analytics_course_competency',
+      );
+      return true;
+    },
+    // A refresh rebuilds everything, so one run catches up any number of missed nights.
+    { everyMs: 24 * 60 * 60_000 },
+  );
+  return {
+    refreshed: run.ran,
+    refreshedAt: await refreshedAt(),
+    missedRuns: run.ran ? run.missedRuns : 0,
+  };
 }
 
 async function refreshedAt(): Promise<string | null> {

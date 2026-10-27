@@ -171,3 +171,28 @@ export function shouldEscalate(
     now.getTime() - flag.openedAt.getTime() >= escalateAfterDays * DAY_MS
   );
 }
+
+/**
+ * Order of batches for the daily run: those a partial run left over first (catch-up, in their
+ * old order), then the rest shuffled so that a run cut short by its time budget doesn't always
+ * miss the same batches. Left-over ids no longer ACTIVE are dropped.
+ */
+export function runOrder(active: string[], leftOver: string[], random: () => number): string[] {
+  const live = new Set(active);
+  const first = leftOver.filter((id, i) => live.has(id) && leftOver.indexOf(id) === i);
+  const firstSet = new Set(first);
+  const rest = active
+    .filter((id) => !firstSet.has(id))
+    .map((id) => ({ id, key: random() }))
+    .sort((a, b) => a.key - b.key)
+    .map((x) => x.id);
+  return [...first, ...rest];
+}
+
+/**
+ * BR-16 applies to students still in training. Once a student completes, is certified, does
+ * not complete or withdraws, there is nothing left to intervene on: their open flag closes.
+ */
+export function inTraining(status: string | undefined): boolean {
+  return status === 'ALLOCATED' || status === 'ACTIVE';
+}

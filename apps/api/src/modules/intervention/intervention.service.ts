@@ -26,7 +26,15 @@ import * as batches from '../batches/batches.service';
 import * as competency from '../competency/competency.service';
 import { notify, type NewNotification } from '../notifications/notifications.service';
 import * as users from '../users/users.service';
-import { flagStep, riskLevel, shouldEscalate, type RiskFacts, type RiskThresholds } from './rules';
+import {
+  flagStep,
+  inTraining,
+  riskLevel,
+  runOrder,
+  shouldEscalate,
+  type RiskFacts,
+  type RiskThresholds,
+} from './rules';
 
 interface Viewer extends Actor {
   userId: string;
@@ -126,13 +134,16 @@ export async function evaluateBatch(
   if (!batch || batch.status !== 'ACTIVE') return summary;
 
   // Everything read before the transaction: production pools one connection per instance.
-  const [facts, t, closeDays, escalateDays, admins] = await Promise.all([
+  const [allFacts, statuses, t, closeDays, escalateDays, admins] = await Promise.all([
     gatherFacts(batchId),
+    batches.memberStatuses(batchId),
     thresholds(),
     settings.get('risk.closeAfterClearDays'),
     settings.get('risk.escalateAfterDays'),
     users.activeAdmins(),
   ]);
+  // Only students still in training are evaluated (BR-16); finished ones keep no open flag.
+  const facts = new Map([...allFacts].filter(([id]) => inTraining(statuses.get(id))));
   const students = await users.studentSummaries([...facts.keys()]);
   summary.batches = 1;
   summary.students = facts.size;
@@ -149,6 +160,19 @@ export async function evaluateBatch(
         ]),
       );
       const notices: NewNotification[] = [];
+
+      for (const [studentId, flag] of open) {
+        if (facts.has(studentId)) continue;
+        await tx.riskFlag.update({ where: { id: flag.id }, data: { closedAt: now } });
+        summary.closed++;
+        await log({
+          action: 'RISK_FLAG_CLOSED',
+          entity: 'RiskFlag',
+          entityId: flag.id,
+          oldValue: { closedAt: null },
+          newValue: { closedAt: now, reason: 'TRAINING_ENDED', status: statuses.get(studentId) },
+        });
+      }
 
       for (const [studentId, f] of facts) {
         const current = riskLevel(f, t);
@@ -249,35 +273,66 @@ export async function evaluateBatch(
 /** Leaves headroom inside the 30 s serverless limit (vercel.json maxDuration). */
 const RUN_BUDGET_MS = 25_000;
 
+/** The daily cron (vercel.json): missed days are counted against this. */
+const RUN_EVERY_MS = 24 * 60 * 60_000;
+
+/** Batch ids a partial run did not reach, read back from the stored result. */
+function leftOver(lastResult: unknown): string[] {
+  const r = (lastResult as { ok?: boolean; result?: { remainingIds?: unknown } } | null)?.result;
+  return Array.isArray(r?.remainingIds) ? r.remainingIds.filter((x) => typeof x === 'string') : [];
+}
+
 /**
  * The daily run (BRQ-11.1): every ACTIVE batch, one at a time. Returns `skipped` when another
  * run holds the job lease, so two runs never overlap. If the time budget runs out it stops
- * between batches and reports `partial` with the number left; batches are visited in random
- * order, so repeated runs still reach every batch.
+ * between batches and reports `partial` with the batches left; the next run starts with those
+ * (catch-up), then the rest in random order. `missedRuns` counts days without a successful run.
  */
-export async function evaluateAll(
-  options: { now?: Date; budgetMs?: number } = {},
-): Promise<RiskEvaluationSummary & { skipped: boolean; partial: boolean; remaining: number }> {
+export async function evaluateAll(options: { now?: Date; budgetMs?: number } = {}): Promise<
+  RiskEvaluationSummary & {
+    skipped: boolean;
+    partial: boolean;
+    remaining: number;
+    remainingIds: string[];
+    missedRuns: number;
+  }
+> {
   const started = Date.now();
   const budget = options.budgetMs ?? RUN_BUDGET_MS;
-  const run = await withJobLease(JOB, LEASE_MS, async () => {
-    const total = emptySummary();
-    const ids = (await batches.idsByStatus('ACTIVE'))
-      .map((id) => ({ id, key: Math.random() }))
-      .sort((a, b) => a.key - b.key)
-      .map((x) => x.id);
-    let done = 0;
-    for (const id of ids) {
-      if (Date.now() - started > budget) break;
-      const s = await evaluateBatch(id, options);
-      for (const k of Object.keys(total) as Array<keyof RiskEvaluationSummary>) total[k] += s[k];
-      done++;
-    }
-    return { ...total, partial: done < ids.length, remaining: ids.length - done };
-  });
+  const run = await withJobLease(
+    JOB,
+    LEASE_MS,
+    async (previous) => {
+      const total = emptySummary();
+      const active = await batches.idsByStatus('ACTIVE');
+      const ids = runOrder(active, leftOver(previous.lastResult), Math.random);
+      let done = 0;
+      for (const id of ids) {
+        if (Date.now() - started > budget) break;
+        const s = await evaluateBatch(id, options);
+        for (const k of Object.keys(total) as Array<keyof RiskEvaluationSummary>) total[k] += s[k];
+        done++;
+      }
+      const remainingIds = ids.slice(done);
+      return {
+        ...total,
+        partial: remainingIds.length > 0,
+        remaining: remainingIds.length,
+        remainingIds,
+      };
+    },
+    { everyMs: RUN_EVERY_MS },
+  );
   return run.ran
-    ? { ...run.result, skipped: false }
-    : { ...emptySummary(), skipped: true, partial: false, remaining: 0 };
+    ? { ...run.result, skipped: false, missedRuns: run.missedRuns }
+    : {
+        ...emptySummary(),
+        skipped: true,
+        partial: false,
+        remaining: 0,
+        remainingIds: [],
+        missedRuns: 0,
+      };
 }
 
 // ─── Reads (BRQ-11.2) ──────────────────────────────────────────────────────────

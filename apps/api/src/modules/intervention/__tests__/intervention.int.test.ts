@@ -155,6 +155,30 @@ describe('risk evaluation on save (BRQ-11.1, TAD §8.2 step 6)', () => {
 });
 
 describe('flag lifecycle (BR-17, BRQ-11.4)', () => {
+  it('closes a flag when the student finishes training, and never flags them again (BR-16)', async () => {
+    const w = await world();
+    const s = w.students[0]!;
+    await mark(w, 2, [s.studentId]);
+    const flag = await openFlag(s.studentId, w.batch.id);
+    expect(flag).not.toBeNull();
+
+    // The student completes (e.g. the admin approved them): nothing left to intervene on.
+    await prisma().enrollment.update({
+      where: { id: s.enrollmentId },
+      data: { status: 'CERTIFIED' },
+    });
+    const run = await evaluateBatch(w.batch.id);
+    expect(run).toMatchObject({ closed: 1, opened: 0, students: 2 });
+    expect(await openFlag(s.studentId, w.batch.id)).toBeNull();
+    const audit = await prisma().auditLog.findFirstOrThrow({
+      where: { entityId: flag!.id, action: 'RISK_FLAG_CLOSED' },
+    });
+    expect(audit.newValue).toMatchObject({ reason: 'TRAINING_ENDED', status: 'CERTIFIED' });
+
+    expect(await evaluateBatch(w.batch.id)).toMatchObject({ opened: 0, closed: 0 });
+    expect(await prisma().riskFlag.count({ where: { studentId: s.studentId } })).toBe(1);
+  });
+
   it('closes after 7 clear days and keeps its history', async () => {
     const w = await world();
     const s = w.students[0]!;
@@ -378,18 +402,44 @@ describe('the scheduled job (TAD §8.2, Amendment 1)', () => {
     await new Promise((r) => setTimeout(r, 200));
     expect(await withJobLease(job, 60_000, async () => 'second')).toEqual({ ran: false });
     release();
-    expect(await first).toEqual({ ran: true, result: 'first' });
+    expect(await first).toEqual({ ran: true, result: 'first', missedRuns: 0 });
     expect(await withJobLease(job, 60_000, async () => 'third')).toEqual({
       ran: true,
       result: 'third',
+      missedRuns: 0,
     });
   });
 
   it('stops between batches when the time budget runs out and says how many are left', async () => {
-    await world(); // at least one ACTIVE batch
+    const w = await world(); // at least one ACTIVE batch
     const r = await evaluateAll({ budgetMs: -1 });
     expect(r).toMatchObject({ skipped: false, partial: true, batches: 0 });
     expect(r.remaining).toBeGreaterThan(0);
+    expect(r.remainingIds).toContain(w.batch.id);
+    // The left-over batches are stored for the next run, which starts with them (runOrder).
+    const lock = await prisma().jobLock.findUniqueOrThrow({ where: { name: 'risk-evaluation' } });
+    expect(lock.lastSuccessAt).not.toBeNull();
+    expect(JSON.stringify(lock.lastResult)).toContain(w.batch.id);
+  });
+
+  it('counts the days missed since the last successful run (Vercel Cron may skip a day)', async () => {
+    const job = `test-${uid()}`;
+    await withJobLease(job, 60_000, async () => 'first', { everyMs: 86_400_000 });
+    await prisma().jobLock.update({
+      where: { name: job },
+      data: { lastSuccessAt: new Date(Date.now() - 3 * 86_400_000) },
+    });
+    const run = await withJobLease(job, 60_000, async (previous) => previous.lastResult, {
+      everyMs: 86_400_000,
+    });
+    expect(run).toMatchObject({ ran: true, missedRuns: 2 });
+    // A failed run is recorded but does not count as a success.
+    await expect(
+      withJobLease(job, 60_000, () => Promise.reject(new Error('boom')), { everyMs: 86_400_000 }),
+    ).rejects.toThrow('boom');
+    const lock = await prisma().jobLock.findUniqueOrThrow({ where: { name: job } });
+    expect(lock.lastResult).toEqual({ ok: false, error: 'boom' });
+    expect(Date.now() - lock.lastSuccessAt!.getTime()).toBeLessThan(60_000);
   });
 
   it('the cron endpoint needs the secret; a run in progress makes it report skipped', async () => {

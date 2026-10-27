@@ -194,6 +194,15 @@ export async function courseOf(
   });
 }
 
+/** Each member's enrollment status, by student (e.g. F11 evaluates only those in training). */
+export async function memberStatuses(batchId: string): Promise<Map<string, EnrollmentStatus>> {
+  const rows = await prisma().batchStudent.findMany({
+    where: { batchId },
+    select: { studentId: true, enrollment: { select: { status: true } } },
+  });
+  return new Map(rows.map((r) => [r.studentId, r.enrollment.status]));
+}
+
 /** Ids of batches in a status (e.g. the daily F11 run over ACTIVE batches). */
 export async function idsByStatus(status: BatchStatus): Promise<string[]> {
   const rows = await prisma().batch.findMany({ where: { status }, select: { id: true } });
