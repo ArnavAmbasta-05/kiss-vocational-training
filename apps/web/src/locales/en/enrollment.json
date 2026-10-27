@@ -53,7 +53,7 @@
   },
   "admin": {
     "title": "Enrollments",
-    "intro": "Review applications in the order they arrived. Approve, reject with a reason, or waitlist, one at a time or in bulk.",
+    "intro": "The latest applications are at the top. Approve, reject with a reason, or waitlist, one at a time or in bulk.",
     "cycle": "Cycle",
     "course": "Course",
     "allCourses": "All courses",

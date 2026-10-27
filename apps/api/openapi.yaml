@@ -423,7 +423,7 @@ paths:
   /admin/enrollments:
     get:
       tags: [admin-enrollments]
-      summary: Review queue, oldest first (Admin)
+      summary: Review queue, newest first (Admin)
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/PageSize'
