@@ -28,7 +28,9 @@ screenshot is taken automatically from a freshly seeded copy of the app
 5. **Notifications:** the bell shows new messages (application decisions, certificates,
    support from your trainer).
 
-The portal works on phones: on a small screen the sidebar opens from the menu button.
+The portal works on phones: on a small screen the sidebar opens from the menu button, and
+lists show each row as a card instead of a wide table. Filters you choose on a list (for
+example *Active* users or *Pending review* applications) are remembered on that device.
 
 ![Phone view](screenshots/phone-student-training.jpg)
 
@@ -55,6 +57,8 @@ Your application status, attendance, current aggregate and projected grade at a 
    is pending.
 
 You can have one active application per training cycle, and only while the window is open.
+Once you have applied, **Courses** marks each course you chose with **Applied · choice N** and
+the application's status, with a link to your application instead of **Apply**.
 
 ### Follow your training
 
@@ -169,12 +173,19 @@ Counts, completion rate, escalated students, the application funnel and grade ch
 **Users** creates students, trainers and admins and deactivates accounts (sign-in stops at once).
 **Courses & cycles** manages courses, training cycles and the enrollment window of each course.
 
+Both lists show only active records by default; pick *Inactive* or *All* in **Status** to see
+the rest. To tidy up, tick several rows (or the box above the list to select all shown) and use
+**Deactivate selected** or **Reactivate selected**. **Delete** removes a record for good, but only
+one with no history, such as an account or course created by mistake. Anything that has been
+used (applications, training records, decisions) keeps its row and can only be deactivated, so
+no record ever loses its student, trainer or course.
+
 ### Enrollments and allocation
 
 ![Enrollments](screenshots/admin-enrollments.jpg)
 
 1. **Enrollments**: approve, waitlist or reject applications (rejection needs a reason the
-   student sees).
+   student sees). The latest applications are at the top.
 2. **Batches → Run allocation**: preview the automatic allocation (by preference rank, then the
    tie-break rule in Settings), check the scheduling advice (capacity, clashes, free slots and
    trainers), then **Confirm allocation**. Nothing changes until you confirm.
