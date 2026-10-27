@@ -7,6 +7,7 @@ export interface CatalogueResponse {
   courses: CatalogueCourse[];
 }
 
+/** Cycles a student can choose from: offering active courses and not yet ended. */
 export function useCycles() {
   return useQuery({
     queryKey: ['cycles'],
@@ -14,17 +15,19 @@ export function useCycles() {
   });
 }
 
-/** Catalogue for a cycle; without cycleId the API picks the newest cycle with offerings. */
-export function useCatalogue(cycleId?: string) {
+/** Courses of the cycle the student chose; nothing is fetched until a cycle is chosen. */
+export function useCatalogue(cycleId: string | undefined) {
   return useQuery({
-    queryKey: ['catalogue', cycleId ?? 'default'],
+    queryKey: ['catalogue', cycleId],
+    enabled: !!cycleId,
     queryFn: ({ signal }) => api.get<CatalogueResponse>('/courses', { signal, query: { cycleId } }),
   });
 }
 
-export function useCatalogueCourse(id: string, cycleId?: string) {
+export function useCatalogueCourse(id: string, cycleId: string | undefined) {
   return useQuery({
-    queryKey: ['catalogue', cycleId ?? 'default', id],
+    queryKey: ['catalogue', cycleId, id],
+    enabled: !!cycleId,
     queryFn: ({ signal }) =>
       api.get<{ cycle: Cycle; course: CatalogueCourse }>(`/courses/${id}`, {
         signal,

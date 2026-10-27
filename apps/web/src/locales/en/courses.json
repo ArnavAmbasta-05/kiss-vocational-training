@@ -1,7 +1,7 @@
 {
   "catalogue": {
     "title": "Courses",
-    "intro": "Browse the vocational courses offered this cycle and apply for up to three in order of preference.",
+    "intro": "Choose a training cycle, browse its vocational courses and apply for up to three in order of preference.",
     "cycle": "Training cycle",
     "search": "Search courses",
     "openOnly": "Show only courses open for applications",
@@ -10,7 +10,11 @@
     "caption": "Courses offered in this cycle",
     "viewDetails": "View details",
     "applyNow": "Apply",
-    "back": "Back to courses"
+    "back": "Back to courses",
+    "chooseCycle": "Choose a training cycle",
+    "cycleOption": "{{name}} ({{from}} – {{to}})",
+    "pickCycle": "Choose a training cycle to see its courses",
+    "pickCycleHint": "Pick the cycle you want to train in from the list above."
   },
   "fields": {
     "code": "Code",

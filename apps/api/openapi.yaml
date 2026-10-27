@@ -256,7 +256,7 @@ paths:
   /cycles:
     get:
       tags: [catalogue]
-      summary: Training cycles, newest first
+      summary: 'Training cycles a student can choose on the Courses page (BRQ-2.2): offering at least one active course and not yet ended, newest first. Nothing is pre-selected.'
       responses:
         '200':
           description: Cycles

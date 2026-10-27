@@ -45,6 +45,24 @@ Read this at the start of every session and update it at the end of every sprint
 
 ---
 
+## After Sprint 13 — Students choose the training cycle (2026-10-27)
+
+- **Found by the team:** a new demo cycle (Oct 27, 2026 – Oct 27, 2027) with a course and a
+  batch did not appear for students. The Courses page always showed one cycle, picked by the
+  server (the newest-starting cycle with offerings), and had no way to change it.
+- **Now:** the student Courses page has a **Training cycle** dropdown with nothing selected;
+  the student chooses, and the page asks them to until they do. The choice stays in the address
+  (`?cycle=`). Only cycles that offer at least one active course and have not ended are listed
+  (`GET /cycles`, new `catalogueCycles`); the admin cycle list is unchanged.
+- Course details and Apply need a cycle (they send the student back to choose one); editing an
+  application uses its own cycle; "Apply again" goes to Courses first.
+- Strings in en, hi and or; integration test for which cycles are listed; the enrollment e2e
+  test checks nothing is pre-selected; user guide updated.
+- The API's own default (no `cycleId` → newest cycle) is kept for other callers; the web app no
+  longer relies on it.
+
+---
+
 ## Sprint 13 — Hardening, quality and final submission (built, 2026-10-26)
 
 ### Built

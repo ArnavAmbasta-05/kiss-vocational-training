@@ -41,6 +41,10 @@ export const cycles = asyncHandler(async (_req, res) => {
   res.json(await service.listCycles());
 });
 
+export const catalogueCycles = asyncHandler(async (_req, res) => {
+  res.json(await service.catalogueCycles());
+});
+
 export const listCourses = asyncHandler(async (_req, res) => {
   res.json(await service.listCourses());
 });

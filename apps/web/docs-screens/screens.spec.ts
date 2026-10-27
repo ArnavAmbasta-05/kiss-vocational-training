@@ -66,7 +66,9 @@ test('public pages', async ({ page }) => {
 test('student', async ({ page }) => {
   await signIn(page, STUDENT);
   await shot(page, 'student-dashboard', '/student');
-  await shot(page, 'student-courses', '/student/courses');
+  await page.goto('/student/courses');
+  await page.getByLabel('Training cycle').selectOption({ index: 1 });
+  await shot(page, 'student-courses');
   await shot(page, 'student-training', '/student/training');
   await shot(page, 'student-skills', '/student/skills');
   await shot(page, 'student-passport', '/student/passport');

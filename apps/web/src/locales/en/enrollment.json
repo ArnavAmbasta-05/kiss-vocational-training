@@ -31,7 +31,9 @@
     "onlyOpen": "Only courses that are open for applications are listed.",
     "alreadyApplied": "You already have an application for this cycle.",
     "viewMine": "View my application",
-    "nothingOpen": "No course is open for applications right now."
+    "nothingOpen": "No course is open for applications right now.",
+    "pickCycle": "Choose a training cycle and a course on the Courses page first.",
+    "toCourses": "Go to Courses"
   },
   "mine": {
     "title": "My enrollment",

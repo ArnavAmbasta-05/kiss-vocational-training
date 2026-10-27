@@ -17,13 +17,21 @@ export function CourseDetailPage() {
 
   const back = (
     <Link
-      to="/student/courses"
+      to={cycleId ? `/student/courses?cycle=${cycleId}` : '/student/courses'}
       className="text-sm font-medium text-brand-700 underline hover:text-brand-900"
     >
       {t('catalogue.back')}
     </Link>
   );
 
+  if (!cycleId) {
+    return (
+      <div className="flex flex-col gap-4">
+        {back}
+        <EmptyState title={t('catalogue.pickCycle')} description={t('catalogue.pickCycleHint')} />
+      </div>
+    );
+  }
   if (isPending) return <PageSkeleton />;
   if (isError) {
     return (
@@ -83,7 +91,7 @@ export function CourseDetailPage() {
         </dl>
         {course.offering?.windowState === 'OPEN' && (
           <Link
-            to={`/student/enrollment/apply?courseId=${course.id}${cycleId ? `&cycle=${cycleId}` : ''}`}
+            to={`/student/enrollment/apply?courseId=${course.id}&cycle=${cycleId}`}
             className="mt-6 inline-flex h-10 items-center rounded-md bg-brand-700 px-4 text-sm font-medium text-white hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
           >
             {t('catalogue.applyNow')}
