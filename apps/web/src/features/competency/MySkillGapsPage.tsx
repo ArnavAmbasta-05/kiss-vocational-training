@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import type { CompetencyStanding, GapItem } from '@vtmp/shared';
-import { Badge, Card, EmptyState, Spinner } from '../../components/ui';
+import { Badge, Card, EmptyState, PageSkeleton } from '../../components/ui';
 import { useErrorMessage } from '../../lib/api/useErrorMessage';
 import { useMyGaps } from './api';
 
@@ -9,7 +9,7 @@ export function MySkillGapsPage() {
   const { t } = useTranslation('competency');
   const errorMessage = useErrorMessage();
   const { data, isPending, isError, error } = useMyGaps();
-  if (isPending) return <Spinner size="lg" />;
+  if (isPending) return <PageSkeleton />;
   if (isError) return <EmptyState title={errorMessage(error)} />;
 
   const empty =

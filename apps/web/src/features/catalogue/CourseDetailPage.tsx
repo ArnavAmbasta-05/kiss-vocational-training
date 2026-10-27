@@ -1,6 +1,6 @@
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Card, EmptyState, Spinner } from '../../components/ui';
+import { Card, EmptyState, PageSkeleton } from '../../components/ui';
 import { useErrorMessage } from '../../lib/api/useErrorMessage';
 import { formatDate } from '../../lib/format';
 import { useCatalogueCourse } from './api';
@@ -24,7 +24,7 @@ export function CourseDetailPage() {
     </Link>
   );
 
-  if (isPending) return <Spinner size="lg" />;
+  if (isPending) return <PageSkeleton />;
   if (isError) {
     return (
       <div className="flex flex-col gap-4">

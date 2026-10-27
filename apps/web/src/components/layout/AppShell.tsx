@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Spinner, cn } from '../ui';
+import { PageSkeleton, cn } from '../ui';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { Sidebar } from './Sidebar';
 import { useAuth } from '../../lib/auth';
@@ -79,7 +79,7 @@ export function AppShell() {
 
         <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 focus:outline-none">
           <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
-            <Suspense fallback={<Spinner size="lg" />}>
+            <Suspense fallback={<PageSkeleton />}>
               <Outlet />
             </Suspense>
           </div>

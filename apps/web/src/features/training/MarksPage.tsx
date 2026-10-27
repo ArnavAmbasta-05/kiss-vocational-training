@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ApiError } from '../../lib/api/client';
-import { Button, Card, EmptyState, Spinner, cn } from '../../components/ui';
+import { Button, Card, cn, EmptyState, PageSkeleton } from '../../components/ui';
 import { useToast } from '../../components/toast';
 import { useErrorMessage } from '../../lib/api/useErrorMessage';
 import { useResults, useSaveResults } from './api';
@@ -36,7 +36,7 @@ export function MarksPage({ back }: { /** Defaults to the batch page (admin). */
     );
   }, [sheet.data]);
 
-  if (sheet.isPending) return <Spinner size="lg" />;
+  if (sheet.isPending) return <PageSkeleton />;
   if (sheet.isError) return <EmptyState title={errorMessage(sheet.error)} />;
   const { assessment: a, rows } = sheet.data;
 

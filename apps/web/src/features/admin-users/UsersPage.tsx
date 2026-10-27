@@ -7,8 +7,8 @@ import {
   EmptyState,
   Input,
   Modal,
+  PageSkeleton,
   Select,
-  Spinner,
   Table,
   type Column,
 } from '../../components/ui';
@@ -151,7 +151,7 @@ export function UsersPage() {
       </div>
 
       {isPending ? (
-        <Spinner size="lg" />
+        <PageSkeleton />
       ) : isError ? (
         <EmptyState title={errorMessage(error)} />
       ) : (

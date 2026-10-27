@@ -6,12 +6,12 @@ import {
   Badge,
   Button,
   Card,
+  cn,
   EmptyState,
   Input,
   Modal,
+  PageSkeleton,
   Select,
-  Spinner,
-  cn,
 } from '../../components/ui';
 import { useToast } from '../../components/toast';
 import { useErrorMessage } from '../../lib/api/useErrorMessage';
@@ -49,7 +49,7 @@ export function EvidencePage({ back }: { back: string }) {
   const sheet = useEvidenceSheet(assessmentId);
   const [adding, setAdding] = useState<Row | null>(null);
 
-  if (sheet.isPending) return <Spinner size="lg" />;
+  if (sheet.isPending) return <PageSkeleton />;
   if (sheet.isError) return <EmptyState title={errorMessage(sheet.error)} />;
   const s = sheet.data;
 

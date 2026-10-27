@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { INACTIVE_ENROLLMENT_STATUSES, MAX_PREFERENCES } from '@vtmp/shared';
-import { Button, Card, EmptyState, Spinner } from '../../components/ui';
+import { Button, Card, EmptyState, PageSkeleton } from '../../components/ui';
 import { useToast } from '../../components/toast';
 import { useErrorMessage } from '../../lib/api/useErrorMessage';
 import { useCatalogue } from '../catalogue/api';
@@ -49,7 +49,7 @@ export function ApplyPage() {
     setPrefilled(true);
   }, [prefilled, catalogue.data, mine.data, editing, preselect, openCourses]);
 
-  if (catalogue.isPending || mine.isPending) return <Spinner size="lg" />;
+  if (catalogue.isPending || mine.isPending) return <PageSkeleton />;
   if (catalogue.isError) return <EmptyState title={errorMessage(catalogue.error)} />;
 
   if (!editing && active) {

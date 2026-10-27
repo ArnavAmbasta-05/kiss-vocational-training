@@ -232,6 +232,7 @@ export function AnalyticsPage() {
                   <Suspense fallback={<Spinner />}>
                     <OutcomeChart
                       metricLabel={t(`metric.${metric}`)}
+                      noDataLabel={t('chartNoData')}
                       rows={o!.courses.map((c) => ({ label: c.courseTitle, value: c[metric] }))}
                     />
                   </Suspense>

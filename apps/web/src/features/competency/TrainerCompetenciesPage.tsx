@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { PROFICIENCY_LEVELS, type HeatmapCell, type RatingGrid } from '@vtmp/shared';
-import { Button, EmptyState, Select, Spinner, Tabs, cn } from '../../components/ui';
+import { Button, cn, EmptyState, PageSkeleton, Select, Spinner, Tabs } from '../../components/ui';
 import { useToast } from '../../components/toast';
 import { useErrorMessage } from '../../lib/api/useErrorMessage';
 import { useMyBatches } from '../batches/api';
@@ -17,7 +17,7 @@ export function TrainerCompetenciesPage() {
   const [params, setParams] = useSearchParams();
   const [tab, setTab] = useState('ratings');
 
-  if (batches.isPending) return <Spinner size="lg" />;
+  if (batches.isPending) return <PageSkeleton />;
   if (batches.isError) return <EmptyState title={errorMessage(batches.error)} />;
   const list = batches.data.filter((b) => b.status !== 'PLANNED');
   const selected =

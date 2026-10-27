@@ -2,7 +2,7 @@ import { Suspense, lazy } from 'react';
 import { createBrowserRouter, RouterProvider, type RouteObject } from 'react-router-dom';
 import type { Role } from '@vtmp/shared';
 import { AppShell } from './components/layout/AppShell';
-import { Spinner } from './components/ui';
+import { PageSkeleton } from './components/ui';
 import { NAV_BY_ROLE } from './components/layout/nav';
 import { RequireAuth, RequireRole, RoleHomeRedirect } from './lib/auth';
 import { ComingSoonPage } from './pages/ComingSoonPage';
@@ -232,7 +232,7 @@ const router = createBrowserRouter([
   {
     path: '/p/:token',
     element: (
-      <Suspense fallback={<Spinner size="lg" />}>
+      <Suspense fallback={<PageSkeleton />}>
         <PublicPassportPage />
       </Suspense>
     ),

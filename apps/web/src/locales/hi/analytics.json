@@ -65,5 +65,6 @@
   "save": "सहेजें",
   "previous": "पिछला",
   "next": "अगला",
-  "page": "पेज {{page}} / {{pages}}"
+  "page": "पेज {{page}} / {{pages}}",
+  "chartNoData": "अभी कोई आँकड़ा नहीं"
 }

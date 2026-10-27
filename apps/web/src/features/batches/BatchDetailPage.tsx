@@ -7,6 +7,7 @@ import {
   Card,
   EmptyState,
   Modal,
+  PageSkeleton,
   Select,
   Spinner,
   Table,
@@ -58,7 +59,7 @@ export function BatchDetailPage({ admin }: { admin: boolean }) {
   const courses = useAdminCourses(admin);
   const back = admin ? '/admin/batches' : '/trainer/batches';
 
-  if (batch.isPending) return <Spinner size="lg" />;
+  if (batch.isPending) return <PageSkeleton />;
   if (batch.isError) return <EmptyState title={errorMessage(batch.error)} />;
   const b = batch.data;
 

@@ -225,6 +225,13 @@ export async function runSeed(prisma: PrismaClient, opts: SeedOptions = {}) {
   // refreshes them nightly).
   await prisma.$executeRawUnsafe('REFRESH MATERIALIZED VIEW analytics_batch_outcomes');
   await prisma.$executeRawUnsafe('REFRESH MATERIALIZED VIEW analytics_course_competency');
+  // Record it as the refresh job does, so the page shows "Last refreshed" instead of "never".
+  await prisma.$executeRaw`
+    INSERT INTO job_locks (name, run_id, locked_until, last_run_at, last_success_at, last_result)
+    VALUES ('analytics-refresh', gen_random_uuid(), now(), now(), now(), '{"ok":true,"result":true}')
+    ON CONFLICT (name) DO UPDATE
+      SET last_run_at = now(), last_success_at = now(), last_result = EXCLUDED.last_result
+      WHERE job_locks.locked_until < now()`;
   log('analytics: outcome views refreshed');
 
   return { students: students.length, trainers: TRAINERS.length, courses: COURSES.length };

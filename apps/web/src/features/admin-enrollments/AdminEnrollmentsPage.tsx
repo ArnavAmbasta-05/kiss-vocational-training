@@ -6,8 +6,8 @@ import {
   EmptyState,
   Input,
   Modal,
+  PageSkeleton,
   Select,
-  Spinner,
   Table,
   type Column,
 } from '../../components/ui';
@@ -261,7 +261,7 @@ export function AdminEnrollmentsPage() {
       )}
 
       {list.isPending ? (
-        <Spinner size="lg" />
+        <PageSkeleton />
       ) : list.isError ? (
         <EmptyState title={errorMessage(list.error)} />
       ) : (

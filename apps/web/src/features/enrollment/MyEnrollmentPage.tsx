@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { INACTIVE_ENROLLMENT_STATUSES, type MyEnrollment } from '@vtmp/shared';
-import { Button, Card, EmptyState, Modal, Spinner } from '../../components/ui';
+import { Button, Card, EmptyState, Modal, PageSkeleton } from '../../components/ui';
 import { useToast } from '../../components/toast';
 import { useErrorMessage } from '../../lib/api/useErrorMessage';
 import { formatDate } from '../../lib/format';
@@ -18,7 +18,7 @@ export function MyEnrollmentPage() {
   const errorMessage = useErrorMessage();
   const { data, isPending, isError, error } = useMyEnrollments();
 
-  if (isPending) return <Spinner size="lg" />;
+  if (isPending) return <PageSkeleton />;
   if (isError) return <EmptyState title={errorMessage(error)} />;
 
   const hasActive = data.some((e) => !INACTIVE_ENROLLMENT_STATUSES.includes(e.status));

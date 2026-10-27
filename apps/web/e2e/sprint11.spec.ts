@@ -9,9 +9,17 @@ const PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
   'base64',
 );
-/** Tomorrow's date at the institution (IST). */
-const tomorrowIst = () =>
-  new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(Date.now() + 86_400_000);
+/** A date `offset` days from now at the institution (IST). */
+const istDay = (offset: number) =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(
+    Date.now() + offset * 86_400_000,
+  );
+/**
+ * The day for this run's sessions, spread over 2–41 days ahead. Each run books the seeded
+ * trainer (assigned to every test batch), so on a shared database repeated runs on one day
+ * would otherwise fill that trainer's calendar and leave the advisor no free time to suggest.
+ */
+const sessionDay = () => istDay(2 + Math.floor(Math.random() * 40));
 
 test.describe('Sprint 11: scheduling advisor, practical evidence, career matcher', () => {
   test('a clashing session is refused with free times; the trainer adds evidence; the student matches an opportunity', async ({
@@ -31,9 +39,9 @@ test.describe('Sprint 11: scheduling advisor, practical evidence, career matcher
     const s = Date.now().toString(36).toUpperCase();
     const student = world.students[0]!;
 
-    // Setup through the API: a session tomorrow 10:00–12:00 IST at the batch's venue, a
+    // Setup through the API: a session at 10:00–12:00 IST at the batch's venue, a
     // practical assessment with marks, and a verified practical competency.
-    const day = tomorrowIst();
+    const day = sessionDay();
     await ok(
       request.post(`/api/v1/admin/batches/${world.batch.id}/sessions`, {
         ...A,
@@ -85,7 +93,7 @@ test.describe('Sprint 11: scheduling advisor, practical evidence, career matcher
       }),
     );
 
-    // F14: the admin tries to book the same venue 11:00–13:00 tomorrow → refused, with free times.
+    // F14: the admin tries to book the same venue 11:00–13:00 that day → refused, with free times.
     await signIn(page, ACCOUNTS.ADMIN);
     await page.goto(`/admin/batches/${world.batch.id}`);
     await page.getByRole('tab', { name: 'Sessions' }).click();
@@ -123,7 +131,7 @@ test.describe('Sprint 11: scheduling advisor, practical evidence, career matcher
           title: opportunityTitle,
           type: 'APPRENTICESHIP',
           partner: 'Demo Plumbing Co',
-          closesOn: tomorrowIst(),
+          closesOn: istDay(1),
         },
       }),
     );

@@ -15,8 +15,8 @@ import {
   EmptyState,
   Input,
   Modal,
+  PageSkeleton,
   Select,
-  Spinner,
   Table,
   type Column,
 } from '../../components/ui';
@@ -39,7 +39,7 @@ export function FlagDetailPage({ back }: { back: string }) {
   const [adding, setAdding] = useState(false);
   const [completing, setCompleting] = useState<InterventionActionDto | null>(null);
 
-  if (flag.isPending) return <Spinner size="lg" />;
+  if (flag.isPending) return <PageSkeleton />;
   if (flag.isError) return <EmptyState title={errorMessage(flag.error)} />;
   const f = flag.data;
   const open = f.status === 'OPEN';

@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import type { OpportunityMatch } from '@vtmp/shared';
-import { Badge, Button, EmptyState, Spinner } from '../../components/ui';
+import { Badge, Button, EmptyState, PageSkeleton } from '../../components/ui';
 import { useToast } from '../../components/toast';
 import { useErrorMessage } from '../../lib/api/useErrorMessage';
 import { formatDay } from '../../lib/format';
@@ -58,7 +58,7 @@ export function MyOpportunitiesPage() {
         <p className="mt-1 max-w-3xl text-sm text-slate-700">{t('mine.intro')}</p>
       </div>
       {matches.isPending ? (
-        <Spinner size="lg" />
+        <PageSkeleton />
       ) : matches.isError ? (
         <EmptyState title={errorMessage(matches.error)} />
       ) : matches.data.length === 0 ? (

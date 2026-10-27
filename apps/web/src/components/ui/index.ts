@@ -5,6 +5,7 @@ export { EmptyState } from './EmptyState';
 export { Input, type InputProps } from './Input';
 export { Modal, type ModalProps } from './Modal';
 export { Select, type SelectOption, type SelectProps } from './Select';
+export { PageSkeleton } from './PageSkeleton';
 export { Spinner } from './Spinner';
 export { Table, type Column, type TableProps } from './Table';
 export { cn } from './cn';

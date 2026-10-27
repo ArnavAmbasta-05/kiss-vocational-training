@@ -2,7 +2,7 @@ import { useId, useState, type FormEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AssistantMode, AssistantReply, PracticeQuestion } from '@vtmp/shared';
 import { ASSISTANT_MODES } from '@vtmp/shared';
-import { Badge, Button, Card, EmptyState, Spinner, cn } from '../../components/ui';
+import { Badge, Button, Card, cn, EmptyState, PageSkeleton } from '../../components/ui';
 import { useErrorMessage } from '../../lib/api/useErrorMessage';
 import { useAsk, useAssistantStatus } from './api';
 
@@ -54,7 +54,7 @@ export function AssistantPage() {
     </div>
   );
 
-  if (status.isPending) return <Spinner size="lg" />;
+  if (status.isPending) return <PageSkeleton />;
   if (status.isError) return <EmptyState title={errorMessage(status.error)} />;
   const s = status.data;
   if (!s.enabled) {

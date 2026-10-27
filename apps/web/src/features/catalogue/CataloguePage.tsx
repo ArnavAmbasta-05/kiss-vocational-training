@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Badge, Card, EmptyState, Input, Spinner } from '../../components/ui';
+import { Badge, Card, EmptyState, Input, PageSkeleton } from '../../components/ui';
 import { useErrorMessage } from '../../lib/api/useErrorMessage';
 import { useCatalogue } from './api';
 import { WindowBadge } from './WindowBadge';
@@ -59,7 +59,7 @@ export function CataloguePage() {
       </div>
 
       {isPending ? (
-        <Spinner size="lg" />
+        <PageSkeleton />
       ) : isError ? (
         <EmptyState title={errorMessage(error)} />
       ) : !data.cycle ? (

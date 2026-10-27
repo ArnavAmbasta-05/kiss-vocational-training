@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Badge, EmptyState, Spinner } from '../../components/ui';
+import { Badge, EmptyState, PageSkeleton } from '../../components/ui';
 import { useErrorMessage } from '../../lib/api/useErrorMessage';
 import { formatSessionDate, formatSessionTime, institutionDay } from '../../lib/format';
 import { useMySessions, type MySession } from './api';
@@ -12,7 +12,7 @@ export function TrainerSessionsPage() {
   const errorMessage = useErrorMessage();
   const { data, isPending, isError, error } = useMySessions();
 
-  if (isPending) return <Spinner size="lg" />;
+  if (isPending) return <PageSkeleton />;
   if (isError) return <EmptyState title={errorMessage(error)} />;
 
   const today = institutionDay(new Date().toISOString());

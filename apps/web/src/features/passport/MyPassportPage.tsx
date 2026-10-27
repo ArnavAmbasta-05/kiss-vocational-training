@@ -8,6 +8,7 @@ import {
   Card,
   EmptyState,
   Modal,
+  PageSkeleton,
   Select,
   Spinner,
   Table,
@@ -36,7 +37,7 @@ export function MyPassportPage() {
   const [sharing, setSharing] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  if (passport.isPending) return <Spinner size="lg" />;
+  if (passport.isPending) return <PageSkeleton />;
   if (passport.isError) return <EmptyState title={errorMessage(passport.error)} />;
   const p = passport.data;
 

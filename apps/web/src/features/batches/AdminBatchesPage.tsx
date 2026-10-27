@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { BATCH_STATUSES, type BatchStatus, type BatchSummary } from '@vtmp/shared';
-import { Button, EmptyState, Select, Spinner, Table, type Column } from '../../components/ui';
+import { Button, EmptyState, PageSkeleton, Select, Table, type Column } from '../../components/ui';
 import { useErrorMessage } from '../../lib/api/useErrorMessage';
 import { formatDay } from '../../lib/format';
 import { useAdminCourses, useAdminCycles } from '../admin-courses/api';
@@ -120,7 +120,7 @@ export function AdminBatchesPage() {
       </div>
 
       {list.isPending ? (
-        <Spinner size="lg" />
+        <PageSkeleton />
       ) : list.isError ? (
         <EmptyState title={errorMessage(list.error)} />
       ) : (

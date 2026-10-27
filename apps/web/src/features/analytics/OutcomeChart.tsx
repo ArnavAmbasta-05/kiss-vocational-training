@@ -23,16 +23,19 @@ const tick = { fill: AXIS, fontSize: 12 };
 export function OutcomeChart({
   rows,
   metricLabel,
+  noDataLabel,
 }: {
   rows: Array<{ label: string; value: number | null }>;
   metricLabel: string;
+  /** Shown instead of "0 %" where there is nothing to measure yet (no finished students). */
+  noDataLabel: string;
 }) {
   const { i18n } = useTranslation();
   const nf = new Intl.NumberFormat(i18n.resolvedLanguage ?? 'en', { maximumFractionDigits: 1 });
   const data = rows.map((r) => ({
     label: r.label,
     value: r.value ?? 0,
-    missing: r.value === null,
+    text: r.value === null ? noDataLabel : `${nf.format(r.value)} %`,
   }));
   return (
     <ResponsiveContainer width="100%" height="100%">
@@ -56,7 +59,10 @@ export function OutcomeChart({
         />
         <Tooltip
           cursor={{ fill: '#f1f5f9' }}
-          formatter={(v: number) => [`${nf.format(v)} %`, metricLabel]}
+          formatter={(_v: number, _n: string, item: { payload?: { text?: string } }) => [
+            item.payload?.text ?? '',
+            metricLabel,
+          ]}
           contentStyle={{ borderRadius: 6, borderColor: GRID, fontSize: 13 }}
         />
         <Bar
@@ -66,13 +72,7 @@ export function OutcomeChart({
           radius={[0, 4, 4, 0]}
           isAnimationActive={false}
         >
-          <LabelList
-            dataKey="value"
-            position="right"
-            fill="#0f172a"
-            fontSize={12}
-            formatter={(v: number) => `${nf.format(v)} %`}
-          />
+          <LabelList dataKey="text" position="right" fill="#0f172a" fontSize={12} />
         </Bar>
       </BarChart>
     </ResponsiveContainer>

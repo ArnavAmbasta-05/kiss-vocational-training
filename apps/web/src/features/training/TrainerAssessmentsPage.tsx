@@ -1,6 +1,6 @@
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { EmptyState, Select, Spinner } from '../../components/ui';
+import { EmptyState, PageSkeleton, Select } from '../../components/ui';
 import { useErrorMessage } from '../../lib/api/useErrorMessage';
 import { useMyBatches } from '../batches/api';
 import { AssessmentsPanel } from './AssessmentsPanel';
@@ -12,7 +12,7 @@ export function TrainerAssessmentsPage() {
   const batches = useMyBatches();
   const [params, setParams] = useSearchParams();
 
-  if (batches.isPending) return <Spinner size="lg" />;
+  if (batches.isPending) return <PageSkeleton />;
   if (batches.isError) return <EmptyState title={errorMessage(batches.error)} />;
   const list = batches.data;
   const selected =

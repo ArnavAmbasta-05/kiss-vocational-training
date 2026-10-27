@@ -1,7 +1,15 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { StudentResult, StudentSessionRecord, StudentTraining } from '@vtmp/shared';
-import { Badge, Button, Card, EmptyState, Spinner, Table, type Column } from '../../components/ui';
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  PageSkeleton,
+  Table,
+  type Column,
+} from '../../components/ui';
 import { useToast } from '../../components/toast';
 import { useErrorMessage } from '../../lib/api/useErrorMessage';
 import { useAuth } from '../../lib/auth';
@@ -15,7 +23,7 @@ export function MyTrainingPage() {
   const errorMessage = useErrorMessage();
   const { data, isPending, isError, error } = useMyTraining();
 
-  if (isPending) return <Spinner size="lg" />;
+  if (isPending) return <PageSkeleton />;
   if (isError) return <EmptyState title={errorMessage(error)} />;
 
   return (

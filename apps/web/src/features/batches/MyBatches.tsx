@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { BatchSummary } from '@vtmp/shared';
-import { Card, EmptyState, Spinner } from '../../components/ui';
+import { Card, EmptyState, PageSkeleton, Spinner } from '../../components/ui';
 import { useErrorMessage } from '../../lib/api/useErrorMessage';
 import { formatDay, formatSessionDate, formatSessionTime } from '../../lib/format';
 import { useMyBatches } from './api';
@@ -42,7 +42,7 @@ export function TrainerBatchesPage() {
         <p className="mt-1 text-sm text-slate-700">{t('mine.trainerIntro')}</p>
       </div>
       {isPending ? (
-        <Spinner size="lg" />
+        <PageSkeleton />
       ) : isError ? (
         <EmptyState title={errorMessage(error)} />
       ) : data.length === 0 ? (

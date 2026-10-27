@@ -1,7 +1,7 @@
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ApiError } from '../../lib/api/client';
-import { Spinner } from '../../components/ui';
+import { PageSkeleton } from '../../components/ui';
 import { formatDay } from '../../lib/format';
 import { usePublicPassport } from './api';
 
@@ -16,7 +16,7 @@ export function PublicPassportPage() {
   const { data, isPending, error } = usePublicPassport(token);
 
   let body;
-  if (isPending) body = <Spinner size="lg" />;
+  if (isPending) body = <PageSkeleton />;
   else if (error || !data) {
     const code = error instanceof ApiError ? error.code : '';
     const [title, text] =
