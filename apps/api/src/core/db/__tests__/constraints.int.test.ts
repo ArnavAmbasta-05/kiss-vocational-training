@@ -87,7 +87,7 @@ describe('audit_logs is insert-only (NFR-06)', () => {
   });
 });
 
-describe('BR-01: one active enrollment per student per cycle', () => {
+describe('BR-01, BRQ-3.2: one active enrollment per student per cycle', () => {
   it('rejects a second active enrollment and allows one after rejection', async () => {
     const { student } = await createStudent(db());
     const { cycle } = await createCycleCourseBatch(db());
@@ -302,5 +302,25 @@ describe('R3 constraints (TAD §6.2)', () => {
         .$executeRaw`INSERT INTO practical_evidence (id, result_id, kind, url, object_key, uploaded_by_id)
         VALUES (gen_random_uuid(), gen_random_uuid(), 'LINK', 'https://x', 'evidence/x', gen_random_uuid())`,
     ).rejects.toThrow(/practical_evidence_file_or_link/);
+  });
+});
+
+describe('indexes (NFR-03)', () => {
+  it('every foreign key has an index that starts with its columns', async () => {
+    // Postgres does not index foreign keys by itself; without one, joins and deletes scan.
+    const missing = await db().$queryRaw<Array<{ table_name: string; columns: string }>>`
+      SELECT c.conrelid::regclass::text AS table_name,
+             string_agg(a.attname, ', ' ORDER BY x.n) AS columns
+      FROM pg_constraint c
+      CROSS JOIN LATERAL unnest(c.conkey) WITH ORDINALITY AS x(attnum, n)
+      JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = x.attnum
+      WHERE c.contype = 'f'
+        AND NOT EXISTS (
+          SELECT 1 FROM pg_index i
+          WHERE i.indrelid = c.conrelid
+            AND (string_to_array(i.indkey::text, ' ')::int2[])[1:cardinality(c.conkey)] @> c.conkey
+        )
+      GROUP BY c.conrelid, c.conname`;
+    expect(missing).toEqual([]);
   });
 });

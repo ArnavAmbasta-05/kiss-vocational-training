@@ -606,6 +606,7 @@ model AuditLog {
 
   @@index([entity, entityId])
   @@index([userId, createdAt])
+  @@index([action, createdAt])
   @@index([createdAt])
   @@map("audit_logs")
 }
@@ -830,11 +831,12 @@ model RateLimit {
 /// Lease for scheduled jobs (Sprint 10). Session advisory locks don't survive the pooled
 /// (PgBouncer transaction mode) Neon URL, so a run claims this row atomically instead.
 model JobLock {
-  name        String    @id
-  runId       String    @map("run_id") @db.Uuid
-  lockedUntil DateTime  @map("locked_until") @db.Timestamptz(3)
-  lastRunAt   DateTime? @map("last_run_at") @db.Timestamptz(3)
-  lastResult  Json?     @map("last_result")
+  name          String    @id
+  runId         String    @map("run_id") @db.Uuid
+  lockedUntil   DateTime  @map("locked_until") @db.Timestamptz(3)
+  lastRunAt     DateTime? @map("last_run_at") @db.Timestamptz(3)
+  lastSuccessAt DateTime? @map("last_success_at") @db.Timestamptz(3)
+  lastResult    Json?     @map("last_result")
 
   @@map("job_locks")
 }
