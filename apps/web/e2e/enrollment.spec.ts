@@ -37,6 +37,14 @@ test.describe('Sprint 3: apply → approve → see APPROVED', () => {
     await signIn(page, student.email, student.password);
     await page.getByRole('link', { name: 'Courses' }).first().click();
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Courses');
+    // No cycle is chosen for the student: they pick it themselves.
+    const cycle = page.getByLabel('Training cycle');
+    await expect(cycle).toHaveValue('');
+    await expect(page.getByText('Choose a training cycle to see its courses')).toBeVisible();
+    await expect(page.getByRole('link', { name: /^Apply:/ })).toHaveCount(0);
+    await cycle.selectOption({ index: 1 });
+    await expect(page).toHaveURL(/[?&]cycle=/);
+    const cycleId = new URL(page.url()).searchParams.get('cycle');
     await expectNoSeriousA11yViolations(page);
     await page
       .getByRole('link', { name: /^Apply:/ })
@@ -52,7 +60,7 @@ test.describe('Sprint 3: apply → approve → see APPROVED', () => {
     await expectNoSeriousA11yViolations(page);
 
     // Courses: the applied course says so, and no course offers a second application.
-    await page.goto('/student/courses');
+    await page.goto(`/student/courses?cycle=${cycleId}`);
     const applied = page.getByTestId('applied-badge');
     await expect(applied).toHaveCount(1);
     await expect(applied).toContainText('Applied · choice 1');
@@ -92,7 +100,13 @@ test.describe('Sprint 3: apply → approve → see APPROVED', () => {
   }) => {
     const student = await newStudent(request);
     await signIn(page, student.email, student.password);
+    // Without a chosen cycle the apply page sends the student to choose one.
     await page.goto('/student/enrollment/apply');
+    await expect(page.getByRole('link', { name: 'Go to Courses' })).toBeVisible();
+    await page.goto('/student/courses');
+    await page.getByLabel('Training cycle').selectOption({ index: 1 });
+    const cycleId = new URL(page.url()).searchParams.get('cycle');
+    await page.goto(`/student/enrollment/apply?cycle=${cycleId}`);
     // Nothing chosen yet: submitting must explain why it can't go through.
     await page.getByRole('button', { name: 'Submit application' }).click();
     await expect(page.getByRole('alert')).toHaveText('Choose at least one course');

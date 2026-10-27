@@ -436,3 +436,137 @@ describe('notifications', () => {
     ).toEqual([]);
   });
 });
+
+describe('automatic approval (BRQ-3.3)', () => {
+  let admin: Awaited<ReturnType<typeof signedIn>>;
+  const rules = (over: object) =>
+    request(app)
+      .put('/api/v1/admin/enrollments/auto-approval')
+      .set(admin.auth)
+      .send({ enabled: true, minCgpa: 0, manualIfPrerequisites: true, ...over });
+
+  beforeAll(async () => {
+    admin = await signedIn(Role.ADMIN);
+  });
+  // The switch is one shared setting: always leave it off for the other suites.
+  afterEach(() => rules({ enabled: false }).expect(200));
+
+  it('approves an application that meets every rule the moment it is submitted', async () => {
+    const { cycle, courses } = await createOpenCycle(prisma(), 1);
+    const { user, auth } = await signedIn(Role.STUDENT); // CGPA 8.10
+    await rules({ minCgpa: 8 }).expect(200);
+
+    const res = await apply(auth, cycle.id, [courses[0]!.id]);
+    expect(res.status).toBe(201);
+    expect(res.body.status).toBe('APPROVED');
+    const audit = await prisma().auditLog.findFirstOrThrow({
+      where: { entityId: res.body.id, action: 'ENROLLMENT_APPROVED' },
+    });
+    expect(audit.newValue).toMatchObject({ by: 'AUTO_APPROVAL' });
+    expect(
+      await prisma().notification.count({
+        where: { userId: user.id, type: 'ENROLLMENT_APPROVED' },
+      }),
+    ).toBe(1);
+  });
+
+  it('holds the others for a person and shows the admin why', async () => {
+    const { cycle, courses } = await createOpenCycle(prisma(), 2);
+    await prisma().course.update({
+      where: { id: courses[1]!.id },
+      data: { prerequisites: 'Class 10 mathematics' },
+    });
+    const a = await signedIn(Role.STUDENT);
+    const b = await signedIn(Role.STUDENT);
+    await rules({ minCgpa: 9 }).expect(200);
+
+    const low = await apply(a.auth, cycle.id, [courses[0]!.id]);
+    const pre = await apply(b.auth, cycle.id, [courses[1]!.id]);
+    expect([low.body.status, pre.body.status]).toEqual(['PENDING', 'PENDING']);
+
+    const list = await request(app)
+      .get('/api/v1/admin/enrollments')
+      .query({ cycleId: cycle.id })
+      .set(admin.auth)
+      .expect(200);
+    const byId = new Map(
+      (list.body.data as Array<{ id: string; needsReview: unknown }>).map((r) => [r.id, r]),
+    );
+    expect(byId.get(low.body.id)!.needsReview).toEqual([
+      { code: 'CGPA_BELOW_MIN', cgpa: 8.1, min: 9 },
+    ]);
+    expect(byId.get(pre.body.id)!.needsReview).toEqual([
+      { code: 'CGPA_BELOW_MIN', cgpa: 8.1, min: 9 },
+      {
+        code: 'HAS_PREREQUISITES',
+        course: courses[1]!.title,
+        prerequisites: 'Class 10 mathematics',
+      },
+    ]);
+  });
+
+  it('applies changed rules to the applications already pending, in one run', async () => {
+    const { cycle, courses } = await createOpenCycle(prisma(), 2);
+    await prisma().course.update({
+      where: { id: courses[1]!.id },
+      data: { prerequisites: 'Basic tailoring' },
+    });
+    const students = await Promise.all([1, 2, 3].map(() => signedIn(Role.STUDENT)));
+    // Applied while the switch was off: all pending.
+    await rules({ enabled: false }).expect(200);
+    const apps = [
+      await apply(students[0]!.auth, cycle.id, [courses[0]!.id]),
+      await apply(students[1]!.auth, cycle.id, [courses[0]!.id]),
+      await apply(students[2]!.auth, cycle.id, [courses[1]!.id]),
+    ];
+    expect(apps.map((r) => r.body.status)).toEqual(['PENDING', 'PENDING', 'PENDING']);
+
+    const run = await request(app)
+      .post('/api/v1/admin/enrollments/auto-approve')
+      .set(admin.auth)
+      .send({ cycleId: cycle.id })
+      .expect(200);
+    expect(run.body).toEqual({ approved: 2, stillPending: 1 });
+    const statuses = await prisma().enrollment.findMany({
+      where: { id: { in: apps.map((r) => r.body.id) } },
+      select: { id: true, status: true, decidedById: true },
+    });
+    const of = (i: number) => statuses.find((x) => x.id === apps[i]!.body.id)!;
+    expect([of(0).status, of(1).status, of(2).status]).toEqual(['APPROVED', 'APPROVED', 'PENDING']);
+    expect(of(0).decidedById).toBe(admin.user.id);
+    expect(
+      await prisma().auditLog.count({
+        where: { entityId: { in: [of(0).id, of(1).id] }, action: 'ENROLLMENT_APPROVED' },
+      }),
+    ).toBe(2);
+
+    // Running again changes nothing.
+    await request(app)
+      .post('/api/v1/admin/enrollments/auto-approve')
+      .set(admin.auth)
+      .send({ cycleId: cycle.id })
+      .expect(200)
+      .expect({ approved: 0, stillPending: 1 });
+  });
+
+  it('the rules are validated, audited and admin-only', async () => {
+    await rules({ minCgpa: 11 }).expect(422);
+    const student = await signedIn(Role.STUDENT);
+    await request(app).get('/api/v1/admin/enrollments/auto-approval').set(student.auth).expect(403);
+    await rules({ minCgpa: 7.5 }).expect(200);
+    const now = await request(app)
+      .get('/api/v1/admin/enrollments/auto-approval')
+      .set(admin.auth)
+      .expect(200);
+    expect(now.body).toEqual({ enabled: true, minCgpa: 7.5, manualIfPrerequisites: true });
+    expect(
+      await prisma().auditLog.count({
+        where: {
+          entity: 'Setting',
+          entityId: 'enrollment.autoApproveMinCgpa',
+          userId: admin.user.id,
+        },
+      }),
+    ).toBeGreaterThan(0);
+  });
+});

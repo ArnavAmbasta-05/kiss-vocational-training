@@ -90,9 +90,22 @@ export async function getCycle(cycleId: string): Promise<Cycle> {
   return toCycle(cycle);
 }
 
-/** Cycles that have at least one offering, newest first. The first is the catalogue default. */
+/** Every cycle, newest first (Admin). */
 export async function listCycles(): Promise<Cycle[]> {
   const cycles = await prisma().trainingCycle.findMany({ orderBy: { startsOn: 'desc' } });
+  return cycles.map(toCycle);
+}
+
+/**
+ * Cycles a student can choose from on the Courses page (BRQ-2.2): those offering at least one
+ * active course that have not ended yet, newest first. Nothing is pre-selected for them.
+ */
+export async function catalogueCycles(now = new Date()): Promise<Cycle[]> {
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const cycles = await prisma().trainingCycle.findMany({
+    where: { endsOn: { gte: today }, offerings: { some: { course: { isActive: true } } } },
+    orderBy: { startsOn: 'desc' },
+  });
   return cycles.map(toCycle);
 }
 

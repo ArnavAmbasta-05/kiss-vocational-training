@@ -34,7 +34,7 @@ export function catalogueRoutes(): Router {
     validate({ params: IdParams, query: CatalogueQuerySchema }),
     controller.catalogueCourse,
   );
-  router.get('/cycles', authenticate, controller.cycles);
+  router.get('/cycles', authenticate, controller.catalogueCycles);
   return router;
 }
 

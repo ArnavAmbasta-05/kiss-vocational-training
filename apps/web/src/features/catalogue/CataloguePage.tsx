@@ -2,34 +2,45 @@ import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { INACTIVE_ENROLLMENT_STATUSES } from '@vtmp/shared';
-import { Badge, Card, EmptyState, Input, PageSkeleton } from '../../components/ui';
+import { Badge, Card, EmptyState, Input, PageSkeleton, Select } from '../../components/ui';
 import { useErrorMessage } from '../../lib/api/useErrorMessage';
+import { formatDay } from '../../lib/format';
 import { usePersistentState } from '../../lib/usePersistentState';
 import { useMyEnrollments } from '../enrollment/api';
 import { StatusBadge } from '../enrollment/StatusBadge';
-import { useCatalogue } from './api';
+import { useCatalogue, useCycles } from './api';
 import { WindowBadge } from './WindowBadge';
 
 const secondaryLink =
   'inline-flex h-9 items-center rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-800 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600';
 
 /**
- * Student course catalogue (BRQ-2.2): cards with seats, window state and countdown. Courses the
- * student has already applied for in this cycle show the application's status instead of Apply.
+ * Student course catalogue (BRQ-2.2): the student first chooses a training cycle (nothing is
+ * pre-selected), then sees its courses with seats, window state and countdown. The choice
+ * lives in the address (?cycle=), so links, reloads and the back button keep it. Courses the
+ * student has already applied for in that cycle show the application's status instead of Apply.
  */
 export function CataloguePage() {
-  const { t } = useTranslation('courses');
+  const { t, i18n } = useTranslation('courses');
+  const lng = i18n.resolvedLanguage ?? 'en';
   const errorMessage = useErrorMessage();
-  // ?cycle= picks another open cycle; without it the newest cycle with offerings is shown.
-  const [params] = useSearchParams();
-  const { data, isPending, isError, error } = useCatalogue(params.get('cycle') ?? undefined);
+  const [params, setParams] = useSearchParams();
+  const cycleId = params.get('cycle') ?? '';
+  const cycles = useCycles();
+  const { data, isPending, isError, error } = useCatalogue(cycleId || undefined);
   const mine = useMyEnrollments();
   const application = mine.data?.find(
-    (e) => e.cycleId === data?.cycle?.id && !INACTIVE_ENROLLMENT_STATUSES.includes(e.status),
+    (e) => e.cycleId === cycleId && !INACTIVE_ENROLLMENT_STATUSES.includes(e.status),
   );
   const choiceOf = (courseId: string) =>
     application?.preferences.find((p) => p.courseId === courseId)?.rank;
-  const inCycle = data?.cycle ? `cycle=${data.cycle.id}` : '';
+  const inCycle = `cycle=${cycleId}`;
+  const chooseCycle = (id: string) => {
+    const next = new URLSearchParams(params);
+    if (id) next.set('cycle', id);
+    else next.delete('cycle');
+    setParams(next);
+  };
   const [search, setSearch] = useState('');
   const [openOnly, setOpenOnly] = usePersistentState(
     'catalogue.openOnly',
@@ -51,14 +62,28 @@ export function CataloguePage() {
       <div>
         <h1 className="text-2xl font-bold text-slate-900">{t('catalogue.title')}</h1>
         <p className="mt-1 max-w-2xl text-sm text-slate-700">{t('catalogue.intro')}</p>
-        {data?.cycle && (
-          <p className="mt-2 text-sm font-medium text-slate-800">
-            {t('catalogue.cycle')}: {data.cycle.name}
-          </p>
-        )}
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+        <div className="sm:w-80">
+          <Select
+            label={t('catalogue.cycle')}
+            value={cycleId}
+            onChange={(e) => chooseCycle(e.target.value)}
+            disabled={!cycles.data?.length}
+            options={[
+              { value: '', label: t('catalogue.chooseCycle') },
+              ...(cycles.data ?? []).map((c) => ({
+                value: c.id,
+                label: t('catalogue.cycleOption', {
+                  name: c.name,
+                  from: formatDay(c.startsOn, lng),
+                  to: formatDay(c.endsOn, lng),
+                }),
+              })),
+            ]}
+          />
+        </div>
         <div className="sm:w-80">
           <Input
             label={t('catalogue.search')}
@@ -78,12 +103,18 @@ export function CataloguePage() {
         </label>
       </div>
 
-      {isPending || mine.isPending ? (
+      {cycles.isPending ? (
+        <PageSkeleton />
+      ) : cycles.isError ? (
+        <EmptyState title={errorMessage(cycles.error)} />
+      ) : cycles.data.length === 0 ? (
+        <EmptyState title={t('catalogue.noCycle')} />
+      ) : !cycleId ? (
+        <EmptyState title={t('catalogue.pickCycle')} description={t('catalogue.pickCycleHint')} />
+      ) : isPending || mine.isPending ? (
         <PageSkeleton />
       ) : isError ? (
         <EmptyState title={errorMessage(error)} />
-      ) : !data.cycle ? (
-        <EmptyState title={t('catalogue.noCycle')} />
       ) : courses.length === 0 ? (
         <EmptyState title={t('catalogue.empty')} />
       ) : (

@@ -200,6 +200,40 @@ describe('admin course clean-up (BRQ-2.1)', () => {
 });
 
 describe('catalogue (BRQ-2.2)', () => {
+  it('lets students choose among cycles that offer active courses and have not ended', async () => {
+    const db = prisma();
+    const { auth: S } = await auth(Role.STUDENT);
+    const open = await createOpenCycle(db, 1);
+    const ended = await createOpenCycle(db, 1);
+    await db.trainingCycle.update({
+      where: { id: ended.cycle.id },
+      data: { startsOn: new Date('2020-01-06'), endsOn: new Date('2020-04-30') },
+    });
+    const inactive = await createOpenCycle(db, 1);
+    await db.course.update({ where: { id: inactive.courses[0]!.id }, data: { isActive: false } });
+    const empty = await db.trainingCycle.create({
+      data: {
+        name: `Empty ${uid()}`,
+        startsOn: new Date('2027-01-04'),
+        endsOn: new Date('2027-04-30'),
+      },
+    });
+
+    const res = await request(app).get('/api/v1/cycles').set(S).expect(200);
+    const ids = (res.body as Array<{ id: string }>).map((c) => c.id);
+    expect(ids).toContain(open.cycle.id);
+    for (const hidden of [ended.cycle.id, inactive.cycle.id, empty.id]) {
+      expect(ids).not.toContain(hidden);
+    }
+    // The chosen cycle's courses come from ?cycleId=.
+    const list = await request(app)
+      .get('/api/v1/courses')
+      .query({ cycleId: open.cycle.id })
+      .set(S)
+      .expect(200);
+    expect(list.body.cycle.id).toBe(open.cycle.id);
+  });
+
   it('lists active offered courses with window state and indicative seats remaining', async () => {
     const { cycle, courses } = await createOpenCycle(prisma(), 2);
     await prisma().course.update({ where: { id: courses[1]!.id }, data: { isActive: false } });

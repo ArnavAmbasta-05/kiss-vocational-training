@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { z } from 'zod';
 import {
   AdminEnrollmentQuerySchema,
+  AutoApprovalSchema,
+  AutoApproveRunSchema,
   BulkReviewSchema,
   EnrollmentSubmitSchema,
   EnrollmentUpdateSchema,
@@ -43,6 +45,15 @@ export function adminEnrollmentRoutes(): Router {
   router.use(authenticate, authorize('ADMIN'));
   router.get('/', validate({ query: AdminEnrollmentQuerySchema }), controller.adminList);
   router.post('/bulk', validate({ body: BulkReviewSchema }), idempotency(), controller.bulk);
+  // Automatic approval (BRQ-3.3): the rules, and a run over applications still pending.
+  router.get('/auto-approval', controller.autoApproval);
+  router.put('/auto-approval', validate({ body: AutoApprovalSchema }), controller.setAutoApproval);
+  router.post(
+    '/auto-approve',
+    validate({ body: AutoApproveRunSchema }),
+    idempotency(),
+    controller.runAutoApproval,
+  );
   router.post(
     '/:id/approve',
     validate({ params: IdParams, body: EmptyBody }),

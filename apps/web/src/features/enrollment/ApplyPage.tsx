@@ -24,8 +24,11 @@ export function ApplyPage() {
   const editId = params.get('edit');
   const preselect = params.get('courseId');
 
-  const catalogue = useCatalogue(params.get('cycle') ?? undefined);
   const mine = useMyEnrollments();
+  const editing = mine.data?.find((e) => e.id === editId) ?? null;
+  // The cycle comes from the Courses page link, or from the application being edited.
+  const cycleId = params.get('cycle') ?? editing?.cycleId;
+  const catalogue = useCatalogue(cycleId);
   const submit = useSubmitEnrollment();
   const update = useUpdateEnrollment();
   const [slots, setSlots] = useState<string[]>(['']);
@@ -33,7 +36,6 @@ export function ApplyPage() {
   const [prefilled, setPrefilled] = useState(false);
 
   const cycle = catalogue.data?.cycle ?? null;
-  const editing = mine.data?.find((e) => e.id === editId) ?? null;
   const active = mine.data?.find(
     (e) => e.cycleId === cycle?.id && !INACTIVE_ENROLLMENT_STATUSES.includes(e.status),
   );
@@ -49,7 +51,23 @@ export function ApplyPage() {
     setPrefilled(true);
   }, [prefilled, catalogue.data, mine.data, editing, preselect, openCourses]);
 
-  if (catalogue.isPending || mine.isPending) return <PageSkeleton />;
+  if (mine.isPending) return <PageSkeleton />;
+  if (!cycleId) {
+    return (
+      <div className="flex max-w-2xl flex-col gap-4">
+        <h1 className="text-2xl font-bold text-slate-900">{t('apply.title')}</h1>
+        <EmptyState
+          title={t('apply.pickCycle')}
+          action={
+            <Link to="/student/courses" className={linkClass}>
+              {t('apply.toCourses')}
+            </Link>
+          }
+        />
+      </div>
+    );
+  }
+  if (catalogue.isPending) return <PageSkeleton />;
   if (catalogue.isError) return <EmptyState title={errorMessage(catalogue.error)} />;
 
   if (!editing && active) {

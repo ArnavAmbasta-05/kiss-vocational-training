@@ -49,7 +49,9 @@ Your application status, attendance, current aggregate and projected grade at a 
 
 ![Course catalogue](screenshots/student-courses.jpg)
 
-1. **Courses** lists the courses open in the current enrollment window.
+1. On **Courses**, choose a **Training cycle** from the list (nothing is chosen for you; only
+   cycles that offer courses and haven't ended are listed). Its courses appear, with seats and
+   whether applications are open.
 2. Open a course for details, then **Apply**. Rank up to three courses in order of
    preference.
 3. **My enrollment** shows your application status (Pending, Approved, Waitlisted, Allocated,
@@ -184,9 +186,15 @@ no record ever loses its student, trainer or course.
 
 ![Enrollments](screenshots/admin-enrollments.jpg)
 
-1. **Enrollments**: approve, waitlist or reject applications (rejection needs a reason the
-   student sees). The latest applications are at the top.
-2. **Batches → Run allocation**: preview the automatic allocation (by preference rank, then the
+1. **Enrollments → Automatic approval**: switch it on and set the rules (minimum CGPA; whether
+   courses with prerequisites need your review). From then on every application that meets
+   the rules is approved the moment the student submits it, and the student is told at once.
+   **Approve eligible pending applications** applies the rules to what is already waiting.
+2. **Enrollments**: the applications that don't meet the rules wait in the list with the reason
+   ("CGPA 5.20 is below 6.00", "Electrician has prerequisites"). Approve, waitlist or reject
+   them, one at a time or in bulk (rejection needs a reason the student sees). The latest
+   applications are at the top.
+3. **Batches → Run allocation**: preview the automatic allocation (by preference rank, then the
    tie-break rule in Settings), check the scheduling advice (capacity, clashes, free slots and
    trainers), then **Confirm allocation**. Nothing changes until you confirm.
 

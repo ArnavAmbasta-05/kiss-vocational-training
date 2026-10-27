@@ -1,6 +1,8 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   AdminEnrollmentRow,
+  AutoApproval,
+  AutoApproveRunResult,
   Enrollment,
   EnrollmentStatus,
   Paginated,
@@ -65,6 +67,45 @@ export function useReview() {
       );
       return res.count;
     },
+    onSuccess: () =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: ['admin-enrollments'] }),
+        qc.invalidateQueries({ queryKey: ['catalogue'] }),
+      ]),
+  });
+}
+
+// ─── Automatic approval (BRQ-3.3) ─────────────────────────────────────────────
+
+export function useAutoApproval() {
+  return useQuery({
+    queryKey: ['auto-approval'],
+    queryFn: ({ signal }) => api.get<AutoApproval>('/admin/enrollments/auto-approval', { signal }),
+  });
+}
+
+export function useSaveAutoApproval() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: AutoApproval) =>
+      api.put<AutoApproval>('/admin/enrollments/auto-approval', input),
+    onSuccess: (saved) => {
+      qc.setQueryData(['auto-approval'], saved);
+      return qc.invalidateQueries({ queryKey: ['admin-enrollments'] });
+    },
+  });
+}
+
+/** Applies the rules to every application of a cycle still pending. */
+export function useRunAutoApproval() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (cycleId: string) =>
+      api.post<AutoApproveRunResult>(
+        '/admin/enrollments/auto-approve',
+        { cycleId },
+        { headers: { 'Idempotency-Key': crypto.randomUUID() } },
+      ),
     onSuccess: () =>
       Promise.all([
         qc.invalidateQueries({ queryKey: ['admin-enrollments'] }),

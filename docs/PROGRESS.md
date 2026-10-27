@@ -15,7 +15,86 @@ Read this at the start of every session and update it at the end of every sprint
 
 ---
 
-## Post-release improvements (built, 2026-10-27)
+## Release note (final, 2026-10-26)
+
+### Shipped
+- **Release 1 (core):** F1 sign-in and roles, F2 courses and cycles, F3 enrollment, F4 batches
+  and allocation, F5 attendance, F6 assessments, F7 completion and certificates (PDF with ID
+  and QR), F8 reports, F9 dashboards. Gate 1 passed on the live site.
+- **Release 2:** F10 Skill Passport with share links, F11 early intervention (nightly risk
+  check, actions, escalation), F12 competency gap analyzer, F15 public QR verification, F19 audit
+  log viewer. Gate 2 passed on the live site.
+- **Release 3:** F13 career and opportunity matcher, F14 smart scheduling advisor (clash
+  blocking, free slots, trainers), F16 Odia and Hindi with on-demand fonts and a bundle budget,
+  F18 practical evidence with rubrics, F20 outcome analytics and placements.
+- **Quality:** 381 API tests (91 % statements, 93 % lines), browser tests on desktop and phone,
+  a security suite over all 156 routes, accessibility on every page, every one of the 99
+  requirements and rules traced to a test or CI check.
+
+### Built but switched off
+- **F17 AI training assistant.** Complete and tested with mock providers (materials upload and
+  approval, retrieval, cited answers, practice questions, limits, usage page). Off on the live
+  site because it needs paid API keys (Claude and Voyage) and the project has no budget. It can
+  be tried locally for free with the mock provider (README).
+
+### Deferred / known gaps
+- Native-speaker review of the Odia and Hindi text (machine-drafted, complete).
+- Cold start on the free hosting: about 2.7 s for the first request after idle (target 2 s);
+  fixing it needs a paid plan.
+- The project's final name (user-facing text only, when chosen).
+
+---
+
+## After Sprint 13 — Automatic enrollment approval (2026-10-27)
+
+- **Why:** with about 2,000 applications a cycle, approving each by hand is pointless work. The
+  BRD (BRQ-3.3) wants the admin in control, not reading every form.
+- **What:** an *Automatic approval* card on the admin Enrollments page:
+  - **Switch** (`enrollment.autoApprove`, off by default).
+  - **Minimum CGPA** (`enrollment.autoApproveMinCgpa`, 0 = none).
+  - **"Courses with prerequisites need my review"** (`enrollment.autoApproveManualIfPrerequisites`,
+    on). Prerequisites are free text, so the system can't check them.
+  - All three are Settings rows, audited when changed.
+- **How it behaves:**
+  - When on, an application that passes every rule (pure `screen()` in
+    `enrollments/rules.ts`, unit-tested at the 5.99 / 6.00 boundary) is approved in the
+    student's own submit (or edit) transaction. It is audited with `by: AUTO_APPROVAL`, and the
+    student is notified.
+  - Anything else stays Pending. The admin list shows why (`needsReview`: "CGPA 5.20 is below
+    6.00", "Electrician has prerequisites").
+  - *Approve eligible pending applications* applies the saved rules to what is already pending
+    in a cycle. It is one set-based `UPDATE … RETURNING` with bulk audit rows and notifications,
+    so thousands of rows fit in one serverless request. A concurrent manual decision wins.
+- **API:** `GET/PUT /admin/enrollments/auto-approval`, `POST /admin/enrollments/auto-approve`
+  (Admin only; the access-matrix snapshot was updated for the three new routes). openapi.yaml
+  and Postman are updated.
+- **Tests:** 5 unit tests and 4 integration tests: approved on submit with audit and
+  notification; held with reasons; a run approving 2 of 3 then doing nothing on a re-run;
+  rules validated, audited, admin-only.
+- **Strings:** English, Hindi and Odia. User guide updated.
+- **Off by default.** Switch it on in production from the Enrollments page (no deploy needed).
+
+---
+
+## After Sprint 13 — Students choose the training cycle (2026-10-27)
+
+- **Found by the team:** a new demo cycle (Oct 27, 2026 – Oct 27, 2027) with a course and a
+  batch did not appear for students. The Courses page always showed one cycle, picked by the
+  server (the newest-starting cycle with offerings), and had no way to change it.
+- **Now:** the student Courses page has a **Training cycle** dropdown with nothing selected;
+  the student chooses, and the page asks them to until they do. The choice stays in the address
+  (`?cycle=`). Only cycles that offer at least one active course and have not ended are listed
+  (`GET /cycles`, new `catalogueCycles`); the admin cycle list is unchanged.
+- Course details and Apply need a cycle (they send the student back to choose one); editing an
+  application uses its own cycle; "Apply again" goes to Courses first.
+- Strings in en, hi and or; integration test for which cycles are listed; the enrollment e2e
+  test checks nothing is pre-selected; user guide updated.
+- The API's own default (no `cycleId` → newest cycle) is kept for other callers; the web app no
+  longer relies on it.
+
+---
+
+## After Sprint 13 — Admin clean-up, applied courses, phones and translations (2026-10-27)
 
 ### Built
 - **Latest applications first:** the admin review queue (`GET /admin/enrollments`) is ordered
@@ -46,7 +125,7 @@ Read this at the start of every session and update it at the end of every sprint
   a *Standard terms* glossary in `apps/web/src/locales/REVIEW.md`.
 - Tests: +10 API tests (newest-first order, bulk status, safe delete including the SET NULL
   case), +3 Playwright tests (applied badge, course clean-up, deleting a mistaken account);
-  the access-matrix snapshot gains the 4 new admin-only routes (160 routes).
+  the access-matrix snapshot gains the 4 new admin-only routes (163 routes with the automatic-approval ones).
 
 ### Deviations from BRD/TAD (and why)
 - The review queue was oldest first ("in the order they arrived"); the team asked for the
@@ -61,36 +140,6 @@ Read this at the start of every session and update it at the end of every sprint
 ### Definition of done
 - [x] lint · [x] typecheck · [x] tests · [x] openapi.yaml · [x] seed (no new data needed) ·
   [x] strings externalized (en, hi, or)
-
----
-
-## Release note (final, 2026-10-26)
-
-### Shipped
-- **Release 1 (core):** F1 sign-in and roles, F2 courses and cycles, F3 enrollment, F4 batches
-  and allocation, F5 attendance, F6 assessments, F7 completion and certificates (PDF with ID
-  and QR), F8 reports, F9 dashboards. Gate 1 passed on the live site.
-- **Release 2:** F10 Skill Passport with share links, F11 early intervention (nightly risk
-  check, actions, escalation), F12 competency gap analyzer, F15 public QR verification, F19 audit
-  log viewer. Gate 2 passed on the live site.
-- **Release 3:** F13 career and opportunity matcher, F14 smart scheduling advisor (clash
-  blocking, free slots, trainers), F16 Odia and Hindi with on-demand fonts and a bundle budget,
-  F18 practical evidence with rubrics, F20 outcome analytics and placements.
-- **Quality:** 381 API tests (91 % statements, 93 % lines), browser tests on desktop and phone,
-  a security suite over all 156 routes, accessibility on every page, every one of the 99
-  requirements and rules traced to a test or CI check.
-
-### Built but switched off
-- **F17 AI training assistant.** Complete and tested with mock providers (materials upload and
-  approval, retrieval, cited answers, practice questions, limits, usage page). Off on the live
-  site because it needs paid API keys (Claude and Voyage) and the project has no budget. It can
-  be tried locally for free with the mock provider (README).
-
-### Deferred / known gaps
-- Native-speaker review of the Odia and Hindi text (machine-drafted, complete).
-- Cold start on the free hosting: about 2.7 s for the first request after idle (target 2 s);
-  fixing it needs a paid plan.
-- The project's final name (user-facing text only, when chosen).
 
 ---
 

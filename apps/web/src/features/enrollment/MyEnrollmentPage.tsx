@@ -31,7 +31,7 @@ export function MyEnrollmentPage() {
           <p className="mt-1 text-sm text-slate-700">{t('mine.intro')}</p>
         </div>
         {data.length > 0 && !hasActive && (
-          <Link to="/student/enrollment/apply" className={buttonLink}>
+          <Link to="/student/courses" className={buttonLink}>
             {t('mine.applyAgain')}
           </Link>
         )}
@@ -115,7 +115,7 @@ function EnrollmentCard({ enrollment: e }: { enrollment: MyEnrollment }) {
       {e.editable ? (
         <div className="mt-5 flex flex-wrap gap-2">
           <Link
-            to={`/student/enrollment/apply?edit=${e.id}`}
+            to={`/student/enrollment/apply?edit=${e.id}&cycle=${e.cycleId}`}
             className="inline-flex h-10 items-center rounded-md border border-slate-300 px-4 text-sm font-medium text-slate-800 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600"
           >
             {t('mine.edit')}
