@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   AdminCourse,
+  BulkStatusInput,
+  BulkStatusResult,
   CourseCreateInput,
   CourseUpdateInput,
   Cycle,
@@ -60,6 +62,25 @@ export function useUpdateCourse() {
   return useMutation({
     mutationFn: ({ id, ...input }: CourseUpdateInput & { id: string }) =>
       api.patch<AdminCourse>(`/admin/courses/${id}`, input),
+    onSuccess: refresh,
+  });
+}
+
+export function useSetCoursesActive() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: (input: BulkStatusInput) =>
+      api.post<BulkStatusResult>('/admin/courses/bulk-status', input, {
+        headers: { 'Idempotency-Key': crypto.randomUUID() },
+      }),
+    onSuccess: refresh,
+  });
+}
+
+export function useDeleteCourse() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: (id: string) => api.delete<void>(`/admin/courses/${id}`),
     onSuccess: refresh,
   });
 }

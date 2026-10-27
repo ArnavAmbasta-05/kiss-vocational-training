@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AdminCourse, Offering } from '@vtmp/shared';
 import {
@@ -6,6 +6,8 @@ import {
   Button,
   Card,
   EmptyState,
+  Input,
+  Modal,
   Select,
   Spinner,
   Table,
@@ -14,8 +16,17 @@ import {
 import { useToast } from '../../components/toast';
 import { useErrorMessage } from '../../lib/api/useErrorMessage';
 import { formatDate, formatDay } from '../../lib/format';
+import { oneOf, usePersistentState } from '../../lib/usePersistentState';
+import { useSelection } from '../../lib/useSelection';
 import { WindowBadge } from '../catalogue/WindowBadge';
-import { useAdminCourses, useAdminCycles, useOfferings, useUpdateCourse } from './api';
+import {
+  useAdminCourses,
+  useAdminCycles,
+  useDeleteCourse,
+  useOfferings,
+  useSetCoursesActive,
+  useUpdateCourse,
+} from './api';
 import { CourseFormModal, CycleFormModal, WindowFormModal } from './forms';
 
 /** Admin: courses (BRQ-2.1) and cycles with per-course enrollment windows (BRQ-2.3). */
@@ -33,14 +44,42 @@ export function AdminCoursesPage() {
   );
 }
 
+const COURSE_STATUSES = ['active', 'inactive', 'all'] as const;
+type CourseStatusFilter = (typeof COURSE_STATUSES)[number];
+
 function CoursesSection() {
-  const { t } = useTranslation('courses');
+  const { t } = useTranslation(['courses', 'common']);
   const toast = useToast();
   const errorMessage = useErrorMessage();
   const { data, isPending, isError, error } = useAdminCourses();
   const update = useUpdateCourse();
+  const setActive = useSetCoursesActive();
+  const remove = useDeleteCourse();
   const [editing, setEditing] = useState<AdminCourse | null>(null);
   const [formOpen, setFormOpen] = useState(false);
+  const [deleting, setDeleting] = useState<AdminCourse | null>(null);
+  const [search, setSearch] = useState('');
+  // Inactive courses are hidden by default so the list stays short; this device remembers it.
+  const [status, setStatus] = usePersistentState<CourseStatusFilter>(
+    'admin-courses.status',
+    'active',
+    oneOf(...COURSE_STATUSES),
+  );
+  const { selected, toggle: toggleRow, toggleAll, clear } = useSelection();
+
+  const rows = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return (data ?? []).filter(
+      (c) =>
+        (status === 'all' || c.isActive === (status === 'active')) &&
+        (!q || `${c.title} ${c.code}`.toLowerCase().includes(q)),
+    );
+  }, [data, search, status]);
+  // A new result set clears the selection so bulk actions never hit rows the admin can't see.
+  useEffect(clear, [search, status, clear]);
+  const visibleIds = rows.map((c) => c.id);
+  const selectedIds = visibleIds.filter((id) => selected.has(id));
+  const allSelected = rows.length > 0 && selectedIds.length === rows.length;
 
   const toggle = async (c: AdminCourse) => {
     try {
@@ -56,7 +95,53 @@ function CoursesSection() {
     }
   };
 
+  const bulk = async (isActive: boolean) => {
+    try {
+      const { updated } = await setActive.mutateAsync({ ids: selectedIds, isActive });
+      toast.show({
+        tone: 'success',
+        title: t(isActive ? 'admin.bulkReactivated' : 'admin.bulkDeactivated', { count: updated }),
+      });
+      clear();
+    } catch (err) {
+      toast.show({ tone: 'error', title: errorMessage(err) });
+    }
+  };
+
+  const confirmDelete = async (c: AdminCourse) => {
+    try {
+      await remove.mutateAsync(c.id);
+      toast.show({ tone: 'success', title: t('admin.courseDeleted', { title: c.title }) });
+    } catch (err) {
+      toast.show({ tone: 'error', title: errorMessage(err) });
+    } finally {
+      setDeleting(null);
+    }
+  };
+
   const columns: Column<AdminCourse>[] = [
+    {
+      key: 'select',
+      header: (
+        <input
+          type="checkbox"
+          aria-label={t('admin.selectAll')}
+          checked={allSelected}
+          disabled={rows.length === 0}
+          onChange={() => toggleAll(visibleIds)}
+          className="h-4 w-4 rounded border-slate-400"
+        />
+      ),
+      render: (c) => (
+        <input
+          type="checkbox"
+          aria-label={t('admin.selectRow', { title: c.title })}
+          checked={selected.has(c.id)}
+          onChange={() => toggleRow(c.id)}
+          className="h-4 w-4 rounded border-slate-400"
+        />
+      ),
+    },
     {
       key: 'code',
       header: t('fields.code'),
@@ -89,10 +174,10 @@ function CoursesSection() {
     },
     {
       key: 'actions',
-      header: <span className="sr-only">{t('fields.status')}</span>,
+      header: <span className="sr-only">{t('admin.actions')}</span>,
       align: 'right',
       render: (c) => (
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-wrap justify-end gap-2 sm:flex-nowrap">
           <Button
             size="sm"
             variant="secondary"
@@ -111,6 +196,14 @@ function CoursesSection() {
             aria-label={`${c.isActive ? t('admin.deactivate') : t('admin.reactivate')}: ${c.title}`}
           >
             {c.isActive ? t('admin.deactivate') : t('admin.reactivate')}
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setDeleting(c)}
+            aria-label={`${t('admin.delete')}: ${c.title}`}
+          >
+            {t('admin.delete')}
           </Button>
         </div>
       ),
@@ -132,19 +225,79 @@ function CoursesSection() {
         </Button>
       }
     >
-      {isPending ? (
-        <Spinner />
-      ) : isError ? (
-        <EmptyState title={errorMessage(error)} />
-      ) : (
-        <Table
-          caption={t('admin.coursesCaption')}
-          columns={columns}
-          rows={data}
-          rowKey={(c) => c.id}
-        />
-      )}
+      <div className="flex flex-col gap-4">
+        <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+          <Input
+            label={t('admin.searchCourses')}
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <Select
+            label={t('fields.status')}
+            value={status}
+            onChange={(e) => setStatus(e.target.value as CourseStatusFilter)}
+            options={COURSE_STATUSES.map((s) => ({ value: s, label: t(`admin.show.${s}`) }))}
+          />
+        </div>
+
+        {selectedIds.length > 0 && (
+          <div
+            role="region"
+            aria-label={t('admin.selected', { count: selectedIds.length })}
+            className="sticky top-16 z-20 flex flex-wrap items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 p-3"
+          >
+            <span className="text-sm font-medium text-brand-900">
+              {t('admin.selected', { count: selectedIds.length })}
+            </span>
+            <Button size="sm" onClick={() => void bulk(false)} loading={setActive.isPending}>
+              {t('admin.deactivateSelected')}
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => void bulk(true)}>
+              {t('admin.reactivateSelected')}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={clear}>
+              {t('admin.clearSelection')}
+            </Button>
+          </div>
+        )}
+
+        {isPending ? (
+          <Spinner />
+        ) : isError ? (
+          <EmptyState title={errorMessage(error)} />
+        ) : (
+          <Table
+            caption={t('admin.coursesCaption')}
+            columns={columns}
+            rows={rows}
+            rowKey={(c) => c.id}
+            empty={<EmptyState title={t('admin.noCoursesMatch')} />}
+          />
+        )}
+      </div>
       <CourseFormModal open={formOpen} course={editing} onClose={() => setFormOpen(false)} />
+      <Modal
+        open={!!deleting}
+        onClose={() => setDeleting(null)}
+        title={t('admin.confirmDelete.title', { title: deleting?.title ?? '' })}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setDeleting(null)}>
+              {t('common:actions.cancel')}
+            </Button>
+            <Button
+              variant="danger"
+              loading={remove.isPending}
+              onClick={() => deleting && void confirmDelete(deleting)}
+            >
+              {t('admin.confirmDelete.confirm')}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-slate-700">{t('admin.confirmDelete.body')}</p>
+      </Modal>
     </Card>
   );
 }

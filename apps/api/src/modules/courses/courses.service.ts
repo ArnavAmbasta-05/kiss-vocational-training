@@ -1,6 +1,8 @@
 import { Prisma } from '@prisma/client';
 import type {
   AdminCourse,
+  BulkStatusInput,
+  BulkStatusResult,
   CatalogueCourse,
   CourseCreateInput,
   CourseUpdateInput,
@@ -186,6 +188,75 @@ export async function updateCourse(
     await log({ action, entity: 'Course', entityId: id, oldValue: before, newValue: course });
     return toAdminCourse(course);
   });
+}
+
+/** Deactivates or reactivates several courses in one transaction; an unknown id rolls it back. */
+export async function setCoursesActive(
+  actor: Actor,
+  input: BulkStatusInput,
+): Promise<BulkStatusResult> {
+  return withAudit(actor, async (tx, log) => {
+    const before = await tx.course.findMany({ where: { id: { in: input.ids } } });
+    if (before.length !== input.ids.length) throw AppError.notFound('Course not found');
+    const changing = before.filter((c) => c.isActive !== input.isActive);
+    if (changing.length === 0) return { updated: 0 };
+    await tx.course.updateMany({
+      where: { id: { in: changing.map((c) => c.id) } },
+      data: { isActive: input.isActive },
+    });
+    await log.many(
+      changing.map((c) => ({
+        action: input.isActive ? 'COURSE_REACTIVATED' : 'COURSE_DEACTIVATED',
+        entity: 'Course',
+        entityId: c.id,
+        oldValue: { isActive: c.isActive },
+        newValue: { isActive: input.isActive },
+      })),
+    );
+    return { updated: changing.length };
+  });
+}
+
+const courseInUse = () =>
+  AppError.conflict(
+    'COURSE_IN_USE',
+    'This course has been offered, applied for or taught, so it cannot be deleted. Deactivate it instead.',
+  );
+
+/**
+ * Permanently removes a course that nothing refers to yet (e.g. created by mistake). Anything
+ * with history keeps its row and can only be deactivated, so records never lose their course.
+ */
+export async function deleteCourse(actor: Actor, id: string): Promise<void> {
+  try {
+    await withAudit(actor, async (tx, log) => {
+      const course = await tx.course.findUnique({
+        where: { id },
+        include: {
+          _count: {
+            select: {
+              offerings: true,
+              preferences: true,
+              batches: true,
+              competencies: true,
+              materials: true,
+            },
+          },
+        },
+      });
+      if (!course) throw AppError.notFound('Course not found');
+      const { _count: uses, ...row } = course;
+      if (Object.values(uses).some((n) => n > 0)) throw courseInUse();
+      await tx.course.delete({ where: { id } });
+      await log({ action: 'COURSE_DELETED', entity: 'Course', entityId: id, oldValue: row });
+    });
+  } catch (err) {
+    // A reference added since the check (or one not counted above) still blocks the delete.
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2003') {
+      throw courseInUse();
+    }
+    throw err;
+  }
 }
 
 // ─── Admin: cycles ────────────────────────────────────────────────────────────

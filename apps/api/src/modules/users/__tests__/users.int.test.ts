@@ -2,7 +2,7 @@ import request from 'supertest';
 import { Role } from '@prisma/client';
 import { createApp } from '../../../app';
 import { disconnectPrisma, prisma } from '../../../core/db';
-import { createLoginUser, TEST_PASSWORD, uid } from '../../../../test/fixtures';
+import { createLoginUser, createOpenCycle, TEST_PASSWORD, uid } from '../../../../test/fixtures';
 import { bearer, cookie, login } from '../../../../test/http';
 
 // Fresh app per test: each has its own in-memory rate-limit store.
@@ -167,6 +167,130 @@ describe('admin user management', () => {
       .set(bearer(admin.accessToken))
       .send({ fullName: 'Ghost' });
     expect(res.status).toBe(404);
+  });
+});
+
+describe('admin user clean-up', () => {
+  it('deactivates several users at once: sessions revoked, each change audited', async () => {
+    const admin = await signedIn(Role.ADMIN);
+    const a = await signedIn(Role.STUDENT);
+    const b = await createLoginUser(prisma(), Role.TRAINER);
+    const res = await request(app)
+      .post('/api/v1/admin/users/bulk-status')
+      .set(bearer(admin.accessToken))
+      .send({ ids: [a.user.id, b.id], isActive: false });
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ updated: 2 });
+    expect(
+      await prisma().refreshToken.count({ where: { userId: a.user.id, revokedAt: null } }),
+    ).toBe(0);
+    expect(
+      await prisma().auditLog.count({
+        where: { action: 'USER_DEACTIVATED', entityId: { in: [a.user.id, b.id] } },
+      }),
+    ).toBe(2);
+    const relogin = await request(app)
+      .post('/api/v1/auth/login')
+      .send({ email: a.user.email, password: TEST_PASSWORD });
+    expect(relogin.status).toBe(401);
+
+    const back = await request(app)
+      .post('/api/v1/admin/users/bulk-status')
+      .set(bearer(admin.accessToken))
+      .send({ ids: [a.user.id, b.id], isActive: true });
+    expect(back.body).toEqual({ updated: 2 });
+  });
+
+  it('refuses a bulk deactivation that includes the admin themselves', async () => {
+    const admin = await signedIn(Role.ADMIN);
+    const other = await createLoginUser(prisma(), Role.STUDENT);
+    const res = await request(app)
+      .post('/api/v1/admin/users/bulk-status')
+      .set(bearer(admin.accessToken))
+      .send({ ids: [other.id, admin.user.id], isActive: false });
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('CANNOT_DEACTIVATE_SELF');
+    expect((await prisma().user.findUniqueOrThrow({ where: { id: other.id } })).isActive).toBe(
+      true,
+    );
+  });
+
+  it('deletes an account with no history and audits it', async () => {
+    const admin = await signedIn(Role.ADMIN);
+    const created = await request(app)
+      .post('/api/v1/admin/users')
+      .set(bearer(admin.accessToken))
+      .send({
+        role: 'STUDENT',
+        email: `mistake-${uid()}@test.local`,
+        fullName: 'Created By Mistake',
+        password: 'Mistake-Pass-1',
+        rollNo: `M-${uid()}`,
+        cgpa: 7,
+      });
+    expect(created.status).toBe(201);
+    const id = created.body.id as string;
+    const del = await request(app)
+      .delete(`/api/v1/admin/users/${id}`)
+      .set(bearer(admin.accessToken));
+    expect(del.status).toBe(204);
+    expect(await prisma().user.findUnique({ where: { id } })).toBeNull();
+    expect(await prisma().student.findFirst({ where: { userId: id } })).toBeNull();
+    const audit = await prisma().auditLog.findFirstOrThrow({
+      where: { action: 'USER_DELETED', entityId: id },
+    });
+    expect(audit.userId).toBe(admin.user.id);
+    expect(JSON.stringify(audit.oldValue)).not.toMatch(/password/i);
+  });
+
+  it('refuses to delete an account with history, or the admin themselves', async () => {
+    const admin = await signedIn(Role.ADMIN);
+    // The admin has acted (created a user), so their audit rows keep them.
+    const other = await signedIn(Role.ADMIN);
+    await request(app)
+      .post('/api/v1/admin/users')
+      .set(bearer(other.accessToken))
+      .send({
+        role: 'TRAINER',
+        email: `t-${uid()}@test.local`,
+        fullName: 'Some Trainer',
+        password: 'Trainer-Pass-1',
+        employeeCode: `E-${uid()}`,
+      });
+    const inUse = await request(app)
+      .delete(`/api/v1/admin/users/${other.user.id}`)
+      .set(bearer(admin.accessToken));
+    expect(inUse.status).toBe(409);
+    expect(inUse.body.error.code).toBe('USER_IN_USE');
+    expect(await prisma().user.findUnique({ where: { id: other.user.id } })).not.toBeNull();
+
+    const self = await request(app)
+      .delete(`/api/v1/admin/users/${admin.user.id}`)
+      .set(bearer(admin.accessToken));
+    expect(self.status).toBe(409);
+    expect(self.body.error.code).toBe('CANNOT_DELETE_SELF');
+  });
+
+  it('refuses to delete a user whose decisions would otherwise be erased', async () => {
+    const admin = await signedIn(Role.ADMIN);
+    const decider = await createLoginUser(prisma(), Role.ADMIN);
+    const { cycle } = await createOpenCycle(prisma(), 1);
+    const student = await createLoginUser(prisma(), Role.STUDENT);
+    // Written straight to the table: no audit row, so only the SET NULL reference holds it.
+    await prisma().enrollment.create({
+      data: {
+        studentId: student.student!.id,
+        cycleId: cycle.id,
+        status: 'APPROVED',
+        decidedById: decider.id,
+        decidedAt: new Date(),
+      },
+    });
+    const res = await request(app)
+      .delete(`/api/v1/admin/users/${decider.id}`)
+      .set(bearer(admin.accessToken));
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('USER_IN_USE');
   });
 });
 
