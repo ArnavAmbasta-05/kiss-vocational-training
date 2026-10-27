@@ -199,7 +199,7 @@ describe('POST /assistant/ask (F17)', () => {
     expect(log).toMatchObject({ refused: true, refusalReason: 'NOT_IN_MATERIALS' });
   });
 
-  it('answers from the student’s own course with sources, and sends no personal data', async () => {
+  it('answers from the student’s own course with sources, and sends no personal data (BRQ-17.1)', async () => {
     const fake = fakeAssistant();
     const w = await approvedWorld();
     setProvidersForTests({ assistant: fake.provider, ai: on });
@@ -239,6 +239,49 @@ describe('POST /assistant/ask (F17)', () => {
       .send({ question: 'Which gloves should I wear for welding?' })
       .expect(200);
     expect(none.body.refused).toBe('NO_COURSE');
+  });
+
+  it('explains more simply on request and lists resources for open skill gaps (BRQ-17.3, 17.4)', async () => {
+    const fake = fakeAssistant({ answer: 'A helmet lens protects your eyes [1].' });
+    const w = await approvedWorld();
+    setProvidersForTests({ assistant: fake.provider, ai: on });
+    // An approved resource for a competency the student has not shown yet (an open gap, F12).
+    const comp = await request(app)
+      .post(`/api/v1/courses/${w.course.id}/competencies`)
+      .set(w.A)
+      .send({
+        code: 'WELD-1',
+        title: 'Weld safely',
+        mode: 'PRACTICAL',
+        requiredLevel: 3,
+        isMandatory: true,
+      })
+      .expect(201);
+    const resource = await request(app)
+      .post('/api/v1/resources')
+      .set(w.A)
+      .send({
+        competencyId: comp.body.id,
+        title: 'Welding safety video',
+        type: 'VIDEO',
+        url: 'https://example.org/welding-safety',
+      })
+      .expect(201);
+
+    const res = await request(app)
+      .post('/api/v1/assistant/ask')
+      .set(w.S)
+      .send({
+        question: 'Which gloves and helmet filter lens should I wear for welding?',
+        mode: 'simplify',
+      })
+      .expect(200);
+    expect(fake.calls[0]!.mode).toBe('simplify');
+    expect(res.body).toMatchObject({ mode: 'simplify', refused: null });
+    expect(res.body.answer).toContain('[1]');
+    expect(res.body.resources).toEqual([
+      expect.objectContaining({ id: resource.body.id, title: 'Welding safety video' }),
+    ]);
   });
 
   it('keeps only well-formed practice questions', async () => {

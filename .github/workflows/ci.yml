@@ -35,6 +35,8 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm --filter @vtmp/web i18n:check
+      # docs/TRACEABILITY.md must match the requirement IDs the code and tests cite.
+      - run: pnpm docs:check
 
   unit:
     name: Unit tests

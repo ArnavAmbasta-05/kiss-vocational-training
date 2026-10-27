@@ -144,7 +144,7 @@ describe('48-hour edit window (BR-06, BRQ-5.2)', () => {
     expect(sheet.body).toMatchObject({ canEdit: false, lockedReason: 'WINDOW_CLOSED' });
   });
 
-  it('after the window only an admin may edit, with a reason, logged old → new (TC-12)', async () => {
+  it('after the window only an admin may edit, with a reason, logged old → new (TC-12, BRQ-19.1)', async () => {
     const w = await world();
     const sid = w.sessions[0]!.id;
     await put(sid, w.trainerAuth, all(w.students));

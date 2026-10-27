@@ -5,7 +5,7 @@ import { uid } from '../../../../test/fixtures';
 afterAll(() => disconnectPrisma());
 
 describe('withAudit', () => {
-  it('commits the change and its audit row together', async () => {
+  it('commits the change and its audit row together (BRQ-19.1)', async () => {
     const key = `test.audit.${uid()}`;
     await withAudit({ userId: null, ip: '127.0.0.1' }, async (tx, log) => {
       await tx.setting.create({ data: { key, value: 1 } });

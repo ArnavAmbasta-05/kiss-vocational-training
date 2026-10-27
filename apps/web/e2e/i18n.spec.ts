@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { ACCOUNTS, SEED_PASSWORD, expectNoSeriousA11yViolations, signIn } from './helpers';
 import { token } from './world';
 
-test.describe('Sprint 12: Odia and Hindi (F16)', () => {
+test.describe('Sprint 12: Odia and Hindi (F16, BRQ-16.1)', () => {
   test('the login page is fully in Odia, with the Odia font loaded on demand', async ({ page }) => {
     await page.goto('/login');
     await page.getByTestId('language-switcher').selectOption('or');

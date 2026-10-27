@@ -126,7 +126,7 @@ describe('job roles and opportunities (BRQ-C.3, BRQ-13.1)', () => {
 });
 
 describe('matches (BR-22, BRQ-13.2, 13.3)', () => {
-  it('ranks open opportunities by match % and lists missing skills with resources', async () => {
+  it('ranks open opportunities by match % and lists missing skills with resources (BRQ-12.5, 13.3)', async () => {
     const w = await world();
     const full = await role(w, 'Wireman', [
       ['WIRE', 3],

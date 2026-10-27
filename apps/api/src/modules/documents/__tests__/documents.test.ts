@@ -1,3 +1,4 @@
+import QRCode from 'qrcode';
 import { PUBLIC_CODE_LENGTH, PUBLIC_CODE_PATTERN, publicCode } from '../code';
 import { renderCertificate } from '../certificate.pdf';
 
@@ -73,5 +74,31 @@ describe('certificate PDF (ADR-06)', () => {
     // Anything that isn't Odia script is ignored rather than printed in the wrong font.
     const latin = (await renderCertificate({ ...base, nameOdia: 'Sasmita' })).toString('latin1');
     expect(latin).not.toMatch(/NotoSansOriya/);
+  });
+
+  it('carries the certificate ID and a QR code of the public verification link (BRQ-15.1)', async () => {
+    const qr = jest.spyOn(QRCode, 'toBuffer');
+    const verifyUrl = 'https://example.test/verify/ABCDEFGHJKMNPQRS';
+    const pdf = (
+      await renderCertificate({
+        institution: 'Test Institute',
+        studentName: 'Sasmita Pradhan',
+        rollNo: 'R-1',
+        courseTitle: 'Domestic Electrician',
+        batchName: 'Batch A',
+        startDate: '2026-01-05',
+        endDate: '2026-03-27',
+        grade: 'B',
+        aggregatePercent: 72.5,
+        attendancePercent: 88,
+        issuedAt: new Date('2026-04-01T10:00:00Z'),
+        publicCode: 'ABCDEFGHJKMNPQRS',
+        verifyUrl,
+      })
+    ).toString('latin1');
+    expect(qr).toHaveBeenCalledWith(verifyUrl, expect.anything());
+    expect(pdf).toMatch(/\/Subtype \/Image/); // the QR, drawn as an image
+    expect(pdf).toContain('Certificate ABCDEFGHJKMNPQRS'); // document title carries the ID
+    qr.mockRestore();
   });
 });

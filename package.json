@@ -20,6 +20,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "pnpm -r --if-present typecheck",
+    "docs:trace": "node scripts/traceability.mjs",
+    "docs:check": "node scripts/traceability.mjs --check",
     "build": "pnpm -r --if-present build",
     "postinstall": "pnpm --filter @vtmp/api db:generate"
   },

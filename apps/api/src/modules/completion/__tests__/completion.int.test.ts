@@ -173,7 +173,7 @@ describe('approve → certificate (TAD §8.1)', () => {
     expect(res.body.error.details).toEqual([{ path: 'RECOMMENDATION', message: 'false / true' }]);
   });
 
-  it('TC-16: eligible → COMPLETED and certificate in one step, then PDF stored and CERTIFIED', async () => {
+  it('TC-16: eligible → COMPLETED and certificate in one step, then PDF stored and CERTIFIED (BRQ-7.3)', async () => {
     const w = await world();
     const s = await setStudent(w, 0, { attended: 3, marks: 44, recommended: true }); // 75 %, 88 %
 

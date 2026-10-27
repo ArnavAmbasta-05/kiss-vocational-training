@@ -68,7 +68,7 @@ describe('student applies (BRQ-3.1, BR-01, BR-02)', () => {
     );
   });
 
-  it('rejects a second active application in the same cycle (TC-04)', async () => {
+  it('rejects a second active application in the same cycle (TC-04, BRQ-3.2)', async () => {
     const { cycle, courses } = await createOpenCycle(prisma());
     const { auth } = await signedIn(Role.STUDENT);
     expect((await apply(auth, cycle.id, [courses[0]!.id])).status).toBe(201);
@@ -129,7 +129,7 @@ describe('student edits a pending application', () => {
     expect(res.body.preferences[0].courseId).toBe(courses[1]!.id);
   });
 
-  it('refuses edits once the window has closed (TC-05)', async () => {
+  it('refuses edits once the window has closed (TC-05, BRQ-3.2)', async () => {
     const { cycle, courses } = await createOpenCycle(prisma());
     const { auth } = await signedIn(Role.STUDENT);
     const e = await apply(auth, cycle.id, [courses[0]!.id]);
@@ -213,7 +213,7 @@ describe('admin review (BRQ-3.3, BR-12)', () => {
     expect(inbox.body.data[0]).toMatchObject({ type: 'ENROLLMENT_APPROVED', readAt: null });
   });
 
-  it('requires a reason to reject and stores it for the student', async () => {
+  it('requires a reason to reject and stores it for the student (BRQ-3.4)', async () => {
     const admin = await signedIn(Role.ADMIN);
     const { students } = await pending(1);
     const path = `/api/v1/admin/enrollments/${students[0]!.enrollmentId}/reject`;
