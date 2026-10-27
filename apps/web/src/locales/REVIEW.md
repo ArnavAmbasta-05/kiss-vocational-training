@@ -16,6 +16,25 @@ Please review them before the portal is used with students and families.
   sentence. `pnpm --filter @vtmp/web i18n:check` fails if one is lost or renamed.
 - **Plurals**: keys ending in `_one` / `_other` are singular and plural forms.
 
+## Standard terms
+
+Use one word per idea everywhere so screens read the same. Change a term in every file at once
+(search the folder), not in one place.
+
+| English        | Hindi (`hi`)   | Odia (`or`)      | Note                                            |
+| -------------- | -------------- | ---------------- | ----------------------------------------------- |
+| course         | पाठ्यक्रम      | ପାଠ୍ୟକ୍ରମ        | not कोर्स                                       |
+| student        | विद्यार्थी     | ଛାତ୍ରଛାତ୍ରୀ      |                                                 |
+| trainer        | प्रशिक्षक      | ପ୍ରଶିକ୍ଷକ        |                                                 |
+| user (account) | उपयोगकर्ता     | ବ୍ୟବହାରକାରୀ      | not ଉପଯୋଗକର୍ତ୍ତା                                |
+| enrollment     | नामांकन        | ନାମଲେଖା          |                                                 |
+| application    | आवेदन          | ଆବେଦନ            |                                                 |
+| session        | सत्र           | ଅଧିବେଶନ          | Odia: please confirm; ସେସନ୍ may be more natural |
+| attendance     | उपस्थिति       | ଉପସ୍ଥିତି         |                                                 |
+| assessment     | मूल्यांकन      | ମୂଲ୍ୟାଙ୍କନ       |                                                 |
+| certificate    | प्रमाणपत्र     | ପ୍ରମାଣପତ୍ର       |                                                 |
+| deactivate     | निष्क्रिय करें | ନିଷ୍କ୍ରିୟ କରନ୍ତୁ |                                                 |
+
 ## Priority order
 
 1. Student-facing: `common`, `auth`, `dashboard`, `courses`, `enrollment`, `training`,

@@ -91,12 +91,12 @@
     "confirm": "पुष्टि करें",
     "cancel": "रद्द करें",
     "done": {
-      "APPROVE_one": "{{count}} आवेदन स्वीकृत",
-      "APPROVE_other": "{{count}} आवेदन स्वीकृत",
-      "REJECT_one": "{{count}} आवेदन अस्वीकार",
-      "REJECT_other": "{{count}} आवेदन अस्वीकार",
-      "WAITLIST_one": "{{count}} आवेदन प्रतीक्षा सूची में",
-      "WAITLIST_other": "{{count}} आवेदन प्रतीक्षा सूची में"
+      "APPROVE_one": "{{count}} आवेदन स्वीकृत किया गया",
+      "APPROVE_other": "{{count}} आवेदन स्वीकृत किए गए",
+      "REJECT_one": "{{count}} आवेदन अस्वीकार किया गया",
+      "REJECT_other": "{{count}} आवेदन अस्वीकार किए गए",
+      "WAITLIST_one": "{{count}} आवेदन प्रतीक्षा सूची में डाला गया",
+      "WAITLIST_other": "{{count}} आवेदन प्रतीक्षा सूची में डाले गए"
     },
     "pagination": {
       "label": "पेज",
