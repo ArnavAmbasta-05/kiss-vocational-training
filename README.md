@@ -6,10 +6,15 @@ Passport. Software Engineering project by
 [@ArnavAmbasta-05](https://github.com/ArnavAmbasta-05).
 
 - **Business rules:** [docs/BRD.md](docs/BRD.md) (BR-01…BR-22, BRQ-x.y, NFRs)
-- **Architecture:** [docs/TAD.md](docs/TAD.md)
-- **Sprint log:** [docs/PROGRESS.md](docs/PROGRESS.md)
-- **API contract:** [apps/api/openapi.yaml](apps/api/openapi.yaml)
-- **Deployment:** [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) (Vercel for web + API, Neon for PostgreSQL)
+- **Architecture:** [docs/TAD.md](docs/TAD.md) · **Database:** [docs/ER.md](docs/ER.md)
+- **Traceability:** [docs/TRACEABILITY.md](docs/TRACEABILITY.md) (every BRQ and BR → module,
+  endpoint, test)
+- **Testing:** [docs/TEST_PLAN.md](docs/TEST_PLAN.md) · **User guide:**
+  [docs/USER_GUIDE.md](docs/USER_GUIDE.md) · **Demo script:** [docs/DEMO.md](docs/DEMO.md)
+- **API contract:** [apps/api/openapi.yaml](apps/api/openapi.yaml) · Postman:
+  [docs/postman/](docs/postman/kiss-vtmp.postman_collection.json)
+- **Sprint log:** [docs/PROGRESS.md](docs/PROGRESS.md) · **Deployment:**
+  [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) (Vercel for web + API, Neon for PostgreSQL)
 
 ## Live demo
 
@@ -20,6 +25,42 @@ students). The live demo password is shared privately by the team: ask
 [@ShashankSinghhh](https://github.com/ShashankSinghhh) or
 [@ArnavAmbasta-05](https://github.com/ArnavAmbasta-05). `Password@123` works only on a local
 setup.
+
+## Architecture
+
+```mermaid
+flowchart LR
+  subgraph Browser
+    SPA["React app<br/>(apps/web)"]
+    VERIFY["/verify page<br/>(no React, 11 KB)"]
+  end
+  subgraph Vercel["Vercel (region sin1)"]
+    CDN["Static files + CDN"]
+    API["Express API<br/>one serverless function<br/>/api/v1/*"]
+    CRON["Vercel Cron<br/>risk check, analytics"]
+  end
+  subgraph Data
+    PG[("Neon PostgreSQL 16<br/>+ pgvector")]
+    BLOB[("Vercel Blob<br/>private files")]
+  end
+  SPA -- "JSON + JWT" --> API
+  VERIFY -- "public, 30/min/IP" --> API
+  CDN --> SPA
+  CRON -- "Bearer CRON_SECRET" --> API
+  API -- "Prisma (pooled)" --> PG
+  API -- "signed URLs" --> BLOB
+  SPA -- "direct upload / signed download" --> BLOB
+```
+
+Every request goes through helmet → CORS allow-list → rate limiter → authentication → role
+check → ownership check → validation → controller → service. Business rules live in services
+(pure rule functions in each module's `rules.ts`); every status change and its audit row are
+written in one transaction. Details: [docs/TAD.md](docs/TAD.md).
+
+The **AI training assistant** (F17) is built but switched off on the live site (no paid API
+keys). To try it locally for free, set `AI_ENABLED=true`, `ASSISTANT_PROVIDER=mock` and
+`AI_MONTHLY_CAP=1` in `.env`: the mock quotes the best-matching passage of the approved notes
+instead of calling a model.
 
 ## Stack
 
@@ -81,9 +122,17 @@ Sign in at http://localhost:5173 with any seed account: each role lands on its o
 | `pnpm lint` / `pnpm typecheck` / `pnpm format` | Code quality                                         |
 | `pnpm build`                                   | Production builds of API and web                     |
 | `pnpm --filter @vtmp/web i18n:sync`            | Copy new English UI keys into the Odia/Hindi files   |
+| `pnpm --filter @vtmp/web i18n:check`           | Fail if any Odia/Hindi string is missing or empty    |
+| `pnpm --filter @vtmp/web bundle:check`         | Fail if a core student page is over 500 KB (gzip)    |
+| `pnpm docs:trace` / `pnpm docs:check`          | Rebuild / verify docs/TRACEABILITY.md                |
+| `node scripts/postman.mjs`                     | Rebuild the Postman collection from openapi.yaml     |
 
 Run Playwright once with `pnpm --filter @vtmp/web exec playwright install chromium` before the
 first `pnpm test:e2e`.
+
+GitHub Actions also has three workflows you start by hand: **Performance** (`perf.yml`: k6 with
+100 users and Lighthouse on a production build), and **Gate 1** / **Gate 2 on the live site**
+(the release acceptance tests against the deployed URL).
 
 ## Repository layout
 
@@ -93,7 +142,9 @@ apps/api/src/modules/   one folder per module: routes, controller, service, sche
 apps/web/src/           components/ui (design system), features/<module>, locales/{en,or,hi}
 packages/shared/src/    enums, schemas, types shared by API and web
 prisma/                 schema.prisma, migrations, seed.ts
-docs/                   BRD, TAD, progress log and project documents
+docs/                   BRD, TAD, ER, traceability, test plan, user guide, demo, progress log
+perf/                   k6 load test and Lighthouse budget check
+scripts/                Vercel build, traceability and Postman generators
 ```
 
 ## Working together

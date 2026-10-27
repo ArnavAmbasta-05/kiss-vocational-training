@@ -7,3 +7,6 @@ test-results
 prisma/migrations
 docs/*.md
 guidance
+
+# Generated from apps/api/openapi.yaml by scripts/postman.mjs
+docs/postman/

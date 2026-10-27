@@ -11,7 +11,8 @@
     "i18n:sync": "node scripts/sync-locales.mjs",
     "i18n:check": "node scripts/sync-locales.mjs --check --strict",
     "bundle:check": "node scripts/check-bundle.mjs",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "docs:screens": "playwright test -c playwright.docs.config.ts"
   },
   "dependencies": {
     "@fontsource/noto-sans-devanagari": "5.1.0",

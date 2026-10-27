@@ -299,6 +299,109 @@ erDiagram
   }
 ```
 
+## Evidence, opportunities, analytics and assistant (R3)
+
+```mermaid
+erDiagram
+  assessments ||--o| rubrics : "scored with"
+  assessment_results ||--o{ practical_evidence : "backed by"
+  competencies |o--o{ practical_evidence : "proves"
+  job_roles ||--o{ job_role_competencies : "requires"
+  job_roles ||--o{ opportunities : "offered as"
+  opportunities ||--o{ opportunity_interests : "interests"
+  students ||--o{ opportunity_interests : "interested"
+  enrollments ||--o{ placement_outcomes : "placed"
+  opportunities |o--o{ placement_outcomes : "through"
+  courses ||--o{ materials : "taught with"
+  materials ||--o{ material_chunks : "split into"
+  users ||--o{ assistant_logs : "asked"
+
+  rubrics {
+    uuid id PK
+    uuid assessment_id FK "UK"
+    jsonb criteria
+    jsonb levels
+  }
+  practical_evidence {
+    uuid id PK
+    uuid result_id FK
+    uuid competency_id FK "null = none"
+    EvidenceKind kind "FILE or LINK"
+    text object_key UK "FILE: private store key"
+    text url "LINK: https video"
+    int size_bytes "max 10 MB"
+    jsonb scores "rubric criterion → level"
+  }
+  job_roles {
+    uuid id PK
+    text title UK
+    bool is_active
+  }
+  job_role_competencies {
+    uuid role_id PK
+    text competency_code PK
+    int level "1-4"
+  }
+  opportunities {
+    uuid id PK
+    uuid role_id FK
+    OpportunityType type
+    text partner
+    date closes_on
+  }
+  opportunity_interests {
+    uuid opportunity_id PK
+    uuid student_id PK
+  }
+  placement_outcomes {
+    uuid id PK
+    uuid enrollment_id FK
+    uuid opportunity_id FK
+    PlacementType type
+    text employer
+    date placed_on
+  }
+  materials {
+    uuid id PK
+    uuid course_id FK
+    text object_key UK
+    MaterialStatus status
+    int chunk_count
+  }
+  material_chunks {
+    uuid id PK
+    uuid material_id FK
+    int ordinal "UK per material"
+    text content
+    vector embedding "1024 dims, HNSW cosine"
+  }
+  assistant_logs {
+    uuid id PK
+    uuid user_id FK
+    text mode
+    uuid_array chunk_ids
+    bool refused
+    decimal cost_usd
+    int latency_ms
+  }
+  job_locks {
+    text name PK
+    timestamptz locked_until
+    timestamptz last_success_at
+    jsonb last_result
+  }
+```
+
+- **Job roles name competency codes**, not competency rows: one role ("Solar technician") can
+  match courses that share codes. A student's match % is computed on read (BR-22).
+- **Outcome analytics** read two materialized views refreshed nightly,
+  `analytics_batch_outcomes` and `analytics_course_competency` (counts only); rates are
+  computed on read so changed Settings apply at once.
+- **`job_locks`** is the lease that keeps two runs of a scheduled job from overlapping, and
+  remembers the last success and left-over work so the next run can catch up.
+- **Assistant** tables are used only when the assistant is switched on (`AI_ENABLED`); it is
+  off on the live site.
+
 ## Rules enforced by the database
 
 | Rule | Mechanism |
@@ -312,6 +415,9 @@ erDiagram
 | Certificates only for passing grades | CHECK `grade <> 'NOT_COMPLETED'` |
 | Revocations carry a reason | CHECKs on certificates and competency_ratings |
 | Ranges | rank 1–3, competency levels 1–4, CGPA 0–10, capacity/duration/max marks/weightage > 0, date and time ordering, due_on ≥ created date |
+| Evidence is a file or a link, never both | CHECK `practical_evidence_file_or_link`; files ≤ 10 MB |
+| Job role levels 1–4 | CHECK `job_role_competencies_level_range` |
+| Foreign keys are indexed | Every foreign key has an index starting with its columns (checked by a test) |
 | Membership matches its enrollment | Composite FK batch_students(enrollment_id, student_id) → enrollments(id, student_id) |
 
 Derived values (attendance %, aggregate, gap, match %) are never stored, except the frozen

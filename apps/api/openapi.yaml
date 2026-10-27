@@ -163,9 +163,7 @@ paths:
             name: q,
             in: query,
             schema: { type: string },
-            description: Search name,
-            email,
-            roll no or employee code,
+            description: 'Search name, email, roll no or employee code',
           }
         - { name: role, in: query, schema: { $ref: '#/components/schemas/Role' } }
         - { name: isActive, in: query, schema: { type: string, enum: ['true', 'false'] } }
@@ -401,7 +399,7 @@ paths:
     get:
       tags: [enrollments]
       summary: My applications with status timeline (Student, BRQ-3.4)
-      responses: { '200': { description: Applications, newest first } }
+      responses: { '200': { description: 'Applications, newest first' } }
   /enrollments/{enrollmentId}:
     put:
       tags: [enrollments]
@@ -441,8 +439,7 @@ paths:
             name: q,
             in: query,
             schema: { type: string },
-            description: Student name,
-            email or roll no,
+            description: 'Student name, email or roll no',
           }
       responses: { '200': { description: Page of applications with student details } }
   /admin/enrollments/{id}/approve:
@@ -814,7 +811,7 @@ paths:
       parameters:
         - { name: from, in: query, schema: { type: string, format: date-time } }
         - { name: to, in: query, schema: { type: string, format: date-time } }
-      responses: { '200': { description: Sessions with batch, roster size and marked count } }
+      responses: { '200': { description: 'Sessions with batch, roster size and marked count' } }
   /sessions/{sessionId}/attendance:
     get:
       tags: [attendance]
@@ -1080,8 +1077,7 @@ paths:
             name: q,
             in: query,
             schema: { type: string },
-            description: Student name,
-            roll number or certificate code,
+            description: 'Student name, roll number or certificate code',
           }
         - { name: status, in: query, schema: { type: string, enum: [VALID, REVOKED, SUPERSEDED] } }
       responses:
@@ -1648,7 +1644,7 @@ paths:
     get:
       tags: [jobs]
       summary: Daily risk evaluation, called by Vercel Cron (BRQ-11.1, TAD 8.2)
-      description: Authorization Bearer CRON_SECRET (not a user token). Evaluates every ACTIVE batch; a job lease means two runs never overlap (a second returns skipped true). POST works the same for manual runs.
+      description: Authorization Bearer CRON_SECRET (not a user token). Evaluates the students still in training in every ACTIVE batch and closes flags of students who finished; a job lease means two runs never overlap (a second returns skipped true). If the 25 s budget runs out it returns partial with remainingIds, and the next run starts with those (catch-up); missedRuns counts days without a successful run. POST works the same for manual runs.
       security: []
       responses:
         '200': { description: Run summary }
@@ -1664,7 +1660,7 @@ paths:
     get:
       tags: [jobs]
       summary: Nightly refresh of the outcome analytics views, called by Vercel Cron (F20)
-      description: Authorization Bearer CRON_SECRET. Refreshes analytics_batch_outcomes and analytics_course_competency CONCURRENTLY under a job lease (a second run returns refreshed false). POST works the same.
+      description: Authorization Bearer CRON_SECRET. Refreshes analytics_batch_outcomes and analytics_course_competency CONCURRENTLY under a job lease (a second run returns refreshed false); missedRuns counts nights without a successful refresh (one refresh catches up all of them). POST works the same.
       security: []
       responses:
         '200': { description: refreshed and refreshedAt }
@@ -2286,7 +2282,8 @@ components:
         prerequisites: { type: string, nullable: true }
         seatCapacity: { type: integer }
         seatsRemaining: { type: integer, description: Indicative }
-        offering: { allOf: [{ $ref: '#/components/schemas/Offering' }], nullable: true }
+        offering:
+          { type: object, allOf: [{ $ref: '#/components/schemas/Offering' }], nullable: true }
     Enrollment:
       type: object
       properties:
@@ -2324,7 +2321,7 @@ components:
       properties:
         rule: { type: string, enum: [ATTENDANCE, MANDATORY_ASSESSMENTS, AGGREGATE, RECOMMENDATION] }
         passed: { type: boolean }
-        actual: { nullable: true, oneOf: [{ type: number }, { type: boolean }] }
+        actual: { anyOf: [{ type: number, nullable: true }, { type: boolean }] }
         required: { oneOf: [{ type: number }, { type: boolean }] }
     CertificateSummary:
       type: object
@@ -2364,7 +2361,11 @@ components:
         aggregate: { type: number, nullable: true }
         grade: { type: string, nullable: true, enum: [A, B, C, D, NOT_COMPLETED] }
         certificate:
-          { nullable: true, allOf: [{ $ref: '#/components/schemas/CertificateSummary' }] }
+          {
+            type: object,
+            nullable: true,
+            allOf: [{ $ref: '#/components/schemas/CertificateSummary' }],
+          }
     ApproveResult:
       type: object
       properties:

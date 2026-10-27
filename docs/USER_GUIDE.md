@@ -1,0 +1,251 @@
+# User guide
+
+How to use the KISS Vocational Training Management Portal, one section per role. Every
+screenshot is taken automatically from a freshly seeded copy of the app
+(`pnpm --filter @vtmp/web docs:screens`), so it matches what you see.
+
+- [Signing in, language and phones](#signing-in-language-and-phones)
+- [Students](#students)
+- [Trainers](#trainers)
+- [Admins](#admins)
+- [Employers and the public](#employers-and-the-public)
+- [Help and problems](#help-and-problems)
+
+---
+
+## Signing in, language and phones
+
+![Sign-in page](screenshots/public-login.jpg)
+
+1. Open the portal and sign in with your email and password. After 5 wrong passwords the
+   account locks for 15 minutes.
+2. You land on your role's dashboard. The sidebar lists everything you can do; every task is
+   at most three clicks from the dashboard.
+3. **Language:** choose English, ଓଡ଼ିଆ (Odia) or हिन्दी (Hindi) at the top. The choice is saved to
+   your profile and follows you to other devices.
+4. **Profile:** *My profile* in the menu at the top right holds your name, phone, an optional
+   Odia name for your certificate, and the password change.
+5. **Notifications:** the bell shows new messages (application decisions, certificates,
+   support from your trainer).
+
+The portal works on phones: on a small screen the sidebar opens from the menu button.
+
+![Phone view](screenshots/phone-student-training.jpg)
+
+---
+
+## Students
+
+### Dashboard
+
+![Student dashboard](screenshots/student-dashboard.jpg)
+
+Your application status, attendance, current aggregate and projected grade at a glance, and
+**Download performance report** for a PDF of your results.
+
+### Apply for a course
+
+![Course catalogue](screenshots/student-courses.jpg)
+
+1. **Courses** lists the courses open in the current enrollment window.
+2. Open a course for details, then **Apply**. Rank up to three courses in order of
+   preference.
+3. **My enrollment** shows your application status (Pending, Approved, Waitlisted, Allocated,
+   Rejected) and the reason if it was rejected. You can change preferences or withdraw while it
+   is pending.
+
+You can have one active application per training cycle, and only while the window is open.
+
+### Follow your training
+
+![My training](screenshots/student-training.jpg)
+
+**My training** shows your attendance (you need at least 75 %), every assessment result, your
+weighted aggregate and projected grade, your trainer's evaluation and your session history.
+Figures update as soon as your trainer records them.
+
+### Skill gaps and resources
+
+![My skill gaps](screenshots/student-skills.jpg)
+
+**My skill gaps** lists each competency of your course below the required level, largest gap
+first, with resources and practice tasks your trainers have approved. Competencies not yet
+assessed are listed separately.
+
+### Skill Passport
+
+![Skill Passport](screenshots/student-passport.jpg)
+
+Every skill your trainers have **verified**, across all your courses, plus your certificates.
+
+- **Download PDF** for a printable copy.
+- **Share passport** creates a link (and QR code) for an employer. You choose how long it lasts
+  and can revoke it at any time. The shared page shows only your name, verified skills and
+  certificates: never marks, attendance or contact details.
+
+### Opportunities
+
+![Opportunities](screenshots/student-opportunities.jpg)
+
+Internships, apprenticeships and jobs, ranked by how many of the required skills you have
+verified (match %). Each one lists the skills you are missing, with resources to close the gap.
+Press **I'm interested** to let the placement team know.
+
+### Certificates
+
+![My certificates](screenshots/student-certificates.jpg)
+
+Once you complete a course you can download your certificate. Each certificate has a unique ID
+and a QR code that anyone can scan to check it is genuine.
+
+### Training assistant
+
+The training assistant answers questions from your course notes. It is switched off on this
+installation (it needs a paid AI service); the page says so.
+
+---
+
+## Trainers
+
+### Dashboard and sessions
+
+![Trainer dashboard](screenshots/trainer-dashboard.jpg)
+
+Your batches, today's sessions and students who need attention.
+
+![Sessions](screenshots/trainer-sessions.jpg)
+
+**Sessions** lists your sessions by day. Open one to take attendance.
+
+### Take attendance
+
+![Attendance sheet](screenshots/trainer-attendance.jpg)
+
+1. Press **Mark all present**, then change anyone who is late or absent.
+2. **Save attendance.** You can change it for 48 hours; after that only an admin can, with a
+   reason, and the change is logged.
+
+With a keyboard: Tab moves between students, the arrow keys choose Present / Late / Absent.
+
+### Assessments and marks
+
+![Assessments](screenshots/trainer-assessments.jpg)
+
+1. **Add assessment**: title, type (theory or practical), maximum marks, weightage, mandatory or
+   not.
+2. **Enter marks** for each student (0 to the maximum; the form stops anything outside it).
+3. For practical assessments, **Evidence** lets you attach photos, PDFs or video links and score
+   them against a rubric.
+
+### Competencies
+
+![Competency ratings](screenshots/trainer-competencies.jpg)
+
+Rate each student's level (1–4) on each competency of the course and **verify** it when you have
+seen it demonstrated. Verified skills appear on the student's Skill Passport.
+
+### At-risk students
+
+![At-risk students](screenshots/trainer-at-risk.jpg)
+
+Every night the portal checks attendance, marks and mandatory skills. Students below the
+thresholds are flagged **Medium** or **High** with the reasons. Open a student to agree a
+support action (remedial session, practice task, counselling) with an owner and due date, and
+record the outcome. A flag closes by itself once the student has been clear for 7 days, or when
+they finish training. A High flag still open after 14 days is escalated to the admins.
+
+---
+
+## Admins
+
+### Dashboard
+
+![Admin dashboard](screenshots/admin-dashboard.jpg)
+
+Counts, completion rate, escalated students, the application funnel and grade charts.
+
+### Users, courses and cycles
+
+**Users** creates students, trainers and admins and deactivates accounts (sign-in stops at once).
+**Courses & cycles** manages courses, training cycles and the enrollment window of each course.
+
+### Enrollments and allocation
+
+![Enrollments](screenshots/admin-enrollments.jpg)
+
+1. **Enrollments**: approve, waitlist or reject applications (rejection needs a reason the
+   student sees).
+2. **Batches → Run allocation**: preview the automatic allocation (by preference rank, then the
+   tie-break rule in Settings), check the scheduling advice (capacity, clashes, free slots and
+   trainers), then **Confirm allocation**. Nothing changes until you confirm.
+
+![Batches](screenshots/admin-batches.jpg)
+
+### Completion and certificates
+
+![Completions](screenshots/admin-completions.jpg)
+
+**Completions** shows every student of a batch with the completion checks: attendance ≥ 75 %,
+all mandatory assessments, aggregate ≥ 40 % and the trainer's recommendation. **Approve** issues
+the certificate (PDF with ID and QR code); students who don't meet the rules can be marked *Not
+completed* with a reason.
+
+![Certificates](screenshots/admin-certificates.jpg)
+
+**Certificates** lists every certificate issued. **Revoke** (with a reason) makes it show as
+*Revoked* on the public check at once; the reason stays private.
+
+### At-risk students, opportunities, reports and analytics
+
+![At-risk students (admin)](screenshots/admin-at-risk.jpg)
+
+Admins see every batch's flags and can **Run the check now**.
+
+![Opportunities admin](screenshots/admin-opportunities.jpg)
+
+**Opportunities** publishes internships, apprenticeships and jobs for job roles (the
+competencies and levels each role needs), and lists interested students with their match %.
+
+![Reports](screenshots/admin-reports.jpg)
+
+**Reports** downloads a batch report (attendance, marks, aggregate, grade, completion status and
+certificate per student) or a course report (completion rate and grades), as CSV or PDF, and a
+performance report for any student.
+
+![Outcome analytics](screenshots/admin-analytics.jpg)
+
+**Outcome analytics** compares completion, average score, attendance, verified skills and
+placements across courses and batches, and records placements (job, apprenticeship,
+internship, self-employment or further study) for students who finished. Figures are rebuilt
+nightly; **Refresh now** includes today's changes.
+
+### Audit log
+
+![Audit log](screenshots/admin-audit.jpg)
+
+Every change (applications, attendance, marks, completion, certificates, ratings, flags) with
+who, what, before and after, and when. Filter and export as CSV. Entries can never be edited or
+deleted, not even by an admin.
+
+---
+
+## Employers and the public
+
+![Certificate verification](screenshots/public-verify.jpg)
+
+Scan the QR code on a certificate, or open `/verify` and type its ID. The page shows only the
+holder's name, the course, grade, issue date and whether it is **Valid** or **Revoked**. A
+student's shared Skill Passport link works the same way: no sign-in needed, nothing private
+shown.
+
+---
+
+## Help and problems
+
+| Problem | What to do |
+| --- | --- |
+| "Account locked" | Wait 15 minutes, or ask an admin to check the account. |
+| Can't edit attendance | The 48-hour window has passed: ask an admin to correct it. |
+| Not eligible to complete | The Completions page shows which rule fails (attendance, missing assessment, aggregate, recommendation). |
+| A shared passport link stopped working | It expired or the student revoked it: ask for a new link. |
+| Wrong language | Use the language menu at the top; it is remembered on your profile. |
