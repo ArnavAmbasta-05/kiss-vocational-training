@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { INACTIVE_ENROLLMENT_STATUSES } from '@vtmp/shared';
 import { Badge, Card, EmptyState, Input, PageSkeleton } from '../../components/ui';
 import { useErrorMessage } from '../../lib/api/useErrorMessage';
+import { usePersistentState } from '../../lib/usePersistentState';
 import { useMyEnrollments } from '../enrollment/api';
 import { StatusBadge } from '../enrollment/StatusBadge';
 import { useCatalogue } from './api';
@@ -30,7 +31,11 @@ export function CataloguePage() {
     application?.preferences.find((p) => p.courseId === courseId)?.rank;
   const inCycle = data?.cycle ? `cycle=${data.cycle.id}` : '';
   const [search, setSearch] = useState('');
-  const [openOnly, setOpenOnly] = useState(false);
+  const [openOnly, setOpenOnly] = usePersistentState(
+    'catalogue.openOnly',
+    false,
+    (v): v is boolean => typeof v === 'boolean',
+  );
 
   const courses = useMemo(() => {
     const q = search.trim().toLowerCase();

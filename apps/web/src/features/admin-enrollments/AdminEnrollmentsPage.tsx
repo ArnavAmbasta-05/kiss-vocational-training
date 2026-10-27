@@ -14,6 +14,7 @@ import {
 import { useToast } from '../../components/toast';
 import { useErrorMessage } from '../../lib/api/useErrorMessage';
 import { formatDate } from '../../lib/format';
+import { oneOf, usePersistentState } from '../../lib/usePersistentState';
 import { useAdminCourses, useAdminCycles } from '../admin-courses/api';
 import { StatusBadge } from '../enrollment/StatusBadge';
 import { useAdminEnrollments, useReview, type EnrollmentFilters } from './api';
@@ -39,12 +40,19 @@ export function AdminEnrollmentsPage() {
   const courses = useAdminCourses();
   const review = useReview();
 
+  // The status filter is remembered on this device (default: applications waiting for review).
+  const [savedStatus, setSavedStatus] = usePersistentState<EnrollmentFilters['status']>(
+    'admin-enrollments.status',
+    'PENDING',
+    oneOf('', ...ENROLLMENT_STATUSES),
+  );
   const [filters, setFilters] = useState<EnrollmentFilters>({
     page: 1,
     courseId: '',
-    status: 'PENDING',
+    status: savedStatus,
     q: '',
   });
+  useEffect(() => setSavedStatus(filters.status), [filters.status, setSavedStatus]);
   const [search, setSearch] = useState('');
   const q = useDebounced(search, 300);
   const [selected, setSelected] = useState<Set<string>>(new Set());
