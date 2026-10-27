@@ -15,6 +15,117 @@ Read this at the start of every session and update it at the end of every sprint
 
 ---
 
+## Release note (final, 2026-10-26)
+
+### Shipped
+- **Release 1 (core):** F1 sign-in and roles, F2 courses and cycles, F3 enrollment, F4 batches
+  and allocation, F5 attendance, F6 assessments, F7 completion and certificates (PDF with ID
+  and QR), F8 reports, F9 dashboards. Gate 1 passed on the live site.
+- **Release 2:** F10 Skill Passport with share links, F11 early intervention (nightly risk
+  check, actions, escalation), F12 competency gap analyzer, F15 public QR verification, F19 audit
+  log viewer. Gate 2 passed on the live site.
+- **Release 3:** F13 career and opportunity matcher, F14 smart scheduling advisor (clash
+  blocking, free slots, trainers), F16 Odia and Hindi with on-demand fonts and a bundle budget,
+  F18 practical evidence with rubrics, F20 outcome analytics and placements.
+- **Quality:** 381 API tests (91 % statements, 93 % lines), browser tests on desktop and phone,
+  a security suite over all 156 routes, accessibility on every page, every one of the 99
+  requirements and rules traced to a test or CI check.
+
+### Built but switched off
+- **F17 AI training assistant.** Complete and tested with mock providers (materials upload and
+  approval, retrieval, cited answers, practice questions, limits, usage page). Off on the live
+  site because it needs paid API keys (Claude and Voyage) and the project has no budget. It can
+  be tried locally for free with the mock provider (README).
+
+### Deferred / known gaps
+- Native-speaker review of the Odia and Hindi text (machine-drafted, complete).
+- Cold start on the free hosting: about 2.7 s for the first request after idle (target 2 s);
+  fixing it needs a paid plan.
+- The project's final name (user-facing text only, when chosen).
+
+---
+
+## Sprint 13 — Hardening, quality and final submission (built, 2026-10-26)
+
+### Built
+- **Security suite** (`apps/api/src/__tests__/security.int.test.ts`). It reads the app's own
+  route table (156 routes), so a new route is covered without editing the test:
+  - the access matrix (who may call each route) is pinned as a snapshot, so any change shows up
+    in review;
+  - every signed-in route answers 401 without a token; only 13 deliberate routes are public;
+  - every role-restricted route answers 403 to every other role, before validation;
+  - student A and trainer A get 403/404 on every `:id` route that takes batch B's or student
+    B's ids (student, batch, session, assessment, enrollment, result);
+  - stored script-like text comes back as data; an e2e test shows it as plain text to the admin.
+
+  Mutation-checked: dropping a role check or an ownership check makes it fail. Public responses
+  now also check values (no email or roll number anywhere), not only key names.
+- **Reliability** (`reliability.int.test.ts`): a database fault forced in the middle of
+  completion approval and of allocation confirm leaves no partial change, and the same action
+  succeeds once the fault is gone. Scheduled jobs record their last success
+  (`job_locks.last_success_at`), report `missedRuns`, and the daily risk check starts with the
+  batches a cut-short run left over (catch-up).
+- **Performance:**
+  - k6 load test (`perf/load.js`, 100 users, p95 < 2 s) and Lighthouse budgets in a manual
+    workflow (`perf.yml`) on a production build.
+  - Measured locally: `/verify` scores 100 (LCP 0.9 s, 11 KB, throttled phone); the sign-in
+    shell 94 (LCP 2.6 s).
+  - Live cold start 2.66 s, warm 0.4–0.6 s.
+  - Every foreign key is indexed (now a test).
+  - The audit log (which only grows) gets an `(action, created_at)` index, and its filter
+    lists read distinct values through the index: 31 ms → 4 ms on 200,000 rows.
+  - Only the `common` and `errors` translations load up front: 37 → 13 requests on the
+    sign-in page.
+- **Accessibility** (`e2e/a11y.spec.ts`): axe on every sidebar page of every role and the
+  public pages (0 serious issues); the attendance workflow with the keyboard only, desktop and
+  phone; no page scrolls sideways at 360 px.
+- **Fixes found on the way:**
+  - Students who had finished training stayed in the nightly risk check: a certified student
+    could be flagged. Now only students in training are evaluated, and a flag closes (audited,
+    reason `TRAINING_ENDED`) when its student finishes.
+  - The outcome chart showed "0 %" for courses with no finished students; it now says
+    "No data yet".
+  - The seed records its analytics refresh, so a fresh database shows "Figures as of …".
+  - A Sprint 11 e2e test always booked "tomorrow", so repeated local runs filled the seeded
+    trainer's calendar; it now spreads its date.
+  - `openapi.yaml` lint errors went from 9 to 0.
+- **Polish:** page-shaped loading skeletons (24 full-page spinners replaced; no motion for
+  users who prefer reduced motion); the local `vite preview` proxies the API.
+- **Docs:**
+  - `docs/TRACEABILITY.md` is generated by `scripts/traceability.mjs` from the IDs the code,
+    `openapi.yaml`, tests and CI checks cite (ranges and lists included). It shows 99 of 99
+    covered and is checked in CI (`pnpm docs:check`).
+  - `docs/TEST_PLAN.md` with results and coverage.
+  - `docs/USER_GUIDE.md` per role with 27 screenshots, taken by
+    `pnpm --filter @vtmp/web docs:screens` on a freshly seeded database.
+  - `docs/DEMO.md` (10-minute script).
+  - `docs/ER.md` gains the Release 3 tables.
+  - A Postman collection generated from `openapi.yaml` (`scripts/postman.mjs`; "Sign in" stores
+    the token).
+  - README with an architecture diagram.
+
+### Deviations
+- **k6 runs in GitHub Actions, not against the live site.** 100 users from one address would
+  trip the live flood limiter and use the free quota. The workflow is manual and free on a
+  public repository.
+- **Cold start is documented, not fixed:** keeping the function and Neon awake costs money or
+  free-tier hours (zero-budget decision).
+- **Lighthouse covers public pages only**; signed-in pages are covered by the bundle budget.
+- **Tests were tagged** with the requirement IDs they prove, where they already proved one but
+  didn't say so; three tests were added where none existed: certificate QR (BRQ-15.1),
+  simpler explanations (BRQ-17.3), gap resources in assistant answers (BRQ-17.4).
+
+### Definition of done
+- [x] lint · typecheck · prettier · `i18n:check --strict` · `docs:check` · build · bundle budget
+- [x] API: 49 suites, 381 tests passing; coverage 91.22 % statements, 73.43 % branches,
+  90.93 % functions, 93.12 % lines
+- [x] e2e: 63 tests passing locally on desktop and phone (including a11y and security specs)
+- [x] openapi.yaml valid (0 errors); Postman collection regenerated
+- [x] Seed: records the analytics refresh; screenshots come from a fresh seed
+- [x] Strings externalized in en, hi and or
+
+---
+
 ## Sprint 12 — Multilingual and low-bandwidth (F16), outcome analytics (F20), AI training assistant (F17) (built, 2026-10-26)
 
 ### Built
