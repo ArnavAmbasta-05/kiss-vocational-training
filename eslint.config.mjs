@@ -34,8 +34,14 @@ export default tseslint.config(
       'prisma/**/*.ts',
       '**/*.config.{js,cjs,mjs,ts}',
       '**/scripts/**/*.mjs',
+      'perf/**/*.mjs',
     ],
     languageOptions: { globals: { ...globals.node } },
+  },
+  {
+    // k6 scripts run in k6's own runtime, which provides __ENV.
+    files: ['perf/**/*.js'],
+    languageOptions: { globals: { __ENV: 'readonly' } },
   },
   {
     files: ['apps/api/**/*.{js,cjs}', 'api/**/*.js'],

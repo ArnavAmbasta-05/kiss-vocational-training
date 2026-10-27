@@ -64,13 +64,31 @@ export async function list(q: AuditQuery): Promise<Paginated<AuditLogRow>> {
   });
 }
 
-/** Entities and actions present in the log, for the viewer's filters. */
+/**
+ * Entities and actions present in the log, for the viewer's filters. The log only grows, so
+ * instead of grouping every row this hops from one distinct value to the next through the
+ * (entity, …) and (action, …) indexes: a few dozen index lookups at any table size.
+ */
 export async function facets(): Promise<AuditFacets> {
   const [entities, actions] = await Promise.all([
-    prisma().auditLog.groupBy({ by: ['entity'], orderBy: { entity: 'asc' } }),
-    prisma().auditLog.groupBy({ by: ['action'], orderBy: { action: 'asc' } }),
+    prisma().$queryRaw<Array<{ v: string }>>`
+      WITH RECURSIVE t(v) AS (
+        (SELECT entity FROM audit_logs ORDER BY entity LIMIT 1)
+        UNION ALL
+        SELECT (SELECT entity FROM audit_logs WHERE entity > t.v ORDER BY entity LIMIT 1)
+        FROM t WHERE t.v IS NOT NULL
+      )
+      SELECT v FROM t WHERE v IS NOT NULL`,
+    prisma().$queryRaw<Array<{ v: string }>>`
+      WITH RECURSIVE t(v) AS (
+        (SELECT action FROM audit_logs ORDER BY action LIMIT 1)
+        UNION ALL
+        SELECT (SELECT action FROM audit_logs WHERE action > t.v ORDER BY action LIMIT 1)
+        FROM t WHERE t.v IS NOT NULL
+      )
+      SELECT v FROM t WHERE v IS NOT NULL`,
   ]);
-  return { entities: entities.map((e) => e.entity), actions: actions.map((a) => a.action) };
+  return { entities: entities.map((e) => e.v), actions: actions.map((a) => a.v) };
 }
 
 /** The same filters as CSV, newest first, at most EXPORT_LIMIT rows. */

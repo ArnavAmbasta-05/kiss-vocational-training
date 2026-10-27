@@ -29,7 +29,8 @@ export default defineConfig({
       '/api': 'http://localhost:4000',
     },
   },
-  preview: { port: 4173, strictPort: true },
+  // The built app, served locally for Lighthouse and the k6 load test (perf/).
+  preview: { port: 4173, strictPort: true, proxy: { '/api': 'http://localhost:4000' } },
   build: {
     target: 'es2020',
     sourcemap: true,

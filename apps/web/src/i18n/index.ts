@@ -10,10 +10,6 @@ import { DEFAULT_LOCALE, LOCALES, type Locale } from '@vtmp/shared';
  */
 const localeFiles = import.meta.glob<{ default: Record<string, unknown> }>('../locales/*/*.json');
 
-export const NAMESPACES = [
-  ...new Set(Object.keys(localeFiles).map((p) => p.split('/').pop()!.replace('.json', ''))),
-];
-
 export function isLocale(value: string | undefined): value is Locale {
   return !!value && (LOCALES as readonly string[]).includes(value);
 }
@@ -31,7 +27,9 @@ void i18n
     supportedLngs: [...LOCALES],
     fallbackLng: DEFAULT_LOCALE,
     load: 'languageOnly',
-    ns: NAMESPACES,
+    // Only what every screen needs is fetched up front; a page's own namespace loads with the
+    // page (components suspend until it arrives). Saves ~25 requests on slow phones (NFR-10).
+    ns: ['common', 'errors'],
     defaultNS: 'common',
     // Untranslated strings are "" in or/hi files; fall back to English instead of blank.
     returnEmptyString: false,

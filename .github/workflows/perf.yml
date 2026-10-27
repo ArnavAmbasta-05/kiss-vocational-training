@@ -1,0 +1,83 @@
+name: Performance
+
+# NFR-03 / NFR-09 / NFR-10 on a production build of this commit, in the runner (never the live
+# site: 100 users from one address would trip its flood limiter and use its free-tier quota).
+#   - k6 (perf/load.js): 100 virtual users on the common pages and APIs, p95 under 2 s.
+#   - Lighthouse, mobile with simulated slow 4G: /verify under 3 s; the sign-in shell too.
+# Start it from the Actions tab or `gh workflow run perf.yml`. Free on a public repository.
+on:
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: 20
+  DATABASE_URL: postgresql://vtmp:vtmp@localhost:5432/vtmp_perf?schema=public
+  JWT_SECRET: perf-access-secret-that-is-at-least-32-chars
+  REFRESH_SECRET: perf-refresh-secret-that-is-at-least-32-chars
+  PUBLIC_BASE_URL: http://localhost:4173
+  CORS_ORIGINS: http://localhost:4173
+  # One runner plays all 100 users from one address; lift only the flood limiter.
+  GLOBAL_RATE_LIMIT_PER_15MIN: '1000000'
+
+jobs:
+  perf:
+    name: k6 load test + Lighthouse
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: vtmp
+          POSTGRES_PASSWORD: vtmp
+          POSTGRES_DB: vtmp_perf
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U vtmp -d vtmp_perf"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: cp .env.example .env
+      - run: pnpm --filter @vtmp/api db:deploy
+      - run: pnpm db:seed
+      - name: Start the API (production build) and the web app (vite preview)
+        run: |
+          NODE_ENV=production RATE_LIMIT_STORE=memory node apps/api/dist/server.js > api.log 2>&1 &
+          pnpm --filter @vtmp/web preview > web.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -fsS http://localhost:4000/health > /dev/null && curl -fsS http://localhost:4173/ > /dev/null && exit 0
+            sleep 2
+          done
+          cat api.log web.log
+          exit 1
+      - uses: grafana/setup-k6-action@v1
+      - name: k6, 100 virtual users (thresholds fail the job)
+        run: k6 run --summary-export k6-summary.json perf/load.js
+      - name: Lighthouse (mobile, slow 4G)
+        if: success() || failure()
+        run: |
+          export CHROME_PATH="$(command -v google-chrome)"
+          for page in verify/ZZZZZZZZZZZZZZZZ login; do
+            npx -y lighthouse@12.8.2 "http://localhost:4173/$page" --quiet \
+              --chrome-flags="--headless=new --no-sandbox" \
+              --only-categories=performance,accessibility,best-practices \
+              --output=json --output=html --output-path="./lh-${page%%/*}"
+          done
+          node perf/lighthouse-check.mjs lh-verify.report.json 3000 100
+          node perf/lighthouse-check.mjs lh-login.report.json 4000 500
+      - uses: actions/upload-artifact@v4
+        if: success() || failure()
+        with:
+          name: perf-reports
+          path: |
+            k6-summary.json
+            lh-*.report.*
+            api.log
+          retention-days: 14
