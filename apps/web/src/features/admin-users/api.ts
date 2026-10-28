@@ -72,3 +72,12 @@ export function useDeleteUser() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-users'] }),
   });
 }
+
+export function useResetPassword() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, password }: { id: string; password: string }) =>
+      api.post<UserSummary>(`/admin/users/${id}/password`, { password }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-users'] }),
+  });
+}

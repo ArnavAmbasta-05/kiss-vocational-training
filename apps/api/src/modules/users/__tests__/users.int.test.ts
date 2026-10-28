@@ -294,6 +294,70 @@ describe('admin user clean-up', () => {
   });
 });
 
+describe('admin password reset', () => {
+  it('sets a new password: old one stops working, sessions end, lock cleared, audited', async () => {
+    const admin = await signedIn(Role.ADMIN);
+    const target = await signedIn(Role.STUDENT);
+    await prisma().user.update({
+      where: { id: target.user.id },
+      data: { failedLoginCount: 5, lockedUntil: new Date(Date.now() + 15 * 60_000) },
+    });
+    const res = await request(app)
+      .post(`/api/v1/admin/users/${target.user.id}/password`)
+      .set(bearer(admin.accessToken))
+      .send({ password: 'Fresh-Start-9' });
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ id: target.user.id, lockedUntil: null });
+    expect(JSON.stringify(res.body)).not.toMatch(/Fresh-Start-9|passwordHash/);
+
+    expect(
+      await prisma().refreshToken.count({ where: { userId: target.user.id, revokedAt: null } }),
+    ).toBe(0);
+    const old = await request(app)
+      .post('/api/v1/auth/login')
+      .send({ email: target.user.email, password: TEST_PASSWORD });
+    expect(old.status).toBe(401);
+    const fresh = await request(app)
+      .post('/api/v1/auth/login')
+      .send({ email: target.user.email, password: 'Fresh-Start-9' });
+    expect(fresh.status).toBe(200);
+
+    const audit = await prisma().auditLog.findFirstOrThrow({
+      where: { action: 'USER_PASSWORD_RESET', entityId: target.user.id },
+    });
+    expect(audit.userId).toBe(admin.user.id);
+    expect(JSON.stringify(audit)).not.toMatch(/Fresh-Start-9/);
+  });
+
+  it('refuses short passwords, the admin themselves, unknown users and non-admins', async () => {
+    const admin = await signedIn(Role.ADMIN);
+    const target = await createLoginUser(prisma(), Role.TRAINER);
+    const path = `/api/v1/admin/users/${target.id}/password`;
+    const short = await request(app)
+      .post(path)
+      .set(bearer(admin.accessToken))
+      .send({ password: 'short' });
+    expect(short.status).toBe(422);
+    const self = await request(app)
+      .post(`/api/v1/admin/users/${admin.user.id}/password`)
+      .set(bearer(admin.accessToken))
+      .send({ password: 'Fresh-Start-9' });
+    expect(self.status).toBe(409);
+    expect(self.body.error.code).toBe('CANNOT_RESET_OWN_PASSWORD');
+    const unknown = await request(app)
+      .post('/api/v1/admin/users/00000000-0000-4000-8000-000000000000/password')
+      .set(bearer(admin.accessToken))
+      .send({ password: 'Fresh-Start-9' });
+    expect(unknown.status).toBe(404);
+    const student = await signedIn(Role.STUDENT);
+    const forbidden = await request(app)
+      .post(path)
+      .set(bearer(student.accessToken))
+      .send({ password: 'Fresh-Start-9' });
+    expect(forbidden.status).toBe(403);
+  });
+});
+
 describe('PATCH /users/me (BRQ-1.3)', () => {
   it('updates name, locale and phone', async () => {
     const { accessToken, user } = await signedIn(Role.STUDENT);

@@ -28,6 +28,7 @@
     "COURSE_IN_USE": "This course has been offered, applied for or taught, so it cannot be deleted. Deactivate it instead.",
     "USER_IN_USE": "This account already has activity, so it cannot be deleted. Deactivate it instead.",
     "CANNOT_DELETE_SELF": "You cannot delete your own account.",
+    "CANNOT_RESET_OWN_PASSWORD": "Change your own password from your profile instead.",
     "FORBIDDEN": "You do not have permission to do that.",
     "NOT_FOUND": "That record could not be found.",
     "ENROLLMENT_WINDOW_CLOSED": "Enrollment for one of these courses is not open right now.",

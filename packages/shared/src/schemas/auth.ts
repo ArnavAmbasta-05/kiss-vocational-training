@@ -120,6 +120,10 @@ export const AdminUpdateUserSchema = z
   .refine((v) => Object.keys(v).length > 0, { message: 'Nothing to update' });
 export type AdminUpdateUserInput = z.infer<typeof AdminUpdateUserSchema>;
 
+/** Admin sets a new password for someone who forgot theirs; it is shared with them privately. */
+export const AdminResetPasswordSchema = z.object({ password: PasswordSchema }).strict();
+export type AdminResetPasswordInput = z.infer<typeof AdminResetPasswordSchema>;
+
 export const UserListQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),

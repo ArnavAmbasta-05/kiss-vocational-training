@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import {
   AdminCreateUserSchema,
+  AdminResetPasswordSchema,
   AdminUpdateUserSchema,
   BulkStatusSchema,
   ChangePasswordSchema,
@@ -45,5 +46,10 @@ export function adminUserRoutes(): Router {
     controller.update,
   );
   router.delete('/:id', validate({ params: IdParams }), controller.remove);
+  router.post(
+    '/:id/password',
+    validate({ params: IdParams, body: AdminResetPasswordSchema }),
+    controller.resetPassword,
+  );
   return router;
 }

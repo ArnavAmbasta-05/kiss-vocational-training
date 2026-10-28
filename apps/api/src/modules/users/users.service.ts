@@ -257,6 +257,38 @@ export async function updateUser(
 }
 
 /**
+ * Sets a new password for a user who forgot theirs (the sign-in page sends them to the training
+ * office). It also clears any login lock and ends every session, so only the new password works
+ * from now on. Admins change their own password under /users/me/password instead.
+ */
+export async function resetPassword(
+  actor: Actor & { userId: string },
+  userId: string,
+  password: string,
+): Promise<UserSummary> {
+  if (userId === actor.userId) {
+    throw AppError.conflict(
+      'CANNOT_RESET_OWN_PASSWORD',
+      'Change your own password from your profile instead',
+    );
+  }
+  const passwordHash = await hashPassword(password);
+  return withAudit(actor, async (tx, log) => {
+    const before = await tx.user.findUnique({ where: { id: userId }, select: { id: true } });
+    if (!before) throw AppError.notFound('User not found');
+    const user = await tx.user.update({
+      where: { id: userId },
+      data: { passwordHash, failedLoginCount: 0, lockedUntil: null },
+      select: summarySelect,
+    });
+    await revokeUserSessions(tx, userId);
+    // Never the password itself (CLAUDE.md rule 10).
+    await log({ action: 'USER_PASSWORD_RESET', entity: 'User', entityId: userId });
+    return toSummary(user);
+  });
+}
+
+/**
  * Deactivates or reactivates several accounts in one transaction (admin clean-up). The same
  * rules as one at a time: never yourself, deactivation ends sessions, reactivation unlocks.
  */

@@ -1,6 +1,7 @@
 import type { Request } from 'express';
 import type {
   AdminCreateUserInput,
+  AdminResetPasswordInput,
   AdminUpdateUserInput,
   BulkStatusInput,
   ChangePasswordInput,
@@ -47,4 +48,9 @@ export const setActive = asyncHandler(async (req, res) => {
 export const remove = asyncHandler(async (req, res) => {
   await usersService.deleteUser(actor(req), req.params.id!);
   res.status(204).end();
+});
+
+export const resetPassword = asyncHandler(async (req, res) => {
+  const { password } = req.body as AdminResetPasswordInput;
+  res.json(await usersService.resetPassword(actor(req), req.params.id!, password));
 });
