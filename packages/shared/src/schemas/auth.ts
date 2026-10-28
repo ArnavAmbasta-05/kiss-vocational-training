@@ -6,7 +6,17 @@ export const PASSWORD_MAX_LENGTH = 72; // bcrypt ignores bytes beyond 72
 
 const email = z.string().trim().toLowerCase().email().max(254);
 
-export const PasswordSchema = z.string().min(PASSWORD_MIN_LENGTH).max(PASSWORD_MAX_LENGTH);
+/**
+ * A4: at least 8 characters with a letter and a digit, so "aaaaaaaa" or "12345678" are refused.
+ * Login accepts any password (below); this applies when one is set.
+ */
+export const PasswordSchema = z
+  .string()
+  .min(PASSWORD_MIN_LENGTH)
+  .max(PASSWORD_MAX_LENGTH)
+  .refine((p) => /\p{L}/u.test(p) && /\d/.test(p), {
+    message: 'Use at least one letter and one digit',
+  });
 
 export const LoginSchema = z.object({
   email,

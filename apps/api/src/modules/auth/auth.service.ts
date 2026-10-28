@@ -53,8 +53,15 @@ export interface IssuedSession {
   refreshToken: string;
 }
 
+// One answer for every failed sign-in, locked accounts included (A5): a different answer for a
+// locked account would tell anyone that the email exists. The message names the lock so a
+// real user knows to wait (or to ask an admin to unlock it).
 const invalidCredentials = () =>
-  new AppError(401, 'INVALID_CREDENTIALS', 'Invalid email or password');
+  new AppError(
+    401,
+    'INVALID_CREDENTIALS',
+    'Invalid email or password, or the account is locked for a few minutes after too many tries',
+  );
 
 async function issueSession(
   tx: Tx,
@@ -97,11 +104,9 @@ export async function login(input: LoginInput, ip?: string): Promise<IssuedSessi
     throw invalidCredentials();
   }
   if (user.lockedUntil && user.lockedUntil > new Date()) {
-    throw new AppError(
-      429,
-      'ACCOUNT_LOCKED',
-      'Too many failed sign-in attempts. Please try again later.',
-    );
+    // Same cost and answer as a wrong password; the password is not checked while locked.
+    await burnPasswordCheck(input.password);
+    throw invalidCredentials();
   }
 
   const passwordOk = await verifyPassword(input.password, user.passwordHash);

@@ -17,7 +17,8 @@ const FormSchema = z
     newPassword: z
       .string()
       .min(PASSWORD_MIN_LENGTH, 'password.tooShort')
-      .max(PASSWORD_MAX_LENGTH, 'password.tooShort'),
+      .max(PASSWORD_MAX_LENGTH, 'password.tooShort')
+      .refine((p) => /\p{L}/u.test(p) && /\d/.test(p), 'password.letterAndDigit'),
     confirmPassword: z.string().min(1, 'password.required'),
   })
   .refine((v) => v.newPassword === v.confirmPassword, {

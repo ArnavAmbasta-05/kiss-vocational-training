@@ -34,7 +34,9 @@ export function ResetPasswordModal({
   if (!user) return null;
 
   const confirm = async () => {
-    if (password.length < PASSWORD_MIN_LENGTH) return setInvalid(true);
+    const strong =
+      password.length >= PASSWORD_MIN_LENGTH && /\p{L}/u.test(password) && /\d/.test(password);
+    if (!strong) return setInvalid(true);
     try {
       await reset.mutateAsync({ id: user.id, password, mustChangePassword: mustChange });
       toast.show({ tone: 'success', title: t('resetPassword.done', { name: user.fullName }) });

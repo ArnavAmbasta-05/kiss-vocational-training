@@ -16,8 +16,7 @@
   "network": "Cannot reach the server. Check your connection and try again.",
   "generic": "Something went wrong. Please try again.",
   "codes": {
-    "INVALID_CREDENTIALS": "Invalid email or password.",
-    "ACCOUNT_LOCKED": "Too many failed sign-in attempts. Please try again later.",
+    "INVALID_CREDENTIALS": "Wrong email or password, or the account is locked for a few minutes after too many tries. If it keeps happening, ask the training office.",
     "PASSWORD_CHANGE_REQUIRED": "Choose your own password before continuing.",
     "RATE_LIMITED": "Too many requests. Please wait a moment and try again.",
     "VALIDATION_FAILED": "Some fields need attention.",

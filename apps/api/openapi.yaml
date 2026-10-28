@@ -69,7 +69,9 @@ paths:
         Returns a 15-minute access token in the body and sets a 7-day refresh token in the
         httpOnly `vtmp_rt` cookie (path /api/v1/auth). Wrong email, wrong password and
         deactivated accounts all return the same 401. After `auth.maxFailedLogins` failures the
-        account is locked for `auth.lockMinutes` (429 ACCOUNT_LOCKED). Rate-limited per IP.
+        account is locked for `auth.lockMinutes`; a locked account also gets that same 401
+        INVALID_CREDENTIALS (whose message mentions the lock), so the answer never shows that
+        an email exists. Admins can unlock it. Rate-limited per IP.
       security: []
       requestBody:
         required: true
@@ -152,7 +154,11 @@ paths:
               required: [currentPassword, newPassword]
               properties:
                 currentPassword: { type: string }
-                newPassword: { type: string, minLength: 8, maxLength: 72 }
+                newPassword:
+                  type: string
+                  minLength: 8
+                  maxLength: 72
+                  description: At least one letter and one digit.
       responses:
         '204': { description: Password changed }
         '401': { $ref: '#/components/responses/Unauthorized' }
@@ -318,7 +324,11 @@ paths:
               type: object
               required: [password]
               properties:
-                password: { type: string, minLength: 8, maxLength: 72 }
+                password:
+                  type: string
+                  minLength: 8
+                  maxLength: 72
+                  description: At least one letter and one digit.
                 mustChangePassword:
                   type: boolean
                   default: true
@@ -2448,7 +2458,11 @@ components:
         role: { $ref: '#/components/schemas/Role' }
         email: { type: string, format: email }
         fullName: { type: string }
-        password: { type: string, minLength: 8, maxLength: 72 }
+        password:
+          type: string
+          minLength: 8
+          maxLength: 72
+          description: At least one letter and one digit.
         locale: { $ref: '#/components/schemas/Locale' }
         mustChangePassword:
           type: boolean

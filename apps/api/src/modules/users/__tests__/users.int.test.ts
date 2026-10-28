@@ -434,7 +434,7 @@ describe('password set by an admin must be changed (A3) and unlocking (A2)', () 
     const locked = await request(app)
       .post('/api/v1/auth/login')
       .send({ email: target.email, password: TEST_PASSWORD });
-    expect(locked.status).toBe(429);
+    expect(locked.status).toBe(401);
 
     const res = await request(app)
       .post(`/api/v1/admin/users/${target.id}/unlock`)
@@ -534,6 +534,22 @@ describe('POST /users/me/password', () => {
       .set(bearer(accessToken))
       .send({ currentPassword: TEST_PASSWORD, newPassword: 'short' });
     expect(res.status).toBe(422);
+  });
+
+  it('rejects passwords without both a letter and a digit (A4)', async () => {
+    const { accessToken } = await signedIn(Role.STUDENT);
+    for (const newPassword of ['aaaaaaaa', '12345678', '!!!!!!!!']) {
+      const res = await request(app)
+        .post('/api/v1/users/me/password')
+        .set(bearer(accessToken))
+        .send({ currentPassword: TEST_PASSWORD, newPassword });
+      expect(res.status).toBe(422);
+    }
+    const ok = await request(app)
+      .post('/api/v1/users/me/password')
+      .set(bearer(accessToken))
+      .send({ currentPassword: TEST_PASSWORD, newPassword: 'ପାସୱାର୍ଡ2026' });
+    expect(ok.status).toBe(204);
   });
 
   it('changes the password and signs out other sessions only', async () => {

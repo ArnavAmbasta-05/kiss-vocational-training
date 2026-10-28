@@ -48,7 +48,7 @@
     "title": "Reset the password for {{name}}?",
     "body": "Type a new password and share it with {{name}} privately. They are signed out everywhere, and a locked account is unlocked.",
     "password": "New password",
-    "tooShort": "Use at least {{min}} characters",
+    "tooShort": "Use at least {{min}} characters, with a letter and a digit",
     "confirm": "Set new password",
     "done": "New password set for {{name}}"
   },
@@ -73,7 +73,7 @@
     "fullName": "Full name",
     "email": "Email",
     "password": "Initial password",
-    "passwordHint": "At least 8 characters. Share it with the user privately.",
+    "passwordHint": "At least 8 characters with a letter and a digit. Share it with the user privately.",
     "mustChangePassword": "Ask them to choose their own password at first sign-in",
     "locale": "Preferred language",
     "rollNo": "Roll number",
