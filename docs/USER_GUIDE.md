@@ -59,6 +59,8 @@ Your application status, attendance, current aggregate and projected grade at a 
    is pending.
 
 You can have one active application per training cycle, and only while the window is open.
+Once you are approved, placed or training in one cycle, you can't apply for another cycle whose
+dates overlap it.
 Once you have applied, **Courses** marks each course you chose with **Applied · choice N** and
 the application's status, with a link to your application instead of **Apply**.
 
@@ -173,6 +175,8 @@ Counts, completion rate, escalated students, the application funnel and grade ch
 ### Users, courses and cycles
 
 **Users** creates students, trainers and admins and deactivates accounts (sign-in stops at once).
+**Reset password** sets a new password for someone who forgot theirs (share it with them
+privately); it also unlocks a locked account and signs them out everywhere.
 **Courses & cycles** manages courses, training cycles and the enrollment window of each course.
 
 Both lists show only active records by default; pick *Inactive* or *All* in **Status** to see
@@ -212,7 +216,12 @@ completed* with a reason.
 ![Certificates](screenshots/admin-certificates.jpg)
 
 **Certificates** lists every certificate issued. **Revoke** (with a reason) makes it show as
-*Revoked* on the public check at once; the reason stays private.
+*Revoked* on the public check at once; the reason stays private. **Reissue** gives a new
+certificate ID with the same grade and figures: the old ID then shows as *Superseded*, or stays
+*Revoked* if it was revoked (so a certificate revoked by mistake or to correct it can be replaced).
+
+Approving applications is refused for a student who is already approved, placed or training in
+another cycle whose dates overlap; the message names the other cycle.
 
 ### At-risk students, opportunities, reports and analytics
 
@@ -263,7 +272,8 @@ shown.
 
 | Problem | What to do |
 | --- | --- |
-| "Account locked" | Wait 15 minutes, or ask an admin to check the account. |
+| Forgot password | Ask an admin: **Users → Reset password** sets a new one. |
+| "Account locked" | Wait 15 minutes, or ask an admin to reset the password (that unlocks it). |
 | Can't edit attendance | The 48-hour window has passed: ask an admin to correct it. |
 | Not eligible to complete | The Completions page shows which rule fails (attendance, missing assessment, aggregate, recommendation). |
 | A shared passport link stopped working | It expired or the student revoked it: ask for a new link. |

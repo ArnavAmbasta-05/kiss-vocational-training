@@ -276,6 +276,35 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /admin/users/{id}/password:
+    post:
+      tags: [admin-users]
+      summary: Set a new password for a user who forgot theirs (Admin)
+      description: >-
+        Also clears any login lock and revokes every session, so only the new password works.
+        Audited as USER_PASSWORD_RESET without the password. Admins change their own password
+        under /users/me/password (409 CANNOT_RESET_OWN_PASSWORD here).
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password: { type: string, minLength: 8, maxLength: 72 }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserSummary' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
   # ─── Sprint 3: catalogue, courses, cycles, enrollment ─────────────────────────
   /courses:
     get:
@@ -470,7 +499,8 @@ paths:
         BR-02: every chosen course must be active with its window open now, else 409
         ENROLLMENT_WINDOW_CLOSED. BR-01: one active application per cycle, else 409
         DUPLICATE_ENROLLMENT. Preference count is limited by setting enrollment.maxPreferences
-        (422 TOO_MANY_PREFERENCES). Accepts Idempotency-Key.
+        (422 TOO_MANY_PREFERENCES). A student already approved, allocated or in training in
+        another cycle whose dates overlap gets 409 OVERLAPPING_TRAINING. Accepts Idempotency-Key.
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -548,6 +578,9 @@ paths:
     post:
       tags: [admin-enrollments]
       summary: Approve (Admin, BRQ-3.3). Audited, notifies the student.
+      description: >-
+        409 OVERLAPPING_TRAINING when the student is already approved, allocated or in training
+        in another cycle whose dates overlap.
       parameters:
         - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -630,7 +663,10 @@ paths:
     post:
       tags: [admin-enrollments]
       summary: Approve, reject or waitlist up to 200 applications in one transaction (Admin)
-      description: All-or-nothing; one unknown id (404) or invalid transition (409) rolls back the batch.
+      description: >-
+        All-or-nothing; one unknown id (404), invalid transition (409) or, when approving, a
+        student accepted for an overlapping training (409 OVERLAPPING_TRAINING, details list each
+        roll number and the other cycle) rolls back the batch.
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -1682,7 +1718,11 @@ paths:
   /certificates/{certificateId}/reissue:
     post:
       tags: [certificates]
-      summary: Reissue with a new random code; the old one becomes SUPERSEDED (Admin, BR-19)
+      summary: Reissue with a new random code (Admin, BR-19)
+      description: >-
+        Works on a VALID certificate (it becomes SUPERSEDED) or on a REVOKED one that has not been
+        replaced yet (it stays REVOKED). The old certificate links to the new one. Anything else
+        is refused with 409 CERTIFICATE_NOT_REISSUABLE.
       parameters:
         - { name: certificateId, in: path, required: true, schema: { type: string, format: uuid } }
       responses:
@@ -2490,6 +2530,9 @@ components:
             aggregatePercent: { type: number }
             attendancePercent: { type: number }
             issuedBy: { type: string }
+            canReissue:
+              type: boolean
+              description: VALID, or REVOKED and not yet replaced (BR-19)
     CompletionRow:
       type: object
       properties:

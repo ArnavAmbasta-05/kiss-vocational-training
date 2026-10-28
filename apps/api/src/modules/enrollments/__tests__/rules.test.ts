@@ -1,5 +1,5 @@
 import { BulkReviewSchema, PreferencesSchema, type EnrollmentStatus } from '@vtmp/shared';
-import { canReview, isEditable, preferenceCountProblem, screen } from '../rules';
+import { canReview, cyclesOverlap, isEditable, preferenceCountProblem, screen } from '../rules';
 
 const a = '6f1c2a3e-1b2c-4d5e-8f90-123456789a01';
 const b = '6f1c2a3e-1b2c-4d5e-8f90-123456789a02';
@@ -106,5 +106,20 @@ describe('automatic approval screening (BRQ-3.3)', () => {
       'CGPA_BELOW_MIN',
       'HAS_PREREQUISITES',
     ]);
+  });
+});
+
+describe('overlapping cycles', () => {
+  const pilot = { startsOn: '2026-09-30', endsOn: '2026-12-23' };
+  it.each([
+    ['starts inside the other', { startsOn: '2026-12-02', endsOn: '2027-03-24' }, true],
+    ['starts on the last day (inclusive)', { startsOn: '2026-12-23', endsOn: '2027-03-24' }, true],
+    ['starts the day after', { startsOn: '2026-12-24', endsOn: '2027-03-24' }, false],
+    ['ends the day before', { startsOn: '2026-06-01', endsOn: '2026-09-29' }, false],
+    ['ends on the first day (inclusive)', { startsOn: '2026-06-01', endsOn: '2026-09-30' }, true],
+    ['contains the other', { startsOn: '2026-09-01', endsOn: '2027-01-31' }, true],
+  ])('%s → %s', (_label, other, expected) => {
+    expect(cyclesOverlap(pilot, other)).toBe(expected);
+    expect(cyclesOverlap(other, pilot)).toBe(expected);
   });
 });

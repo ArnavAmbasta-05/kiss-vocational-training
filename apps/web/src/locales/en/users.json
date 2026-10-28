@@ -42,6 +42,15 @@
     "body": "Only an account with no activity yet (for example one created by mistake) can be deleted, and this cannot be undone. Accounts with history can only be deactivated.",
     "confirm": "Delete account"
   },
+  "resetPassword": {
+    "action": "Reset password",
+    "title": "Reset the password for {{name}}?",
+    "body": "Type a new password and share it with {{name}} privately. They are signed out everywhere, and a locked account is unlocked.",
+    "password": "New password",
+    "tooShort": "Use at least {{min}} characters",
+    "confirm": "Set new password",
+    "done": "New password set for {{name}}"
+  },
   "confirmDeactivate": {
     "title": "Deactivate {{name}}?",
     "body": "They will be signed out everywhere and will not be able to sign in until reactivated. Their records are kept.",

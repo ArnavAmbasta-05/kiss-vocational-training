@@ -116,6 +116,42 @@ test.describe('admin user management', () => {
     await page.getByLabel('Status').selectOption({ label: 'Active' });
   });
 
+  test('admin resets a forgotten password; only the new one works', async ({ page, browser }) => {
+    const suffix = Date.now().toString(36);
+    const email = `e2e-forgot-${suffix}@kiss-vtmp.test`;
+    await signIn(page, ACCOUNTS.ADMIN);
+    await page.getByRole('link', { name: 'Users' }).first().click();
+    await page.getByRole('button', { name: 'Add user' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Add user' });
+    await dialog.getByLabel('Full name').fill('Forgetful Student');
+    await dialog.getByLabel('Email').fill(email);
+    await dialog.getByLabel('Initial password').fill('E2e-Start-Pass1');
+    await dialog.getByLabel('Roll number').fill(`FGT-${suffix}`);
+    await dialog.getByLabel('CGPA').fill('7.1');
+    await dialog.getByRole('button', { name: 'Create account' }).click();
+    await expect(dialog).toBeHidden();
+
+    await page.getByLabel('Search by name, email, roll number or employee code').fill(email);
+    const row = page.getByRole('row', { name: /Forgetful Student/ });
+    await row.getByRole('button', { name: 'Reset password: Forgetful Student' }).click();
+    const reset = page.getByRole('dialog', { name: 'Reset the password for Forgetful Student?' });
+    await reset.getByLabel('New password').fill('short');
+    await reset.getByRole('button', { name: 'Set new password' }).click();
+    await expect(reset.getByText('Use at least 8 characters')).toBeVisible();
+    await expectNoSeriousA11yViolations(page);
+    await reset.getByLabel('New password').fill('E2e-Fresh-Pass2');
+    await reset.getByRole('button', { name: 'Set new password' }).click();
+    await expect(
+      page.getByRole('status').filter({ hasText: 'New password set for Forgetful Student' }),
+    ).toBeVisible();
+
+    const other = await browser.newContext();
+    const studentPage = await other.newPage();
+    await signIn(studentPage, email, 'E2e-Fresh-Pass2');
+    await expect(studentPage).toHaveURL('/student');
+    await other.close();
+  });
+
   test('admin deletes an account created by mistake', async ({ page }) => {
     const suffix = Date.now().toString(36);
     const email = `e2e-mistake-${suffix}@kiss-vtmp.test`;

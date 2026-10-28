@@ -60,3 +60,20 @@ export function screen(
   }
   return reasons;
 }
+
+/**
+ * Statuses that hold a student's place in a cycle's training: approved, placed in a batch, or
+ * training now. Pending, waitlisted and finished ones don't.
+ */
+export const COMMITTED_STATUSES: readonly EnrollmentStatus[] = ['APPROVED', 'ALLOCATED', 'ACTIVE'];
+
+/**
+ * Two training cycles overlap when each starts on or before the day the other ends (dates are
+ * YYYY-MM-DD, both ends inclusive). A student committed to one can't train in the other.
+ */
+export function cyclesOverlap(
+  a: { startsOn: string; endsOn: string },
+  b: { startsOn: string; endsOn: string },
+): boolean {
+  return a.startsOn <= b.endsOn && b.startsOn <= a.endsOn;
+}

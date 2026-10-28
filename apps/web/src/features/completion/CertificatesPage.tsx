@@ -109,7 +109,7 @@ export function CertificatesPage() {
       header: <span className="sr-only">{t('register.revoke')}</span>,
       align: 'right',
       render: (c) =>
-        c.status === 'VALID' ? (
+        c.canReissue ? (
           <div className="flex justify-end gap-1">
             <Button
               size="sm"
@@ -119,14 +119,16 @@ export function CertificatesPage() {
             >
               {t('register.reissue')}
             </Button>
-            <Button
-              size="sm"
-              variant="danger"
-              aria-label={t('register.revokeFor', { code: c.publicCode })}
-              onClick={() => setAction({ kind: 'revoke', cert: c })}
-            >
-              {t('register.revoke')}
-            </Button>
+            {c.status === 'VALID' && (
+              <Button
+                size="sm"
+                variant="danger"
+                aria-label={t('register.revokeFor', { code: c.publicCode })}
+                onClick={() => setAction({ kind: 'revoke', cert: c })}
+              >
+                {t('register.revoke')}
+              </Button>
+            )}
           </div>
         ) : null,
     },
@@ -204,7 +206,10 @@ export function CertificatesPage() {
   );
 }
 
-/** Revoke (with a reason) or reissue a valid certificate, after confirmation (BRQ-15.4, BR-19). */
+/**
+ * Revoke (with a reason) a valid certificate, or reissue a valid or revoked one, after
+ * confirmation (BRQ-15.4, BR-19).
+ */
 function CertificateAction({
   action,
   onClose,
@@ -266,7 +271,11 @@ function CertificateAction({
       }
     >
       <p className="text-sm text-slate-700">
-        {isRevoke ? t('register.revokeBody') : t('register.reissueBody')}
+        {isRevoke
+          ? t('register.revokeBody')
+          : action.cert.status === 'REVOKED'
+            ? t('register.reissueRevokedBody')
+            : t('register.reissueBody')}
       </p>
       {isRevoke && (
         <div className="mt-4">

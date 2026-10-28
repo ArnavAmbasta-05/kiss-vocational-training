@@ -143,6 +143,48 @@ Read this at the start of every session and update it at the end of every sprint
 
 ---
 
+## After Sprint 13 — High-severity fixes from the site test run (2026-10-28)
+
+A full test run of every screen and process found four high-severity problems (report:
+"KISS VTMP — Site test run and fine-tuning report"). All four are fixed here.
+
+### Built
+- **A1 Password reset:** `POST /admin/users/:id/password` (Admin). Sets a new password, clears
+  any login lock, revokes every session and audits `USER_PASSWORD_RESET` without the password.
+  An admin can't reset their own (409 `CANNOT_RESET_OWN_PASSWORD`; they use their profile).
+  Users page: **Reset password** per row. This also lets an admin unlock a locked account.
+- **D1 Revoked certificates can be replaced:** reissue now works on a REVOKED certificate not
+  replaced yet. The new one is VALID with a new code, the old one stays REVOKED (its code keeps
+  showing as revoked) and links to it (`CERTIFICATE_REPLACED` audit). Certificates now carry
+  `canReissue`; anything else gets 409 `CERTIFICATE_NOT_REISSUABLE`.
+- **S1 No overlapping trainings:** a student APPROVED, ALLOCATED or ACTIVE in one cycle can't
+  apply for, or be approved into, another cycle whose dates overlap (inclusive). The pure rule
+  `cyclesOverlap` and `COMMITTED_STATUSES` live in `enrollments/rules.ts` with boundary tests.
+  Apply and approve answer 409 `OVERLAPPING_TRAINING` naming the other cycle; a bulk approval
+  rolls back and lists each roll number; the automatic-approval run leaves them pending.
+- **P1 Campus-safe rate limit:** the global limiter counts signed-in requests per user (from a
+  verified access token) and anonymous ones per IP, so a lab behind one campus IP is not locked
+  out together. A forged or expired token is counted against the IP.
+- Tests: +14 API tests (reset, reissue after revoke, overlap rule boundaries and flows, limiter
+  keys); e2e: password reset, reissue after revoke. Access-matrix snapshot +1 route (164).
+
+### Deviations from BRD/TAD (and why)
+- **New business rule beyond BR-01:** BR-01 allows one application per cycle; it said nothing
+  about cycles that overlap. The test run showed a student placed in two trainings 3 weeks
+  apart in time, so overlapping commitments are now refused. To be confirmed with the BRD owner.
+- BR-19 described reissue for valid certificates only; it now also replaces revoked ones.
+
+### Known gaps / follow-ups
+- Enrollments approved into overlapping cycles before this change are not undone: check
+  existing data once (the seed's Pilot and 2026-27 cycles overlap by 3 weeks).
+- The other 18 medium/low items of the report remain open.
+
+### Definition of done
+- [x] lint · [x] typecheck · [x] tests · [x] openapi.yaml · [x] seed (no new data needed) ·
+  [x] strings externalized (en, hi, or)
+
+---
+
 ## Sprint 13 — Hardening, quality and final submission (built, 2026-10-26)
 
 ### Built

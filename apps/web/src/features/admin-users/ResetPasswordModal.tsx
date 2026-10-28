@@ -1,0 +1,78 @@
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { PASSWORD_MIN_LENGTH, type UserSummary } from '@vtmp/shared';
+import { Button, Input, Modal } from '../../components/ui';
+import { useToast } from '../../components/toast';
+import { useErrorMessage } from '../../lib/api/useErrorMessage';
+import { useResetPassword } from './api';
+
+/**
+ * Admin sets a new password for someone who forgot theirs (the sign-in page sends them to the
+ * training office). The server also clears any login lock and signs them out everywhere.
+ */
+export function ResetPasswordModal({
+  user,
+  onClose,
+}: {
+  user: UserSummary | null;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation(['users', 'common']);
+  const toast = useToast();
+  const errorMessage = useErrorMessage();
+  const reset = useResetPassword();
+  const [password, setPassword] = useState('');
+  const [invalid, setInvalid] = useState(false);
+
+  useEffect(() => {
+    setPassword('');
+    setInvalid(false);
+  }, [user]);
+
+  if (!user) return null;
+
+  const confirm = async () => {
+    if (password.length < PASSWORD_MIN_LENGTH) return setInvalid(true);
+    try {
+      await reset.mutateAsync({ id: user.id, password });
+      toast.show({ tone: 'success', title: t('resetPassword.done', { name: user.fullName }) });
+      onClose();
+    } catch (err) {
+      toast.show({ tone: 'error', title: errorMessage(err) });
+    }
+  };
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={t('resetPassword.title', { name: user.fullName })}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>
+            {t('common:actions.cancel')}
+          </Button>
+          <Button loading={reset.isPending} onClick={() => void confirm()}>
+            {t('resetPassword.confirm')}
+          </Button>
+        </>
+      }
+    >
+      <p className="text-sm text-slate-700">{t('resetPassword.body', { name: user.fullName })}</p>
+      <div className="mt-4">
+        <Input
+          label={t('resetPassword.password')}
+          type="text"
+          autoComplete="new-password"
+          value={password}
+          hint={t('form.passwordHint')}
+          error={invalid ? t('resetPassword.tooShort', { min: PASSWORD_MIN_LENGTH }) : undefined}
+          onChange={(e) => {
+            setPassword(e.target.value);
+            setInvalid(false);
+          }}
+        />
+      </div>
+    </Modal>
+  );
+}

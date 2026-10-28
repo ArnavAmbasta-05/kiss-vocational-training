@@ -19,6 +19,7 @@ import { usePersistentState } from '../../lib/usePersistentState';
 import { useSelection } from '../../lib/useSelection';
 import { useDeleteUser, useSetUsersActive, useUpdateUser, useUsers, type UserFilters } from './api';
 import { CreateUserModal } from './CreateUserModal';
+import { ResetPasswordModal } from './ResetPasswordModal';
 
 function useDebounced<T>(value: T, ms: number): T {
   const [debounced, setDebounced] = useState(value);
@@ -55,6 +56,7 @@ export function UsersPage() {
   const [creating, setCreating] = useState(false);
   const [confirming, setConfirming] = useState<UserSummary | null>(null);
   const [deleting, setDeleting] = useState<UserSummary | null>(null);
+  const [resetting, setResetting] = useState<UserSummary | null>(null);
   const update = useUpdateUser();
   const setMany = useSetUsersActive();
   const remove = useDeleteUser();
@@ -183,6 +185,14 @@ export function UsersPage() {
             <Button
               size="sm"
               variant="ghost"
+              onClick={() => setResetting(u)}
+              aria-label={`${t('resetPassword.action')}: ${u.fullName}`}
+            >
+              {t('resetPassword.action')}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
               onClick={() => setDeleting(u)}
               aria-label={`${t('delete')}: ${u.fullName}`}
             >
@@ -305,6 +315,7 @@ export function UsersPage() {
       )}
 
       <CreateUserModal open={creating} onClose={() => setCreating(false)} />
+      <ResetPasswordModal user={resetting} onClose={() => setResetting(null)} />
 
       <Modal
         open={!!confirming}

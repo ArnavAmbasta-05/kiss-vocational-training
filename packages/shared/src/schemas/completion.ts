@@ -70,6 +70,11 @@ export interface CertificateDto extends CertificateSummary {
   aggregatePercent: number;
   attendancePercent: number;
   issuedBy: string;
+  /**
+   * True when an admin may reissue it: a valid certificate, or a revoked one that has not been
+   * replaced yet (BR-19).
+   */
+  canReissue: boolean;
 }
 
 export const CertificateListQuerySchema = z.object({
