@@ -20,7 +20,15 @@ import { settings } from '../../core/settings';
 import * as coursesService from '../courses/courses.service';
 import { isWindowOpen } from '../courses/rules';
 import { notify } from '../notifications/notifications.service';
-import { REVIEW_TARGET, canReview, isEditable, preferenceCountProblem, screen } from './rules';
+import {
+  COMMITTED_STATUSES,
+  REVIEW_TARGET,
+  canReview,
+  cyclesOverlap,
+  isEditable,
+  preferenceCountProblem,
+  screen,
+} from './rules';
 
 export interface StudentActor extends Actor {
   userId: string;
@@ -237,14 +245,22 @@ export async function runAutoApproval(
   actor: Actor,
   cycleId: string,
 ): Promise<AutoApproveRunResult> {
-  await coursesService.getCycle(cycleId);
+  const cycle = await coursesService.getCycle(cycleId);
   const rules = await autoApproval();
   const pending = await prisma().enrollment.findMany({
     where: { cycleId, status: 'PENDING' },
     include: { ...enrollmentInclude, student: { select: { cgpa: true, userId: true } } },
   });
+  // Students accepted for an overlapping training wait for a person (approving them is refused).
+  const clashes = await overlappingTraining(
+    prisma(),
+    pending.map((e) => e.studentId),
+    cycle,
+  );
   const eligible = pending.filter(
-    (e) => screen({ cgpa: Number(e.student.cgpa), courses: coursesOf(e) }, rules).length === 0,
+    (e) =>
+      !clashes.has(e.studentId) &&
+      screen({ cgpa: Number(e.student.cgpa), courses: coursesOf(e) }, rules).length === 0,
   );
   if (eligible.length === 0) return { approved: 0, stillPending: pending.length };
 
@@ -286,15 +302,59 @@ export async function runAutoApproval(
   return { approved, stillPending: pending.length - approved };
 }
 
+// ─── Overlapping trainings ─────────────────────────────────────────────────────
+
+const day = (d: Date) => d.toISOString().slice(0, 10);
+
+/**
+ * Students already committed (approved, allocated or in training) to ANOTHER cycle whose dates
+ * overlap this one: studentId → that cycle's name. BR-01 limits one application per cycle;
+ * this stops one student being placed in two trainings that run at the same time.
+ */
+async function overlappingTraining(
+  client: Tx,
+  studentIds: string[],
+  cycle: { id: string; startsOn: string; endsOn: string },
+): Promise<Map<string, string>> {
+  if (studentIds.length === 0) return new Map();
+  const committed = await client.enrollment.findMany({
+    where: {
+      studentId: { in: studentIds },
+      cycleId: { not: cycle.id },
+      status: { in: [...COMMITTED_STATUSES] },
+    },
+    select: { studentId: true, cycle: { select: { name: true, startsOn: true, endsOn: true } } },
+  });
+  const out = new Map<string, string>();
+  for (const e of committed) {
+    const other = { startsOn: day(e.cycle.startsOn), endsOn: day(e.cycle.endsOn) };
+    if (cyclesOverlap(cycle, other)) out.set(e.studentId, e.cycle.name);
+  }
+  return out;
+}
+
+const overlapping = (details: Array<{ path: string; message: string }>) =>
+  AppError.conflict(
+    'OVERLAPPING_TRAINING',
+    details.length === 1
+      ? `Already accepted for ${details[0]!.message}, which runs at the same time`
+      : 'Some students are already accepted for a training that runs at the same time',
+    details,
+  );
+
 // ─── Student actions (BRQ-3.1, 3.2, 3.4) ───────────────────────────────────────
 
 export async function submit(
   actor: StudentActor,
   input: { cycleId: string; courseIds: string[] },
 ): Promise<Enrollment> {
-  await coursesService.getCycle(input.cycleId);
+  const cycle = await coursesService.getCycle(input.cycleId);
   await assertPreferenceCount(input.courseIds);
   await assertWindowsOpen(input.cycleId, input.courseIds);
+  const clash = (await overlappingTraining(prisma(), [actor.studentId], cycle)).get(
+    actor.studentId,
+  );
+  if (clash) throw overlapping([{ path: 'cycleId', message: clash }]);
   const facts = await applicantFacts(actor.studentId);
   try {
     return await withAudit(actor, async (tx, log) => {
@@ -518,7 +578,7 @@ export async function review(
       const rows = await tx.enrollment.findMany({
         where: { id: { in: ids } },
         include: {
-          cycle: { select: { name: true } },
+          cycle: { select: { name: true, startsOn: true, endsOn: true } },
           student: { select: { rollNo: true, userId: true } },
         },
       });
@@ -533,6 +593,24 @@ export async function review(
           'INVALID_STATUS_TRANSITION',
           `Cannot ${action.toLowerCase()}: ${list}`,
         );
+      }
+      if (action === 'APPROVE') {
+        // No student approved into a training that overlaps one they're already accepted for.
+        const details: Array<{ path: string; message: string }> = [];
+        for (const cycleId of new Set(rows.map((r) => r.cycleId))) {
+          const inCycle = rows.filter((r) => r.cycleId === cycleId);
+          const c = inCycle[0]!.cycle;
+          const clashes = await overlappingTraining(
+            tx,
+            inCycle.map((r) => r.studentId),
+            { id: cycleId, startsOn: day(c.startsOn), endsOn: day(c.endsOn) },
+          );
+          for (const r of inCycle) {
+            const other = clashes.get(r.studentId);
+            if (other) details.push({ path: r.student.rollNo, message: other });
+          }
+        }
+        if (details.length) throw overlapping(details);
       }
 
       const decidedAt = new Date();

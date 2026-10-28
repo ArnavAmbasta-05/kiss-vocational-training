@@ -570,3 +570,78 @@ describe('automatic approval (BRQ-3.3)', () => {
     ).toBeGreaterThan(0);
   });
 });
+
+describe('overlapping trainings', () => {
+  // Fixture cycles all run 2027-01-04 – 2027-04-30, so any two of them overlap.
+  async function laterCycle() {
+    const later = await createOpenCycle(prisma(), 1);
+    await prisma().trainingCycle.update({
+      where: { id: later.cycle.id },
+      data: { startsOn: new Date('2027-05-01'), endsOn: new Date('2027-08-31') },
+    });
+    return later;
+  }
+
+  it('refuses an application while the student is accepted for an overlapping cycle', async () => {
+    const s = await signedIn(Role.STUDENT);
+    const first = await createOpenCycle(prisma(), 1);
+    const e = await apply(s.auth, first.cycle.id, [first.courses[0]!.id]);
+    await prisma().enrollment.update({ where: { id: e.body.id }, data: { status: 'ACTIVE' } });
+
+    const overlapping = await createOpenCycle(prisma(), 1);
+    const res = await apply(s.auth, overlapping.cycle.id, [overlapping.courses[0]!.id]);
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('OVERLAPPING_TRAINING');
+    expect(res.body.error.message).toContain(first.cycle.name);
+
+    // A cycle that starts after the training ends is fine.
+    const later = await laterCycle();
+    expect((await apply(s.auth, later.cycle.id, [later.courses[0]!.id])).status).toBe(201);
+  });
+
+  it('refuses to approve into an overlapping cycle (bulk rolls back), and the automatic run skips it', async () => {
+    const admin = await signedIn(Role.ADMIN);
+    // Rules are shared settings: switch automatic approval off with no CGPA minimum.
+    await request(app)
+      .put('/api/v1/admin/enrollments/auto-approval')
+      .set(admin.auth)
+      .send({ enabled: false, minCgpa: 0, manualIfPrerequisites: true })
+      .expect(200);
+    const busy = await signedIn(Role.STUDENT);
+    const free = await signedIn(Role.STUDENT);
+    const a = await createOpenCycle(prisma(), 1);
+    const b = await createOpenCycle(prisma(), 1);
+    // Both apply to B while pending nowhere else; then `busy` is approved into A.
+    const busyB = await apply(busy.auth, b.cycle.id, [b.courses[0]!.id]);
+    const freeB = await apply(free.auth, b.cycle.id, [b.courses[0]!.id]);
+    const busyA = await apply(busy.auth, a.cycle.id, [a.courses[0]!.id]);
+    expect(
+      (
+        await request(app)
+          .post(`/api/v1/admin/enrollments/${busyA.body.id}/approve`)
+          .set(admin.auth)
+      ).status,
+    ).toBe(200);
+
+    const bulk = await request(app)
+      .post('/api/v1/admin/enrollments/bulk')
+      .set(admin.auth)
+      .send({ ids: [freeB.body.id, busyB.body.id], action: 'APPROVE' });
+    expect(bulk.status).toBe(409);
+    expect(bulk.body.error.code).toBe('OVERLAPPING_TRAINING');
+    expect(bulk.body.error.details).toEqual([expect.objectContaining({ message: a.cycle.name })]);
+    const stillPending = await prisma().enrollment.findUniqueOrThrow({
+      where: { id: freeB.body.id },
+    });
+    expect(stillPending.status).toBe('PENDING');
+
+    const run = await request(app)
+      .post('/api/v1/admin/enrollments/auto-approve')
+      .set(admin.auth)
+      .send({ cycleId: b.cycle.id });
+    expect(run.status).toBe(200);
+    expect(run.body).toEqual({ approved: 1, stillPending: 1 });
+    const left = await prisma().enrollment.findUniqueOrThrow({ where: { id: busyB.body.id } });
+    expect(left.status).toBe('PENDING');
+  });
+});

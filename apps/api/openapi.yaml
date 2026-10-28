@@ -306,7 +306,6 @@ paths:
         '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/ValidationFailed' }
   # ─── Sprint 3: catalogue, courses, cycles, enrollment ─────────────────────────
-  # ─── Sprint 3: catalogue, courses, cycles, enrollment ─────────────────────────
   /courses:
     get:
       tags: [catalogue]
@@ -500,7 +499,8 @@ paths:
         BR-02: every chosen course must be active with its window open now, else 409
         ENROLLMENT_WINDOW_CLOSED. BR-01: one active application per cycle, else 409
         DUPLICATE_ENROLLMENT. Preference count is limited by setting enrollment.maxPreferences
-        (422 TOO_MANY_PREFERENCES). Accepts Idempotency-Key.
+        (422 TOO_MANY_PREFERENCES). A student already approved, allocated or in training in
+        another cycle whose dates overlap gets 409 OVERLAPPING_TRAINING. Accepts Idempotency-Key.
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -578,6 +578,9 @@ paths:
     post:
       tags: [admin-enrollments]
       summary: Approve (Admin, BRQ-3.3). Audited, notifies the student.
+      description: >-
+        409 OVERLAPPING_TRAINING when the student is already approved, allocated or in training
+        in another cycle whose dates overlap.
       parameters:
         - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
         - $ref: '#/components/parameters/IdempotencyKey'
@@ -660,7 +663,10 @@ paths:
     post:
       tags: [admin-enrollments]
       summary: Approve, reject or waitlist up to 200 applications in one transaction (Admin)
-      description: All-or-nothing; one unknown id (404) or invalid transition (409) rolls back the batch.
+      description: >-
+        All-or-nothing; one unknown id (404), invalid transition (409) or, when approving, a
+        student accepted for an overlapping training (409 OVERLAPPING_TRAINING, details list each
+        roll number and the other cycle) rolls back the batch.
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
