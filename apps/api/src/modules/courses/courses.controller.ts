@@ -9,7 +9,7 @@ import type {
 } from '@vtmp/shared';
 import { AppError } from '../../core/errors';
 import { asyncHandler } from '../../core/http';
-import { capacityByCourse, membersByCourse } from '../batches/batches.service';
+import { capacityByCourse, liveBatchesByCourse, membersByCourse } from '../batches/batches.service';
 import { approvedFirstChoice } from '../enrollments/enrollments.service';
 import * as service from './courses.service';
 
@@ -51,7 +51,7 @@ export const catalogueCycles = asyncHandler(async (_req, res) => {
 });
 
 export const listCourses = asyncHandler(async (_req, res) => {
-  res.json(await service.listCourses());
+  res.json(await service.listCourses(liveBatchesByCourse));
 });
 
 export const createCourse = asyncHandler(async (req, res) => {

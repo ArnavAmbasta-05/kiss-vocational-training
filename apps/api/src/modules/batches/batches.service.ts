@@ -276,6 +276,22 @@ export async function membersByCourse(cycleId: string): Promise<Map<string, numb
   return new Map(rows.map((r) => [r.course_id, Number(r.n)]));
 }
 
+/** D4: per course, planned or running batches and the students placed in them. */
+export async function liveBatchesByCourse(): Promise<
+  Map<string, { batches: number; students: number }>
+> {
+  const rows = await prisma().batch.findMany({
+    where: { status: { in: ['PLANNED', 'ACTIVE'] } },
+    select: { courseId: true, _count: { select: { students: true } } },
+  });
+  const out = new Map<string, { batches: number; students: number }>();
+  for (const r of rows) {
+    const c = out.get(r.courseId) ?? { batches: 0, students: 0 };
+    out.set(r.courseId, { batches: c.batches + 1, students: c.students + r._count.students });
+  }
+  return out;
+}
+
 /** S2: total capacity of each course's batches in a cycle (closed batches don't take anyone). */
 export async function capacityByCourse(cycleId: string): Promise<Map<string, number>> {
   const rows = await prisma().batch.groupBy({

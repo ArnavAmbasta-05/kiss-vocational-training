@@ -15,7 +15,7 @@ import type {
 import { withAudit, type Actor } from '../../core/audit';
 import { prisma } from '../../core/db';
 import { AppError } from '../../core/errors';
-import { windowState } from './rules';
+import { isWindowOpen, windowState } from './rules';
 
 type OfferingRow = Prisma.CourseOfferingGetPayload<object>;
 type CourseRow = Prisma.CourseGetPayload<object>;
@@ -38,7 +38,10 @@ export function toOffering(o: OfferingRow, now = new Date()): Offering {
   };
 }
 
-function toAdminCourse(c: CourseRow): AdminCourse {
+type CourseUsage = AdminCourse['inUse'];
+const NOT_USED: CourseUsage = { batches: 0, students: 0, openWindows: 0 };
+
+function toAdminCourse(c: CourseRow, inUse: CourseUsage = NOT_USED): AdminCourse {
   return {
     id: c.id,
     code: c.code,
@@ -49,6 +52,7 @@ function toAdminCourse(c: CourseRow): AdminCourse {
     prerequisitesNeedReview: c.prerequisitesNeedReview,
     seatCapacity: c.seatCapacity,
     isActive: c.isActive,
+    inUse,
   };
 }
 
@@ -166,11 +170,31 @@ export async function catalogue(
 
 // ─── Admin: courses (BRQ-2.1) ─────────────────────────────────────────────────
 
-export async function listCourses(): Promise<AdminCourse[]> {
-  const rows = await prisma().course.findMany({
-    orderBy: [{ isActive: 'desc' }, { title: 'asc' }],
-  });
-  return rows.map(toAdminCourse);
+/**
+ * Every course with what deactivating it would affect (D4). Live batches come from the caller
+ * (batches service), so this module never reads another module's tables.
+ */
+export async function listCourses(
+  liveBatches: () => Promise<Map<string, { batches: number; students: number }>> = async () =>
+    new Map(),
+): Promise<AdminCourse[]> {
+  const now = new Date();
+  const [rows, batches] = await Promise.all([
+    prisma().course.findMany({
+      orderBy: [{ isActive: 'desc' }, { title: 'asc' }],
+      include: {
+        offerings: { select: { isOpen: true, enrollmentOpensAt: true, enrollmentClosesAt: true } },
+      },
+    }),
+    liveBatches(),
+  ]);
+  return rows.map(({ offerings, ...c }) =>
+    toAdminCourse(c, {
+      batches: batches.get(c.id)?.batches ?? 0,
+      students: batches.get(c.id)?.students ?? 0,
+      openWindows: offerings.filter((o) => isWindowOpen(o, now)).length,
+    }),
+  );
 }
 
 export async function createCourse(actor: Actor, input: CourseCreateInput): Promise<AdminCourse> {

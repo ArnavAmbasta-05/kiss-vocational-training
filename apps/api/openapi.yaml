@@ -391,6 +391,9 @@ paths:
     get:
       tags: [admin-courses]
       summary: All courses incl. inactive (Admin)
+      description: >-
+        Each course carries inUse - planned or running batches, students placed in them and
+        open enrollment windows - so the admin sees what deactivating it would affect.
       responses:
         { '200': { description: Courses }, '403': { $ref: '#/components/responses/Forbidden' } }
     post:
@@ -2159,7 +2162,10 @@ paths:
     get:
       tags: [analytics]
       summary: Outcome analytics (Admin, F20) - completion, certification, attendance, average score, verified competencies and placement rates by course and batch
-      description: Counts come from materialized views refreshed nightly (refreshedAt); rates are computed on read and null when there is nothing to divide by.
+      description: >-
+        Counts come from materialized views refreshed nightly (refreshedAt); rates are computed
+        on read and null when there is nothing to divide by. certificatesSinceRefresh counts
+        certificates issued after that refresh (not in these figures yet).
       parameters:
         - { name: cycleId, in: query, schema: { type: string, format: uuid } }
       responses:

@@ -40,6 +40,8 @@ export interface AdminCourse {
   prerequisitesNeedReview: boolean;
   seatCapacity: number;
   isActive: boolean;
+  /** What deactivating it would affect (D4): live batches, students placed, open windows. */
+  inUse: { batches: number; students: number; openWindows: number };
 }
 
 // ─── Training cycles ──────────────────────────────────────────────────────────
