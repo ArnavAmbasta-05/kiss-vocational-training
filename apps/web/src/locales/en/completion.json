@@ -86,6 +86,7 @@
     "reissueFor": "Reissue certificate {{code}}",
     "reissueTitle": "Reissue certificate {{code}}?",
     "reissueBody": "A new certificate with a new ID is issued with the same grade and figures. The old ID will show as superseded.",
+    "reissueRevokedBody": "A new certificate with a new ID is issued with the same grade and figures. The revoked ID keeps showing as revoked.",
     "reissued": "New certificate {{code}} issued",
     "confirm": "Confirm",
     "cancel": "Cancel",

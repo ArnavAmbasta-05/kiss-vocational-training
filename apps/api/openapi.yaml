@@ -1682,7 +1682,11 @@ paths:
   /certificates/{certificateId}/reissue:
     post:
       tags: [certificates]
-      summary: Reissue with a new random code; the old one becomes SUPERSEDED (Admin, BR-19)
+      summary: Reissue with a new random code (Admin, BR-19)
+      description: >-
+        Works on a VALID certificate (it becomes SUPERSEDED) or on a REVOKED one that has not been
+        replaced yet (it stays REVOKED). The old certificate links to the new one. Anything else
+        is refused with 409 CERTIFICATE_NOT_REISSUABLE.
       parameters:
         - { name: certificateId, in: path, required: true, schema: { type: string, format: uuid } }
       responses:
@@ -2490,6 +2494,9 @@ components:
             aggregatePercent: { type: number }
             attendancePercent: { type: number }
             issuedBy: { type: string }
+            canReissue:
+              type: boolean
+              description: VALID, or REVOKED and not yet replaced (BR-19)
     CompletionRow:
       type: object
       properties:

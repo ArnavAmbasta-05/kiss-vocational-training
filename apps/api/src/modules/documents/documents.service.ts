@@ -65,7 +65,13 @@ function toDto(c: CertificateRow): CertificateDto {
     aggregatePercent: num(c.aggregatePercent),
     attendancePercent: num(c.attendancePercent),
     issuedBy: c.issuedBy.fullName,
+    canReissue: canReissue(c),
   };
+}
+
+/** BR-19: a valid certificate, or a revoked one nobody has replaced yet, may be reissued. */
+function canReissue(c: { status: string; supersededById: string | null }): boolean {
+  return c.status === 'VALID' || (c.status === 'REVOKED' && c.supersededById === null);
 }
 
 export interface NewCertificate {
@@ -340,25 +346,32 @@ export async function revokeCertificate(
   return get(id);
 }
 
+const notReissuable = () =>
+  AppError.conflict(
+    'CERTIFICATE_NOT_REISSUABLE',
+    'Only a valid certificate, or a revoked one not yet replaced, can be reissued',
+  );
+
 /**
- * BR-19: reissue creates a new certificate with a new random code and the same snapshots; the
- * old one becomes SUPERSEDED and points to it. The enrollment stays CERTIFIED. The new PDF is
- * rendered after commit; if that fails, the admin retries as after an approval.
+ * BR-19: reissue creates a new certificate with a new random code and the same snapshots, and
+ * links the old one to it. A valid old one becomes SUPERSEDED. A revoked one stays REVOKED (its
+ * code keeps showing as revoked), so a certificate revoked by mistake or to correct it can be
+ * replaced. The enrollment stays CERTIFIED. The new PDF is rendered after commit; if that
+ * fails, the admin retries as after an approval.
  */
 export async function reissueCertificate(actor: Actor, id: string): Promise<CertificateDto> {
   const old = await prisma().certificate.findUnique({ where: { id } });
   if (!old) throw AppError.notFound('Certificate not found');
-  if (old.status !== 'VALID') {
-    throw AppError.conflict('CERTIFICATE_NOT_VALID', 'Only a valid certificate can be reissued');
-  }
+  if (!canReissue(old)) throw notReissuable();
+  const fromRevoked = old.status === 'REVOKED';
   const fresh = await withAudit(actor, async (tx, log) => {
-    // Free the one-VALID-per-enrollment slot first, then add the replacement and link them.
-    const moved = await tx.certificate.updateMany({
-      where: { id, status: 'VALID' },
-      data: { status: 'SUPERSEDED' },
-    });
-    if (moved.count !== 1) {
-      throw AppError.conflict('CERTIFICATE_NOT_VALID', 'Only a valid certificate can be reissued');
+    // A valid one frees the one-VALID-per-enrollment slot first (a revoked one never held it).
+    if (!fromRevoked) {
+      const moved = await tx.certificate.updateMany({
+        where: { id, status: 'VALID' },
+        data: { status: 'SUPERSEDED' },
+      });
+      if (moved.count !== 1) throw notReissuable();
     }
     const created = await tx.certificate.create({
       data: {
@@ -370,14 +383,19 @@ export async function reissueCertificate(actor: Actor, id: string): Promise<Cert
         issuedById: actor.userId!,
       },
     });
-    await tx.certificate.update({ where: { id }, data: { supersededById: created.id } });
+    // Guarded link: a revoked one that a concurrent reissue already replaced rolls this back.
+    const linked = await tx.certificate.updateMany({
+      where: { id, supersededById: null },
+      data: { supersededById: created.id },
+    });
+    if (linked.count !== 1) throw notReissuable();
     await log.many([
       {
-        action: 'CERTIFICATE_SUPERSEDED',
+        action: fromRevoked ? 'CERTIFICATE_REPLACED' : 'CERTIFICATE_SUPERSEDED',
         entity: 'Certificate',
         entityId: id,
-        oldValue: { status: 'VALID' },
-        newValue: { status: 'SUPERSEDED', supersededById: created.id },
+        oldValue: { status: old.status },
+        newValue: { status: fromRevoked ? 'REVOKED' : 'SUPERSEDED', supersededById: created.id },
       },
       {
         action: 'CERTIFICATE_ISSUED',

@@ -162,6 +162,33 @@ describe('public certificate verification (F15, BRQ-15.2–15.5)', () => {
     expect(e.status).toBe('CERTIFIED');
   });
 
+  it('reissue after revoke (BR-19) → new VALID code, the old code stays REVOKED; only once', async () => {
+    const w = await world();
+    const path = `/api/v1/certificates/${w.cert.id}`;
+    await request(app).post(`${path}/revoke`).set(w.A).send({ reason: 'Name misspelt' });
+    const listed = await request(app).get(`/api/v1/certificates`).set(w.A);
+    expect(listed.body.data.find((c: { id: string }) => c.id === w.cert.id).canReissue).toBe(true);
+
+    const res = await request(app).post(`${path}/reissue`).set(w.A);
+    expect(res.status).toBe(201);
+    expect(res.body).toMatchObject({ status: 'VALID', grade: 'A', canReissue: true });
+    expect(res.body.publicCode).not.toBe(w.cert.publicCode);
+    const old = await prisma().certificate.findUniqueOrThrow({ where: { id: w.cert.id } });
+    expect(old).toMatchObject({ status: 'REVOKED', supersededById: res.body.id });
+    expect((await verify(w.cert.publicCode)).body.status).toBe('REVOKED');
+    expect((await verify(res.body.publicCode)).body.status).toBe('VALID');
+    expect(
+      await prisma().auditLog.count({
+        where: { entity: 'Certificate', entityId: w.cert.id, action: 'CERTIFICATE_REPLACED' },
+      }),
+    ).toBe(1);
+
+    // The revoked one is replaced now: a second reissue of it is refused.
+    const again = await request(app).post(`${path}/reissue`).set(w.A);
+    expect(again.status).toBe(409);
+    expect(again.body.error.code).toBe('CERTIFICATE_NOT_REISSUABLE');
+  });
+
   it('BRQ-15.5: the 31st request in a minute from one IP gets 429', async () => {
     // A fresh app has its own in-memory limiter, so earlier tests don't count.
     const fresh = createApp();

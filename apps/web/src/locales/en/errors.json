@@ -80,6 +80,7 @@
     "ALREADY_COMPLETED": "This student has already completed training.",
     "CERTIFICATE_NOT_RENDERED": "The certificate PDF is not ready yet.",
     "CERTIFICATE_NOT_VALID": "This certificate is no longer valid.",
+    "CERTIFICATE_NOT_REISSUABLE": "This certificate can't be reissued: only a valid one, or a revoked one not yet replaced, can be.",
     "COMPETENCY_CODE_TAKEN": "This code is already used in the course.",
     "ASSESSMENT_NOT_IN_COURSE": "Linked assessments must belong to a batch of this course.",
     "HAS_RATINGS": "Students have been rated on this competency, so it can't be deleted.",
