@@ -948,3 +948,36 @@ export async function statusCounts(): Promise<Record<BatchStatus, number>> {
   for (const r of rows) counts[r.status] = r._count._all;
   return counts;
 }
+
+/**
+ * D3: planned or running batches whose ONLY trainer is one of these users. Deactivating such a
+ * trainer would leave the batch with nobody able to mark attendance or record marks.
+ */
+export async function batchesOnlyTaughtBy(
+  userIds: string[],
+): Promise<Array<{ userId: string; trainerName: string; batch: string }>> {
+  if (userIds.length === 0) return [];
+  const rows = await prisma().trainerAssignment.findMany({
+    where: {
+      trainer: { userId: { in: userIds } },
+      batch: { status: { in: ['PLANNED', 'ACTIVE'] } },
+    },
+    select: {
+      trainer: { select: { userId: true, user: { select: { fullName: true } } } },
+      batch: {
+        select: {
+          name: true,
+          course: { select: { title: true } },
+          _count: { select: { trainers: true } },
+        },
+      },
+    },
+  });
+  return rows
+    .filter((r) => r.batch._count.trainers === 1)
+    .map((r) => ({
+      userId: r.trainer.userId,
+      trainerName: r.trainer.user.fullName,
+      batch: `${r.batch.course.title} · ${r.batch.name}`,
+    }));
+}

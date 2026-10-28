@@ -5,6 +5,12 @@ info:
   description: |
     KISS Vocational Training Management Portal API. All endpoints live under /api/v1 and
     return JSON. Errors always use the Error schema below.
+
+    A user whose password an admin set (a new account created with mustChangePassword, or a
+    reset) gets 403 PASSWORD_CHANGE_REQUIRED on every signed-in route except GET /auth/me,
+    POST /users/me/password, PATCH /users/me and GET /notifications/me until they choose their
+    own password. The global request limit counts signed-in requests per user and anonymous
+    ones per IP.
 servers:
   - url: http://localhost:4000/api/v1
     description: Local development
@@ -239,7 +245,10 @@ paths:
     patch:
       tags: [admin-users]
       summary: Rename, change locale, deactivate or reactivate a user (Admin)
-      description: Deactivation revokes every session. Admins cannot deactivate themselves (409).
+      description: >-
+        Deactivation revokes every session. Admins cannot deactivate themselves (409), nor the
+        only trainer of a planned or active batch (409 TRAINER_STILL_NEEDED; assign another
+        trainer first).
       parameters:
         - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
       requestBody:
@@ -276,6 +285,21 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /admin/users/{id}/unlock:
+    post:
+      tags: [admin-users]
+      summary: Clear a login lock so the user can sign in again at once (Admin)
+      description: Audited as USER_UNLOCKED with the lock that was cleared.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Unlocked
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserSummary' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /admin/users/{id}/password:
     post:
       tags: [admin-users]
@@ -295,6 +319,10 @@ paths:
               required: [password]
               properties:
                 password: { type: string, minLength: 8, maxLength: 72 }
+                mustChangePassword:
+                  type: boolean
+                  default: true
+                  description: Ask the user to choose their own password at next sign-in.
       responses:
         '200':
           description: Updated
@@ -2359,13 +2387,16 @@ components:
         password: { type: string }
     Me:
       type: object
-      required: [id, email, fullName, role, locale, student, trainer]
+      required: [id, email, fullName, role, locale, mustChangePassword, student, trainer]
       properties:
         id: { type: string, format: uuid }
         email: { type: string }
         fullName: { type: string }
         role: { $ref: '#/components/schemas/Role' }
         locale: { $ref: '#/components/schemas/Locale' }
+        mustChangePassword:
+          type: boolean
+          description: An admin set the password; the user must choose their own first.
         student:
           nullable: true
           type: object
@@ -2405,6 +2436,10 @@ components:
         fullName: { type: string }
         password: { type: string, minLength: 8, maxLength: 72 }
         locale: { $ref: '#/components/schemas/Locale' }
+        mustChangePassword:
+          type: boolean
+          default: false
+          description: Ask the user to choose their own password at first sign-in.
         rollNo: { type: string }
         cgpa: { type: number, minimum: 0, maximum: 10 }
         employeeCode: { type: string }

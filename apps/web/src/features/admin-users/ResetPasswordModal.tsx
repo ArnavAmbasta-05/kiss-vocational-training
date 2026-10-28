@@ -23,10 +23,12 @@ export function ResetPasswordModal({
   const reset = useResetPassword();
   const [password, setPassword] = useState('');
   const [invalid, setInvalid] = useState(false);
+  const [mustChange, setMustChange] = useState(true);
 
   useEffect(() => {
     setPassword('');
     setInvalid(false);
+    setMustChange(true);
   }, [user]);
 
   if (!user) return null;
@@ -34,7 +36,7 @@ export function ResetPasswordModal({
   const confirm = async () => {
     if (password.length < PASSWORD_MIN_LENGTH) return setInvalid(true);
     try {
-      await reset.mutateAsync({ id: user.id, password });
+      await reset.mutateAsync({ id: user.id, password, mustChangePassword: mustChange });
       toast.show({ tone: 'success', title: t('resetPassword.done', { name: user.fullName }) });
       onClose();
     } catch (err) {
@@ -72,6 +74,15 @@ export function ResetPasswordModal({
             setInvalid(false);
           }}
         />
+        <label className="mt-2 flex items-center gap-2 text-sm text-slate-800">
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-slate-400 text-brand-700 focus-visible:ring-2 focus-visible:ring-brand-600"
+            checked={mustChange}
+            onChange={(e) => setMustChange(e.target.checked)}
+          />
+          {t('form.mustChangePassword')}
+        </label>
       </div>
     </Modal>
   );

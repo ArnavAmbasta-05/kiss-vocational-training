@@ -14,6 +14,7 @@
   "changePassword": "Change password",
   "password": {
     "title": "Change password",
+    "mustChange": "Your password was set by the training office. Choose your own to continue: type the password you were given as the current password.",
     "current": "Current password",
     "new": "New password",
     "newHint": "At least 8 characters. Other devices will be signed out.",
