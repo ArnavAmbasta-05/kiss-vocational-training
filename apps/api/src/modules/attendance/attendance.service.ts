@@ -254,16 +254,27 @@ interface StatusesRow {
   roll_no: string;
   full_name: string;
   statuses: AttendanceStatus[];
+  unrecorded: number;
 }
 
-/** Per-student marks on CONDUCTED sessions of a batch, newest first, in one query. */
-async function statusesFor(batchId: string, studentId?: string): Promise<StatusesRow[]> {
+/**
+ * Per-student marks on CONDUCTED sessions of a batch, newest first, in one query, with the
+ * sessions that ended after the student joined but are still SCHEDULED, i.e. never marked (L2).
+ */
+async function statusesFor(
+  batchId: string,
+  studentId?: string,
+  now = new Date(),
+): Promise<StatusesRow[]> {
   return prisma().$queryRaw<StatusesRow[]>`
     SELECT bs.student_id, st.roll_no, u.full_name,
       COALESCE(
         array_agg(a.status::text ORDER BY ts.starts_at DESC) FILTER (WHERE a.id IS NOT NULL),
         '{}'
-      ) AS statuses
+      ) AS statuses,
+      (SELECT COUNT(*)::int FROM training_sessions us
+        WHERE us.batch_id = bs.batch_id AND us.status = 'SCHEDULED'
+          AND us.ends_at <= ${now} AND us.ends_at > bs.allocated_at) AS unrecorded
     FROM batch_students bs
     JOIN students st ON st.id = bs.student_id
     JOIN users u ON u.id = st.user_id
@@ -271,7 +282,7 @@ async function statusesFor(batchId: string, studentId?: string): Promise<Statuse
     LEFT JOIN attendance a ON a.session_id = ts.id AND a.student_id = bs.student_id
     WHERE bs.batch_id = ${batchId}::uuid
       AND (${studentId ?? null}::uuid IS NULL OR bs.student_id = ${studentId ?? null}::uuid)
-    GROUP BY bs.student_id, st.roll_no, u.full_name
+    GROUP BY bs.student_id, bs.batch_id, bs.allocated_at, st.roll_no, u.full_name
     ORDER BY st.roll_no`;
 }
 
@@ -282,7 +293,7 @@ export async function batchSummary(batchId: string): Promise<BatchAttendanceRow[
     studentId: r.student_id,
     rollNo: r.roll_no,
     fullName: r.full_name,
-    ...attendanceFigures(r.statuses, late),
+    ...attendanceFigures(r.statuses, late, Number(r.unrecorded)),
   }));
 }
 
@@ -293,7 +304,7 @@ export async function studentFigures(
 ): Promise<AttendanceFigures> {
   const late = await settings.get('attendance.lateCountsAsPresent');
   const [row] = await statusesFor(batchId, studentId);
-  return attendanceFigures(row?.statuses ?? [], late);
+  return attendanceFigures(row?.statuses ?? [], late, Number(row?.unrecorded ?? 0));
 }
 
 /** The student's session history in a batch with their own mark only (privacy). */

@@ -1085,7 +1085,7 @@ paths:
   /batches/{batchId}/attendance-summary:
     get:
       tags: [attendance]
-      summary: Per-student attendance % (two decimals), absences, consecutive absences (BRQ-5.3)
+      summary: Per-student attendance % (two decimals), absences, consecutive absences, sessions ended but never marked (BRQ-5.3, L2)
       parameters:
         - { name: batchId, in: path, required: true, schema: { type: string, format: uuid } }
       responses: { '200': { description: Rows } }
@@ -2572,7 +2572,11 @@ components:
     EligibilityCheck:
       type: object
       properties:
-        rule: { type: string, enum: [ATTENDANCE, MANDATORY_ASSESSMENTS, AGGREGATE, RECOMMENDATION] }
+        rule:
+          {
+            type: string,
+            enum: [ATTENDANCE, SESSIONS_RECORDED, MANDATORY_ASSESSMENTS, AGGREGATE, RECOMMENDATION],
+          }
         passed: { type: boolean }
         actual: { anyOf: [{ type: number, nullable: true }, { type: boolean }] }
         required: { oneOf: [{ type: number }, { type: boolean }] }
