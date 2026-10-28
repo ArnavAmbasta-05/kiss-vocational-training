@@ -234,6 +234,44 @@ The eight medium-severity items of the test-run report, all fixed. One migration
 
 ---
 
+## After Sprint 13 — Low-severity fixes from the site test run (2026-10-28)
+
+Eight of the ten low-severity items fixed; one was already handled and one conflicts with a
+project rule (both below).
+
+### Built
+- **A4 Passwords:** a new password needs at least one letter and one digit as well as 8
+  characters (shared `PasswordSchema`; Unicode letters count, so Odia/Hindi passwords work).
+  Sign-in still accepts any password.
+- **A5 One answer for every failed sign-in:** a locked account now gets the same 401
+  `INVALID_CREDENTIALS` as an unknown email or a wrong password (the password is not checked
+  while locked), and the message mentions the lock. This reverses the Sprint 1 choice of a
+  separate 429 `ACCOUNT_LOCKED` "accepted for usability": that answer told anyone the email
+  exists, and admins can now unlock accounts.
+- **S3** My training shows attendance with two decimals (BR-08), as the dashboard does.
+- **S4** The student dashboard's headline stays on the training in progress (then a batch
+  place) after the student applies for a later cycle.
+- **D4** Deactivating a course that has planned or running batches, placed students or open
+  windows asks for confirmation and lists them (`AdminCourse.inUse`).
+- **D5** `useBatch` sends no request until a batch is chosen (no more 404 on Completion).
+- **D6** Dashboard tiles say "Student accounts" / "Trainer accounts" (they count accounts).
+- **D7** Outcome analytics says how many certificates were issued after its figures were built
+  (`certificatesSinceRefresh`), next to *Refresh now*.
+- Tests: +4 API tests; the lock-out test now checks the locked and unknown answers are identical.
+
+### Not changed (and why)
+- **S5** was already handled: the Assistant page says "Your course has no approved materials
+  yet. Ask your trainer." The test run only looked at the API.
+- **P2** (a higher limit for certificate checks) would break CLAUDE.md rule 7 and NFR-09 (30
+  requests per minute per IP on public endpoints). The limit is the setting
+  `public.rateLimitPerMin`; raise it deliberately if a placement drive needs more.
+
+### Definition of done
+- [x] lint · [x] typecheck · [x] tests · [x] openapi.yaml · [x] seed (no new data) ·
+  [x] strings externalized (en, hi, or)
+
+---
+
 ## Sprint 13 — Hardening, quality and final submission (built, 2026-10-26)
 
 ### Built

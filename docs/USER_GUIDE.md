@@ -18,7 +18,8 @@ screenshot is taken automatically from a freshly seeded copy of the app
 ![Sign-in page](screenshots/public-login.jpg)
 
 1. Open the portal and sign in with your email and password. After 5 wrong passwords the
-   account locks for 15 minutes.
+   account locks for 15 minutes; the sign-in page then says "Wrong email or password, or the
+   account is locked", the same as for a wrong password, so nobody can tell which emails exist.
 2. You land on your role's dashboard. The sidebar lists everything you can do; every task is
    at most three clicks from the dashboard.
 3. **Language:** choose English, ଓଡ଼ିଆ (Odia) or हिन्दी (Hindi) at the top. The choice is saved to
@@ -283,7 +284,8 @@ shown.
 | Problem | What to do |
 | --- | --- |
 | Forgot password | Ask an admin: **Users → Reset password** sets a new one. |
-| "Account locked" | Wait 15 minutes, or ask an admin to reset the password (that unlocks it). |
+| "Wrong email or password, or the account is locked" | Check the email and password. After 5 wrong tries the account is locked for 15 minutes: wait, or ask an admin to **Unlock** it. |
+| New password refused | Use at least 8 characters with at least one letter and one digit. |
 | Can't edit attendance | The 48-hour window has passed: ask an admin to correct it. |
 | Not eligible to complete | The Completions page shows which rule fails (attendance, missing assessment by name, aggregate, recommendation). |
 | Sent to *Change password* at sign-in | The training office set your password: type it as the current password and choose your own. |
