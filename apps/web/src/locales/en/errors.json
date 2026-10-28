@@ -76,6 +76,7 @@
     "EDIT_WINDOW_CLOSED": "The edit window has closed. Ask an administrator to make changes.",
     "ROSTER_MISMATCH": "Mark every student in the batch exactly once.",
     "MARKS_OUT_OF_RANGE": "Some marks are outside the allowed range. Nothing was saved.",
+    "HELD_OUTSIDE_BATCH": "The date must be within the batch's dates.",
     "NOT_IN_BATCH": "This student is not in the batch.",
     "MAX_BELOW_RESULTS": "Maximum marks cannot be below a mark already recorded.",
     "HAS_RESULTS": "An assessment with recorded marks cannot be deleted.",

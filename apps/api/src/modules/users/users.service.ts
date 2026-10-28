@@ -465,16 +465,29 @@ export async function studentProfile(
 /** Names and roll numbers for a set of students (lists in other modules). */
 export async function studentSummaries(
   ids: string[],
-): Promise<Map<string, { id: string; fullName: string; rollNo: string; userId: string }>> {
+): Promise<
+  Map<string, { id: string; fullName: string; rollNo: string; userId: string; isActive: boolean }>
+> {
   if (ids.length === 0) return new Map();
   const rows = await prisma().student.findMany({
     where: { id: { in: [...new Set(ids)] } },
-    select: { id: true, rollNo: true, userId: true, user: { select: { fullName: true } } },
+    select: {
+      id: true,
+      rollNo: true,
+      userId: true,
+      user: { select: { fullName: true, isActive: true } },
+    },
   });
   return new Map(
     rows.map((s) => [
       s.id,
-      { id: s.id, fullName: s.user.fullName, rollNo: s.rollNo, userId: s.userId },
+      {
+        id: s.id,
+        fullName: s.user.fullName,
+        rollNo: s.rollNo,
+        userId: s.userId,
+        isActive: s.user.isActive,
+      },
     ]),
   );
 }

@@ -947,7 +947,7 @@ paths:
             application/json:
               schema: { type: array, items: { $ref: '#/components/schemas/Session' } }
         '409':
-          description: 'SCHEDULE_CLASH (BR-20): the venue, or a trainer named on the session, is already booked at an overlapping time; details list each clash. Nothing is saved.'
+          description: "SCHEDULE_CLASH (BR-20): the venue, or a trainer certainly teaching both sessions (named on the session, or the batch's only trainer), is already booked at an overlapping time; details list each clash. Nothing is saved."
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -1116,9 +1116,15 @@ paths:
                 maxMarks: { type: number, exclusiveMinimum: true, minimum: 0 }
                 weightage: { type: number, exclusiveMinimum: true, minimum: 0 }
                 isMandatory: { type: boolean }
-                heldOn: { type: string, format: date, nullable: true }
+                heldOn:
+                  type: string
+                  format: date
+                  nullable: true
+                  description: Must fall within the batch's dates (422 HELD_OUTSIDE_BATCH).
       responses:
-        { '201': { description: Created }, '403': { $ref: '#/components/responses/Forbidden' } }
+        '201': { description: Created }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
   /assessments/{assessmentId}:
     patch:
       tags: [assessments]
@@ -2542,6 +2548,10 @@ components:
         passed: { type: boolean }
         actual: { anyOf: [{ type: number, nullable: true }, { type: boolean }] }
         required: { oneOf: [{ type: number }, { type: boolean }] }
+        missing:
+          type: array
+          items: { type: string }
+          description: MANDATORY_ASSESSMENTS only - titles of the ones still without marks.
     CertificateSummary:
       type: object
       properties:

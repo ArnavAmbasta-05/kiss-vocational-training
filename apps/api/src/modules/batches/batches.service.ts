@@ -790,6 +790,15 @@ export async function createSessions(
   }
 
   const venue = input.venue ?? batch.venue;
+  // Who teaches the new sessions: the named trainer, else everyone assigned to the batch (T3).
+  const teachers = input.trainerId
+    ? [input.trainerId]
+    : (
+        await prisma().trainerAssignment.findMany({
+          where: { batchId },
+          select: { trainerId: true },
+        })
+      ).map((a) => a.trainerId);
   return withAudit(actor, async (tx, log) => {
     // BR-20: serialise scheduling so two admins can't book the same slot at once, then refuse
     // hard clashes (same venue, or the same trainer named on both sessions).
@@ -800,14 +809,11 @@ export async function createSessions(
     };
     const booked = await bookingsOverlapping(tx, window, {
       venues: [venue],
-      trainerIds: input.trainerId ? [input.trainerId] : [],
+      trainerIds: teachers,
     });
     const explicit = input.trainerId ?? null;
     const hard = slots.flatMap((slot, i) =>
-      clashesFor(
-        { ...slot, venue, explicitTrainerId: explicit, trainerIds: explicit ? [explicit] : [] },
-        booked,
-      )
+      clashesFor({ ...slot, venue, explicitTrainerId: explicit, trainerIds: teachers }, booked)
         .filter((c) => c.hard)
         .map((c) => ({ i, c })),
     );
