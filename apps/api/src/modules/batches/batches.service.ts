@@ -276,6 +276,16 @@ export async function membersByCourse(cycleId: string): Promise<Map<string, numb
   return new Map(rows.map((r) => [r.course_id, Number(r.n)]));
 }
 
+/** S2: total capacity of each course's batches in a cycle (closed batches don't take anyone). */
+export async function capacityByCourse(cycleId: string): Promise<Map<string, number>> {
+  const rows = await prisma().batch.groupBy({
+    by: ['courseId'],
+    where: { cycleId, status: { not: 'CLOSED' } },
+    _sum: { capacity: true },
+  });
+  return new Map(rows.map((r) => [r.courseId, r._sum.capacity ?? 0]));
+}
+
 // ─── Admin: batches (BRQ-4.1) ──────────────────────────────────────────────────
 
 export async function create(actor: Actor, input: BatchCreateInput): Promise<BatchSummary> {

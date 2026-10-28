@@ -28,6 +28,8 @@
     "durationValue_one": "{{count}} week",
     "durationValue_other": "{{count}} weeks",
     "prerequisites": "Prerequisites",
+    "prerequisitesNeedReview": "A person checks the prerequisites before approval",
+    "prerequisitesNeedReviewHint": "Untick when every applicant meets them (for example \"Class 8 pass\"): automatic approval can then approve applications for this course.",
     "none": "None",
     "seatCapacity": "Seat capacity",
     "seatsRemaining": "Seats remaining",

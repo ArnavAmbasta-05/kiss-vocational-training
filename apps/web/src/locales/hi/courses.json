@@ -28,6 +28,8 @@
     "durationValue_one": "{{count}} सप्ताह",
     "durationValue_other": "{{count}} सप्ताह",
     "prerequisites": "पूर्व-आवश्यकताएँ",
+    "prerequisitesNeedReview": "स्वीकृति से पहले कोई व्यक्ति पूर्व-आवश्यकताएँ जाँचेगा",
+    "prerequisitesNeedReviewHint": "जब हर आवेदक इन्हें पूरा करता हो (जैसे \"कक्षा 8 पास\") तो इसे हटा दें: तब स्वचालित स्वीकृति इस पाठ्यक्रम के आवेदन स्वीकृत कर सकती है।",
     "none": "कोई नहीं",
     "seatCapacity": "सीटें",
     "seatsRemaining": "बची सीटें",

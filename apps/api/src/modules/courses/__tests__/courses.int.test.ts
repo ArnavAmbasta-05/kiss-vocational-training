@@ -2,7 +2,7 @@ import request from 'supertest';
 import { Role } from '@prisma/client';
 import { createApp } from '../../../app';
 import { disconnectPrisma, prisma } from '../../../core/db';
-import { createLoginUser, createOpenCycle, uid } from '../../../../test/fixtures';
+import { createBatch, createLoginUser, createOpenCycle, uid } from '../../../../test/fixtures';
 import { bearer, login } from '../../../../test/http';
 
 const app = createApp();
@@ -264,6 +264,18 @@ describe('catalogue (BRQ-2.2)', () => {
       .query({ cycleId: cycle.id })
       .set(student.auth);
     expect(after.body.course.seatsRemaining).toBe(9);
+  });
+
+  it('counts seats in the course batches once it has some (S2)', async () => {
+    const { cycle, courses } = await createOpenCycle(prisma(), 1);
+    const student = await auth(Role.STUDENT);
+    // The course plans 10 seats; the one batch made for it holds 4.
+    await createBatch(prisma(), cycle.id, courses[0]!.id, 4);
+    const res = await request(app)
+      .get('/api/v1/courses')
+      .query({ cycleId: cycle.id })
+      .set(student.auth);
+    expect(res.body.courses[0]).toMatchObject({ seatCapacity: 4, seatsRemaining: 4 });
   });
 
   it('requires sign-in', async () => {

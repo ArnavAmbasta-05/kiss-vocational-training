@@ -338,7 +338,11 @@ paths:
     get:
       tags: [catalogue]
       summary: Course catalogue for a cycle (BRQ-2.2)
-      description: Active courses offered in the cycle (default the newest cycle with offerings), with window state and indicative seats remaining.
+      description: >-
+        Active courses offered in the cycle (default the newest cycle with offerings), with
+        window state and indicative seats remaining. Once a course has batches in the cycle,
+        seatCapacity is the total of their capacities; until then it is the course's planned
+        capacity.
       parameters:
         - { name: cycleId, in: query, schema: { type: string, format: uuid } }
       responses:
@@ -395,6 +399,10 @@ paths:
                 description: { type: string }
                 durationWeeks: { type: integer, minimum: 1 }
                 prerequisites: { type: string, nullable: true }
+                prerequisitesNeedReview:
+                  type: boolean
+                  default: true
+                  description: Automatic approval waits for a person to check the prerequisites.
                 seatCapacity: { type: integer, minimum: 1 }
       responses:
         '201': { description: Created }

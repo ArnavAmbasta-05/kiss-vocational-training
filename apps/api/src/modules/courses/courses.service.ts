@@ -46,6 +46,7 @@ function toAdminCourse(c: CourseRow): AdminCourse {
     description: c.description,
     durationWeeks: c.durationWeeks,
     prerequisites: c.prerequisites,
+    prerequisitesNeedReview: c.prerequisitesNeedReview,
     seatCapacity: c.seatCapacity,
     isActive: c.isActive,
   };
@@ -121,12 +122,15 @@ async function defaultCycleId(): Promise<string | null> {
 // ─── Catalogue (BRQ-2.2) ──────────────────────────────────────────────────────
 
 /**
- * Active courses offered in a cycle. Seats taken come from the caller (enrollments service),
- * so this module never reads another module's tables.
+ * Active courses offered in a cycle. Seats taken and batch capacity come from the caller
+ * (enrollments and batches services), so this module never reads another module's tables.
+ * Once a course has batches in the cycle, its seats are the places in those batches (S2):
+ * the course's own capacity is only a plan until batches exist.
  */
 export async function catalogue(
   cycleId: string | undefined,
   seatsTaken: (cycleId: string) => Promise<Map<string, number>>,
+  batchCapacity: (cycleId: string) => Promise<Map<string, number>> = async () => new Map(),
 ): Promise<{ cycle: Cycle | null; courses: CatalogueCourse[] }> {
   const id = cycleId ?? (await defaultCycleId());
   if (!id) return { cycle: null, courses: [] };
@@ -140,19 +144,23 @@ export async function catalogue(
     }),
     seatsTaken(id),
   ]);
+  const inBatches = await batchCapacity(id);
   return {
     cycle,
-    courses: courses.map((c) => ({
-      id: c.id,
-      code: c.code,
-      title: c.title,
-      description: c.description,
-      durationWeeks: c.durationWeeks,
-      prerequisites: c.prerequisites,
-      seatCapacity: c.seatCapacity,
-      seatsRemaining: Math.max(0, c.seatCapacity - (taken.get(c.id) ?? 0)),
-      offering: c.offerings[0] ? toOffering(c.offerings[0], now) : null,
-    })),
+    courses: courses.map((c) => {
+      const capacity = inBatches.get(c.id) ?? c.seatCapacity;
+      return {
+        id: c.id,
+        code: c.code,
+        title: c.title,
+        description: c.description,
+        durationWeeks: c.durationWeeks,
+        prerequisites: c.prerequisites,
+        seatCapacity: capacity,
+        seatsRemaining: Math.max(0, capacity - (taken.get(c.id) ?? 0)),
+        offering: c.offerings[0] ? toOffering(c.offerings[0], now) : null,
+      };
+    }),
   };
 }
 
