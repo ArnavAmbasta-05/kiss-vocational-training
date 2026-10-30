@@ -504,9 +504,13 @@ paths:
     patch:
       tags: [admin-courses]
       summary: Rename or re-date a cycle (Admin)
+      description: >-
+        409 CYCLE_HAS_BATCHES_OUTSIDE or CYCLE_HAS_WINDOWS_OUTSIDE (details name them) when the
+        new dates would leave a batch or an application window outside the cycle (L5, L6).
       parameters:
         - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
-      responses: { '200': { description: Updated } }
+      responses:
+        { '200': { description: Updated }, '409': { $ref: '#/components/responses/Conflict' } }
   /admin/cycles/{cycleId}/offerings:
     get:
       tags: [admin-courses]
@@ -518,6 +522,9 @@ paths:
     put:
       tags: [admin-courses]
       summary: Offer a course in a cycle, set its enrollment window and open/close toggle (BRQ-2.3)
+      description: >-
+        422 WINDOW_AFTER_CYCLE when the window closes after the cycle's last day (midnight,
+        institution time, L6). Opening after the cycle has started is allowed.
       parameters:
         - { name: cycleId, in: path, required: true, schema: { type: string, format: uuid } }
         - { name: courseId, in: path, required: true, schema: { type: string, format: uuid } }
@@ -807,6 +814,7 @@ paths:
     post:
       tags: [admin-batches]
       summary: Create a batch (Admin)
+      description: 422 BATCH_OUTSIDE_CYCLE unless both dates fall within the cycle (L5).
       requestBody:
         required: true
         content:
@@ -829,6 +837,7 @@ paths:
     patch:
       tags: [admin-batches]
       summary: Update name, capacity (never below enrolled), dates or venue (Admin)
+      description: 422 BATCH_OUTSIDE_CYCLE when new dates leave the cycle (L5).
       parameters:
         - { name: batchId, in: path, required: true, schema: { type: string, format: uuid } }
       responses:

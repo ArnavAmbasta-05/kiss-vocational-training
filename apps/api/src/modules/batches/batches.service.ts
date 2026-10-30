@@ -18,7 +18,7 @@ import { prisma, type Tx } from '../../core/db';
 import { AppError } from '../../core/errors';
 import { settings } from '../../core/settings';
 import * as enrollments from '../enrollments/enrollments.service';
-import { clashesFor, closeBlocker, type BookedSlot } from './rules';
+import { clashesFor, closeBlocker, insideCycle, type BookedSlot } from './rules';
 import { expandRecurring, MAX_GENERATED_SESSIONS } from './sessionsSchedule';
 
 const day = (d: Date) => d.toISOString().slice(0, 10);
@@ -285,6 +285,20 @@ export async function membersByCourse(cycleId: string): Promise<Map<string, numb
   return new Map(rows.map((r) => [r.course_id, Number(r.n)]));
 }
 
+/** L5: names of a cycle's batches that would not fit between these dates (cycle edits). */
+export async function batchesOutsideDates(
+  cycleId: string,
+  startsOn: Date,
+  endsOn: Date,
+): Promise<string[]> {
+  const rows = await prisma().batch.findMany({
+    where: { cycleId, OR: [{ startDate: { lt: startsOn } }, { endDate: { gt: endsOn } }] },
+    orderBy: { name: 'asc' },
+    select: { name: true, course: { select: { title: true } } },
+  });
+  return rows.map((b) => `${b.course.title} · ${b.name}`);
+}
+
 /** D4: per course, planned or running batches and the students placed in them. */
 export async function liveBatchesByCourse(): Promise<
   Map<string, { batches: number; students: number }>
@@ -313,17 +327,40 @@ export async function capacityByCourse(cycleId: string): Promise<Map<string, num
 
 // ─── Admin: batches (BRQ-4.1) ──────────────────────────────────────────────────
 
+/** L5: 422 BATCH_OUTSIDE_CYCLE unless the batch's dates fall within its cycle's. */
+function assertInsideCycle(
+  startDate: Date,
+  endDate: Date,
+  cycle: { startsOn: Date; endsOn: Date },
+): void {
+  const c = { startsOn: day(cycle.startsOn), endsOn: day(cycle.endsOn) };
+  if (!insideCycle({ startDate: day(startDate), endDate: day(endDate) }, c)) {
+    throw AppError.unprocessable(
+      'BATCH_OUTSIDE_CYCLE',
+      `The batch must run within its cycle (${c.startsOn} to ${c.endsOn})`,
+      [
+        { path: 'startDate', message: c.startsOn },
+        { path: 'endDate', message: c.endsOn },
+      ],
+    );
+  }
+}
+
 export async function create(actor: Actor, input: BatchCreateInput): Promise<BatchSummary> {
   try {
     return await withAudit(actor, async (tx, log) => {
       const [course, cycle] = await Promise.all([
         tx.course.findUnique({ where: { id: input.courseId }, select: { isActive: true } }),
-        tx.trainingCycle.findUnique({ where: { id: input.cycleId }, select: { id: true } }),
+        tx.trainingCycle.findUnique({
+          where: { id: input.cycleId },
+          select: { startsOn: true, endsOn: true },
+        }),
       ]);
       if (!course) throw AppError.notFound('Course not found');
       if (!cycle) throw AppError.notFound('Training cycle not found');
       if (!course.isActive)
         throw AppError.conflict('COURSE_INACTIVE', 'This course is deactivated');
+      assertInsideCycle(new Date(input.startDate), new Date(input.endDate), cycle);
       const b = await tx.batch.create({
         data: {
           ...input,
@@ -360,11 +397,16 @@ export async function update(
         `Capacity cannot be below the ${locked.members} students already in the batch`,
       );
     }
-    const before = await tx.batch.findUniqueOrThrow({ where: { id } });
+    const before = await tx.batch.findUniqueOrThrow({
+      where: { id },
+      include: { cycle: { select: { startsOn: true, endsOn: true } } },
+    });
     const startDate = input.startDate ? new Date(input.startDate) : before.startDate;
     const endDate = input.endDate ? new Date(input.endDate) : before.endDate;
     if (endDate < startDate)
       throw AppError.unprocessable('INVALID_DATES', 'The batch must end on or after its start');
+    const { cycle, ...beforeRow } = before;
+    if (input.startDate || input.endDate) assertInsideCycle(startDate, endDate, cycle);
     const b = await tx.batch.update({
       where: { id },
       data: { name: input.name, capacity: input.capacity, venue: input.venue, startDate, endDate },
@@ -373,7 +415,7 @@ export async function update(
       action: 'BATCH_UPDATED',
       entity: 'Batch',
       entityId: id,
-      oldValue: before,
+      oldValue: beforeRow,
       newValue: b,
     });
     return toSummary(await loadBatch(tx, id));
