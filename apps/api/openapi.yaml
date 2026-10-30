@@ -1081,7 +1081,10 @@ paths:
     get:
       tags: [attendance]
       summary: Attendance sheet (trainer of the batch or admin)
-      description: Includes canEdit, requiresReason (admin after the window), editableUntil and lockedReason.
+      description: >-
+        Includes canEdit, requiresReason (admin after the window), editableUntil and lockedReason.
+        The trainer window is 48 h from the first marking or from the session's end, whichever
+        comes first (BR-06, L3), so an unmarked session closes too.
       parameters:
         - { name: sessionId, in: path, required: true, schema: { type: string, format: uuid } }
       responses:
