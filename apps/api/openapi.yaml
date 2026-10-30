@@ -1495,6 +1495,9 @@ paths:
     get:
       tags: [dashboard]
       summary: Admin figures (BRQ-9.1, BRQ-9.2), aggregated in SQL
+      description: >-
+        endedBatches (L8) lists active batches past their end date with the number of students
+        still waiting for a completion decision (0 = ready to close).
       parameters:
         - {
             name: cycleId,

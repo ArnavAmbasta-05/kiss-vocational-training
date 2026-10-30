@@ -6,6 +6,7 @@ import type {
   BatchSummary,
   BatchUpdateInput,
   Candidate,
+  EndedBatch,
   EnrollmentStatus,
   Role,
   RosterEntry,
@@ -283,6 +284,35 @@ export async function membersByCourse(cycleId: string): Promise<Map<string, numb
     WHERE b.cycle_id = ${cycleId}::uuid AND e.status <> 'WITHDRAWN'
     GROUP BY b.course_id`;
   return new Map(rows.map((r) => [r.course_id, Number(r.n)]));
+}
+
+/**
+ * L8: ACTIVE batches that ended before `today` (YYYY-MM-DD), oldest first, with how many of
+ * their students are still in training (no completion decision yet).
+ */
+export async function endedActive(today: string): Promise<EndedBatch[]> {
+  const rows = await prisma().batch.findMany({
+    where: { status: 'ACTIVE', endDate: { lt: new Date(today) } },
+    orderBy: [{ endDate: 'asc' }, { name: 'asc' }],
+    select: {
+      id: true,
+      name: true,
+      endDate: true,
+      course: { select: { title: true } },
+      _count: {
+        select: {
+          students: { where: { enrollment: { status: { in: ['ALLOCATED', 'ACTIVE'] } } } },
+        },
+      },
+    },
+  });
+  return rows.map((b) => ({
+    batchId: b.id,
+    batchName: b.name,
+    courseTitle: b.course.title,
+    endDate: day(b.endDate),
+    undecided: b._count.students,
+  }));
 }
 
 /** L5: names of a cycle's batches that would not fit between these dates (cycle edits). */
