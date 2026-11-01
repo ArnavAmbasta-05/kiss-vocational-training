@@ -111,6 +111,12 @@ Never paste `BLOB_READ_WRITE_TOKEN` anywhere: it can read every stored file.
 Without `CRON_SECRET` the route refuses every call (401), so the check only runs when someone
 saves attendance, marks or ratings, or presses the button. Never paste the secret anywhere.
 
+The **daily automation** (closing finished batches, waitlist, reminders, notices) is a second
+cron, `/api/v1/internal/jobs/daily-automation` at 21:30 UTC (03:00 IST), with the same
+`CRON_SECRET`; **Settings → Cron Jobs** lists both. Without the secret, admins can still press
+**Run now** on the *Automation* page. Vercel's free plan runs crons at most once a day, which is
+all these jobs need.
+
 ### 4. Seed the demo data (once)
 
 Run this from your machine against the **direct** URL, with a strong demo password because the

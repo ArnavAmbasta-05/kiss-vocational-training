@@ -1,10 +1,10 @@
 # KISS Vocational Training Management Portal --- Business Requirements Document
 
-Oct 9, 2026 (v1.0) · updated Nov 1, 2026 (v1.1) · \@Shashank Singh
+Oct 9, 2026 (v1.0) · updated Nov 1, 2026 (v1.2) · \@Shashank Singh
 
 ## 1. Document control
 
-This BRD (v1.1, updated after release) states what the business needs from
+This BRD (v1.2, updated after release) states what the business needs from
 the portal; the companion Project Documentation v2.1 states how it will
 be built.
 
@@ -14,7 +14,7 @@ be built.
   Document                            Business Requirements Document
                                       (BRD)
 
-  Version                             1.1 --- updated after Release 3
+  Version                             1.2 --- updated after Release 3
                                       with the changes made since (see
                                       the version table)
 
@@ -49,6 +49,15 @@ be built.
                                       post-release site test run (Round
                                       1) or the logic review (Round 2),
                                       recorded in PROGRESS.md.
+
+  1.2 (2026-11-01)                    Automation: Section 8.2 adds
+                                      BRQ-1.5, 3.6, 4.7, 4.8, 7.4, 9.5,
+                                      9.6, 20.4 and 20.5, the nine steps
+                                      the Round 2 review found done by
+                                      hand. No business rule changes;
+                                      every threshold is a setting the
+                                      admin changes on the Automation
+                                      page.
 
   -----------------------------------------------------------------------
 
@@ -321,6 +330,12 @@ These capabilities were added after Release 3, from the team's own use of the po
                                       (BRQ-4.5,         closed
                                       BRQ-4.6, BR-25,
                                       BR-26)
+
+  Automation (v1.2) Every step by     Nightly jobs and  Reminders,
+                    hand              notices, each     closing, waitlist
+                                      with a switch     and follow-ups
+                                      (BRQ-4.7 to       were forgotten or
+                                      BRQ-20.5)         slow
   -----------------------------------------------------------------------
 
 ## 6. Stakeholders and user roles
@@ -685,6 +700,94 @@ Six requirements added after release; each extends a core feature and is cited b
                                 dashboard lists
                                 ended batches
                                 still open
+  -----------------------------------------------------------------------------
+
+### 8.2 Requirements added in v1.2 (automation)
+
+Nine steps the Round 2 review found done by hand. Each runs in the nightly job or at the moment it applies, sends in-app notices only (no paid email or SMS), and has a switch or limit on the admin's Automation page.
+
+  -----------------------------------------------------------------------------
+  ID             Feature        Business          Priority       Traces to
+                                requirement
+  -------------- -------------- ----------------- -------------- --------------
+  BRQ-1.5        F1 Auth        Admins create     Should         BR-27
+                                student accounts
+                                from a CSV file,
+                                checked row by
+                                row first; all
+                                rows or none are
+                                created, each
+                                must change the
+                                shared first
+                                password
+
+  BRQ-3.6        F3 Enrollment  When automatic    Should         BR-01, BR-23
+                                approval is on,
+                                its rules also
+                                apply to
+                                applications
+                                already waiting:
+                                when the rules
+                                change and every
+                                night
+
+  BRQ-4.7        F4 Batches     A finished batch  Should         BR-25
+                                with every
+                                student decided
+                                closes
+                                automatically
+                                after a set
+                                number of days
+
+  BRQ-4.8        F4 Batches     When a seat frees Could          BR-03, BR-04
+                                up, the next
+                                waitlisted
+                                applicant is
+                                placed and told,
+                                if the admin
+                                switches it on
+
+  BRQ-7.4        F7 Completion  Students who meet Should         BR-09
+                                every completion
+                                rule start
+                                selected, so the
+                                admin approves
+                                them in one step
+
+  BRQ-9.5        F9 Dashboards  Daily reminders:  Should         BR-06
+                                trainers about
+                                sessions to mark,
+                                admins about
+                                waiting
+                                applications and
+                                finished batches
+                                without decisions
+
+  BRQ-9.6        F9 Dashboards  Students are told Should         BR-22
+                                when applications
+                                open, a session
+                                is cancelled, a
+                                passport link is
+                                about to expire,
+                                or a new
+                                opportunity
+                                matches their
+                                skills
+
+  BRQ-20.4       F20 Analytics  Outcome analytics Could          ---
+                                refresh after
+                                certificates are
+                                issued when they
+                                are older than a
+                                set number of
+                                minutes
+
+  BRQ-20.5       F20 Analytics  Admins are asked  Could          ---
+                                a set number of
+                                days after a
+                                placement whether
+                                the student is
+                                still in the job
   -----------------------------------------------------------------------------
 
 ## 9. Unique features: analysis and business requirements (F10--F20)
@@ -1662,6 +1765,13 @@ TCs are to be written.
   P9 Training end  BO-3, BO-4     BRQ-1.4, BRQ-2.4, BR-23--BR-28    Automated
   not managed                     BRQ-2.5, BRQ-3.5,                 tests, listed
   (v1.1)                          BRQ-4.5, BRQ-4.6                  in TRACEABILITY
+
+  P10 Steps done   BO-3, BO-6     BRQ-1.5, BRQ-3.6, BR-25, BR-04    Automated
+  by hand (v1.2)                  BRQ-4.7, BRQ-4.8,                 tests, listed
+                                  BRQ-7.4, BRQ-9.5,                 in TRACEABILITY
+                                  BRQ-9.6,
+                                  BRQ-20.4,
+                                  BRQ-20.5
   ---------------------------------------------------------------------------------
 
 **Suggested new boundary tests.** Attendance 79.99% / 80.00% (Medium

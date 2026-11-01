@@ -5,8 +5,8 @@ Passport. Software Engineering project by
 [@ShashankSinghhh](https://github.com/ShashankSinghhh) and
 [@ArnavAmbasta-05](https://github.com/ArnavAmbasta-05).
 
-- **Business rules:** [docs/BRD.md](docs/BRD.md) (v1.1: BR-01…BR-28, BRQ-x.y, NFRs)
-- **Architecture:** [docs/TAD.md](docs/TAD.md) (v1.1) · **Database:** [docs/ER.md](docs/ER.md) ·
+- **Business rules:** [docs/BRD.md](docs/BRD.md) (v1.2: BR-01…BR-28, BRQ-x.y, NFRs)
+- **Architecture:** [docs/TAD.md](docs/TAD.md) (v1.2) · **Database:** [docs/ER.md](docs/ER.md) ·
   **Changes since release:** [docs/CHANGELOG.md](docs/CHANGELOG.md)
 - **Traceability:** [docs/TRACEABILITY.md](docs/TRACEABILITY.md) (every BRQ and BR → module,
   endpoint, test)

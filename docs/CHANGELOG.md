@@ -1,9 +1,42 @@
 # Changelog
 
 What changed in the portal, newest first. The reasons and the details of each change are in
-[PROGRESS.md](PROGRESS.md); the rules are in [BRD.md](BRD.md) (v1.1) and the design in
-[TAD.md](TAD.md) (v1.1, Amendment 2). IDs in brackets are the review findings (S, A, D, T, P from
+[PROGRESS.md](PROGRESS.md); the rules are in [BRD.md](BRD.md) (v1.2) and the design in
+[TAD.md](TAD.md) (v1.2, Amendment 3). IDs in brackets are the review findings (S, A, D, T, P from
 the site test run; L from the logic review) and the BRD requirements and rules they touch.
+
+## v1.2 — automation (2026-11-01)
+
+The nine manual steps from the Round 2 review, automated (BRD v1.2 Section 8.2, TAD Amendment
+3). Branch `automation`, not yet merged.
+
+### Added
+
+- **Automation page** for admins: every switch and limit below, the last nightly run, and
+  **Run now**. A new nightly job (03:00 IST) runs the steps in order; one failing step doesn't
+  stop the others.
+- **A1 auto-close** of finished batches, 7 days after the end date once every student is decided
+  (BRQ-4.7).
+- **A2 waitlist promotion** when a seat frees up, off by default (BRQ-4.8).
+- **A3 daily reminders** to trainers (sessions to mark) and admins (waiting applications,
+  undecided ended batches) (BRQ-9.5).
+- **A4 notices** to students: applications open, session cancelled, passport link expiring, new
+  matching opportunity (BRQ-9.6).
+- **A5 CSV import** of students with a check first, all or nothing (BRQ-1.5).
+- **A6** eligible students start selected on Completions (BRQ-7.4).
+- **A7** automatic approval also applies to waiting applications when its rules change and
+  nightly (BRQ-3.6).
+- **A8** outcome analytics refresh after certificates when stale (BRQ-20.4).
+- **A9** placement follow-up questions to admins after 90 days (BRQ-20.5).
+
+### Technical
+
+- New `automation` module (innovation tier), 11 Settings, 9 notification types, 4 admin
+  endpoints and one cron route (`/internal/jobs/daily-automation`), and a `certificateEvents`
+  hook on the core event bus. No database migration.
+- Word exports of the BRD and TAD regenerated as v1.2 (they replace v1.1).
+- Tests: 478 API tests in 57 files and 75 browser tests, all passing. Traceability is 120 of 120
+  BRQs and BRs cited by a test.
 
 ## v1.1 — after release (2026-10-27 to 2026-11-01)
 

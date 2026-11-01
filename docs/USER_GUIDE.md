@@ -192,6 +192,11 @@ lock straight away. When you add a user or reset a password, *Ask them to choose
 password at first sign-in* is ticked: they then see only *Change password* until they do. A
 trainer who is the only trainer of a planned or running batch can't be deactivated until
 another trainer is assigned to it.
+**Import students** creates many student accounts from a CSV file whose first line names the
+columns `email`, `fullName`, `rollNo`, `cgpa` and, if you have it, `phone` (up to 500 at a
+time). Give a first password, press **Check file** and fix any row it lists (a bad email or
+CGPA, a duplicate, an email or roll number already used); nothing is created until every row is
+right. Then **Import**: every student signs in with that password and must choose their own.
 **Courses & cycles** manages courses, training cycles and the enrollment window of each course.
 Untick *A person checks the prerequisites before approval* on a course whose prerequisites every
 applicant meets (for example "Class 8 pass"), so automatic approval can approve it. Once a
@@ -276,6 +281,28 @@ performance report for any student.
 placements across courses and batches, and records placements (job, apprenticeship,
 internship, self-employment or further study) for students who finished. Figures are rebuilt
 nightly; **Refresh now** includes today's changes.
+
+### Automation
+
+**Automation** shows what the portal does by itself every night at 03:00 and lets you switch
+each part on or off, with its limits:
+
+- **Close finished batches:** a running batch closes on its own once every student has a
+  decision and the set number of days (7) after its end date has passed.
+- **Give freed seats to waitlisted students** (off until you switch it on): when a student
+  withdraws or is moved, or you raise a batch's capacity, the next waitlisted applicant (the one
+  who ranked the course highest, then by the allocation rule) is placed and told.
+- **Daily reminders:** trainers about sessions that ended without attendance; admins about
+  applications waiting too long, finished batches with undecided students, and placements to
+  confirm after 90 days.
+- **Notices to students:** applications opening, a cancelled session, a passport link expiring
+  in 7 days, and a new opportunity they match at least 75 %.
+- **Outcome analytics** refresh after certificates are issued.
+
+Automatic approval keeps its own rules on **Enrollments**; when it is on, the nightly run also
+approves applications already waiting that meet them. **Run now** runs everything at once; the
+table shows what the last run did. On **Completions**, students who meet every rule start
+selected, so one press of **Approve selected** issues their certificates.
 
 ### Audit log
 

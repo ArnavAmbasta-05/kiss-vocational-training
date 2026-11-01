@@ -35,15 +35,15 @@ CI (GitHub Actions, every push and pull request) runs lint, typecheck, the i18n 
 traceability checks, unit tests, integration tests against PostgreSQL 16, the production build,
 the bundle budget and the full browser suite, then a smoke test of the deployed site.
 
-## Latest results (2026-11-01, v1.1)
+## Latest results (2026-11-01, v1.2)
 
 | Suite | Result |
 | --- | --- |
-| API unit + integration | **53 files, 455 tests, all passing** |
-| API coverage (statements / branches / functions / lines) | **88.54 % / 73.78 % / 88.97 % / 90.39 %** |
-| Browser (desktop + phone) | **71 tests, all passing** (journeys, security, accessibility) |
+| API unit + integration | **57 files, 478 tests, all passing** |
+| API coverage (statements / branches / functions / lines) | **88.54 % / 73.78 % / 88.97 % / 90.39 %** (v1.1, not re-measured) |
+| Browser (desktop + phone) | **75 tests, all passing** (journeys, security, accessibility) |
 | Accessibility | every page of every role: **0 serious or critical issues** |
-| Traceability | **111 of 111** BRQs and BRs cited by a test or CI check (BRD v1.1) |
+| Traceability | **120 of 120** BRQs and BRs cited by a test or CI check (BRD v1.2) |
 | Lighthouse, `/verify` (mobile, slow 4G) | score 100, LCP 0.9 s, 11 KB (Sprint 13, not re-measured) |
 | Lighthouse, sign-in shell | score 94, LCP 2.6 s, 216 KB, 14 requests (Sprint 13, not re-measured) |
 | Live site, first request after idle | 2.66 s (cold start); 0.4–0.6 s warm (Sprint 13) |

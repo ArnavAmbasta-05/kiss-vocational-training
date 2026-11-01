@@ -1,10 +1,10 @@
 # KISS Vocational Training Management Portal --- Technical Architecture Document
 
-Oct 9, 2026 (v1.0) · updated Nov 1, 2026 (v1.1) · \@Shashank Singh
+Oct 9, 2026 (v1.0) · updated Nov 1, 2026 (v1.2) · \@Shashank Singh
 
 ## 1. Document control and purpose
 
-This TAD (v1.1, updated after release) describes how the portal is built to meet the
+This TAD (v1.2, updated after release) describes how the portal is built to meet the
 BRD: one modular monolith on React, Node.js / Express and PostgreSQL,
 extended with competency, risk, passport, verification and AI modules.
 
@@ -14,10 +14,11 @@ extended with competency, risk, passport, verification and AI modules.
   Document                            Technical Architecture Document
                                       (TAD)
 
-  Version                             1.1 --- Amendment 1 (hosting) and
+  Version                             1.2 --- Amendment 1 (hosting),
                                       Amendment 2 (post-release changes)
+                                      and Amendment 3 (automation)
 
-  Inputs                              KISS VTMP BRD v1.1; Project
+  Inputs                              KISS VTMP BRD v1.2; Project
                                       Documentation v2.1 (Sections 9--13,
                                       23)
 
@@ -73,6 +74,33 @@ wins for business rules.
 >   anything else (Section 9).
 >
 > Rows changed by this amendment are marked "(Amendment 2)".
+
+> **Amendment 3 (2026-11-01): automation.** The nine steps the logic
+> review found done by hand (BRD v1.2, Section 8.2) are automated
+> without new infrastructure:
+>
+> - **One new module, `automation`**, in the innovation tier: it calls
+>   exported services of core and innovation modules, and no core module
+>   imports it (the module-boundary test lists it).
+> - **One nightly job**, `/internal/jobs/daily-automation` (Vercel Cron at
+>   21:30 UTC, 03:00 IST; node-cron locally), under the same job lease as
+>   the others. Its steps run in order and independently: automatic
+>   approval of waiting applications, waitlist promotion, closing finished
+>   batches, reminders, notices, placement follow-ups. Notices that fire
+>   once cover the time since the last successful run.
+> - **At the moment they apply:** waitlist promotion after a seat frees
+>   up (batches service), a session-cancelled notice (batches), a match
+>   notice when an opportunity is published (opportunities), and an
+>   analytics refresh after a certificate (completion announces
+>   certificateEvents.issued on the core event bus; automation subscribes).
+> - **11 new Settings** (`automation.*`, `analytics.autoRefreshMinutes`),
+>   changed on the admin's Automation page (GET/PUT /admin/automation,
+>   POST /admin/automation/run). Notices are in-app only: email or SMS
+>   would need a paid service.
+> - **CSV import** of students: POST /admin/users/import, checked row by
+>   row, all or nothing, in one transaction.
+>
+> Rows changed by this amendment are marked "(Amendment 3)".
 
 ## 2. Architecture overview
 
@@ -396,6 +424,18 @@ off or cut from scope without breaking the core workflow.
 
   **analytics**            Outcome          Read-only materialized  R3             P2
                            analytics (F20)  views                                  
+
+  **automation**           Nightly jobs,    --- (Settings rows;     v1.2           P1 / P2
+                           reminders and    calls other modules'
+                           notices,         services)
+                           waitlist
+                           promotion,
+                           auto-close,
+                           analytics
+                           refresh after
+                           certificates
+                           (BRQ-3.6--20.5,
+                           Amendment 3)
   -----------------------------------------------------------------------------------------------
 
 Modules call each other only through exported service functions, never
@@ -646,6 +686,14 @@ idempotent where they change state.
   /admin/batches/:id/students/:enrollmentId/withdraw   a reason
 
   POST /admin/batches/:id/close                        Close a finished batch   Admin  BRQ-4.6, BR-25
+
+  GET/PUT /admin/automation · POST                     Automation settings,     Admin  BRQ-4.7,
+  /admin/automation/run                                last run, Run now               BRQ-9.5
+                                                       (Amendment 3)
+
+  POST /admin/users/import                             CSV import of students,  Admin  BRQ-1.5
+                                                       dry run first (Amendment
+                                                       3)
   ----------------------------------------------------------------------------------------------------
 
 ## 8. Key runtime flows
@@ -749,6 +797,29 @@ transaction and ends with an audit entry.
     cycle's pending applications in one set-based UPDATE ... RETURNING,
     with bulk audit rows and notifications; a concurrent manual decision
     wins.
+
+### 8.6 Daily automation run (Amendment 3)
+
+1.  Vercel Cron calls /internal/jobs/daily-automation with the cron
+    secret (node-cron at 03:00 IST locally; Run now from the Automation
+    page). withJobLease claims the daily-automation lease, so two runs
+    never overlap, and hands over the last successful run's time.
+
+2.  Each step reads its switch and limits from Settings and runs in its
+    own try/catch: one failing step is reported and the others still run.
+
+3.  Steps, in order: automatic approval of waiting applications (when it
+    is on); waitlist promotion into planned batches and running ones in
+    their first days; closing batches ready for it (closeBlocker, BR-25)
+    after the grace days; reminders to trainers (sessions inside the edit
+    window still unmarked) and admins (old applications, ended batches
+    with undecided students); notices to students (windows opened and
+    passport links nearing expiry since the last success); placement
+    follow-ups.
+
+4.  Scheduled steps act as the system ({ userId: null }) in audit rows;
+    notifications are in-app. The result (each step with enabled, count,
+    error) is stored on the lease row and shown on the Automation page.
 
 ## 9. Security architecture
 
