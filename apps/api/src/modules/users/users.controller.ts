@@ -5,6 +5,7 @@ import type {
   AdminUpdateUserInput,
   BulkStatusInput,
   ChangePasswordInput,
+  StudentImportInput,
   UpdateProfileInput,
   UserListQuery,
 } from '@vtmp/shared';
@@ -52,6 +53,10 @@ export const remove = asyncHandler(async (req, res) => {
 
 export const unlock = asyncHandler(async (req, res) => {
   res.json(await usersService.unlockUser(actor(req), req.params.id!));
+});
+
+export const importStudents = asyncHandler(async (req, res) => {
+  res.json(await usersService.importStudents(actor(req), req.body as StudentImportInput));
 });
 
 export const resetPassword = asyncHandler(async (req, res) => {

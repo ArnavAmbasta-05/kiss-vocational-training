@@ -5,6 +5,7 @@ import {
   AdminResetPasswordSchema,
   AdminUpdateUserSchema,
   BulkStatusSchema,
+  StudentImportSchema,
   ChangePasswordSchema,
   UpdateProfileSchema,
   UserListQuerySchema,
@@ -34,6 +35,8 @@ export function adminUserRoutes(): Router {
   router.use(authenticate, authorize('ADMIN'));
   router.get('/', validate({ query: UserListQuerySchema }), controller.list);
   router.post('/', validate({ body: AdminCreateUserSchema }), controller.create);
+  // A5: CSV import of students (dry run first); before /:id so "import" is not taken for an id.
+  router.post('/import', validate({ body: StudentImportSchema }), controller.importStudents);
   router.post(
     '/bulk-status',
     validate({ body: BulkStatusSchema }),

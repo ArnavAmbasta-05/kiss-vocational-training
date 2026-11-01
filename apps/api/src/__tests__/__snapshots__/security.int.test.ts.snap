@@ -113,6 +113,7 @@ exports[`route inventory (TAD §9, CLAUDE.md rule 2) pins who may call each rout
   "GET /api/v1/students/me/risk  →  STUDENT",
   "GET /api/v1/admin/users  →  ADMIN",
   "POST /api/v1/admin/users  →  ADMIN",
+  "POST /api/v1/admin/users/import  →  ADMIN",
   "POST /api/v1/admin/users/bulk-status  →  ADMIN",
   "PATCH /api/v1/admin/users/:id  →  ADMIN",
   "DELETE /api/v1/admin/users/:id  →  ADMIN",

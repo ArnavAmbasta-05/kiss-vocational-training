@@ -291,6 +291,31 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /admin/users/import:
+    post:
+      tags: [admin-users]
+      summary: Import students from a CSV (Admin, A5, BRQ-1.5); check with dryRun first
+      description: >-
+        Body csv (first line names the columns email, fullName, rollNo, cgpa, optional phone;
+        at most 500 rows), password (the shared first password, BR-27) and dryRun. Every row is
+        checked (format, duplicates in the file, email or roll number already used) and returned
+        with error codes. A dry run, or any row with an error, creates nothing; otherwise every
+        student is created in one transaction, audited, and must change the password at first
+        sign-in. 422 IMPORT_BAD_HEADER or IMPORT_TOO_MANY_ROWS.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [csv, password, dryRun]
+              properties:
+                csv: { type: string, maxLength: 200000 }
+                password: { type: string, minLength: 8 }
+                dryRun: { type: boolean }
+      responses:
+        '200': { description: 'rows (line, values, errors), valid, invalid, created' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
   /admin/users/{id}/unlock:
     post:
       tags: [admin-users]
