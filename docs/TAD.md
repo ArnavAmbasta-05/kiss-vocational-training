@@ -1,10 +1,10 @@
 # KISS Vocational Training Management Portal --- Technical Architecture Document
 
-Oct 9, 2026 · \@Shashank Singh
+Oct 9, 2026 (v1.0) · updated Nov 1, 2026 (v1.1) · \@Shashank Singh
 
 ## 1. Document control and purpose
 
-This TAD (v1.0, draft) describes how the portal is built to meet the
+This TAD (v1.1, updated after release) describes how the portal is built to meet the
 BRD: one modular monolith on React, Node.js / Express and PostgreSQL,
 extended with competency, risk, passport, verification and AI modules.
 
@@ -14,10 +14,10 @@ extended with competency, risk, passport, verification and AI modules.
   Document                            Technical Architecture Document
                                       (TAD)
 
-  Version                             1.0 --- draft for team and guide
-                                      review
+  Version                             1.1 --- Amendment 1 (hosting) and
+                                      Amendment 2 (post-release changes)
 
-  Inputs                              KISS VTMP BRD v1.0; Project
+  Inputs                              KISS VTMP BRD v1.1; Project
                                       Documentation v2.1 (Sections 9--13,
                                       23)
 
@@ -51,6 +51,28 @@ wins for business rules.
 > Rows changed by this amendment are marked "(Amendment 1)". Setup and
 > the reasons for each choice are in docs/DEPLOYMENT.md and
 > docs/PROGRESS.md (Sprint 2).
+
+> **Amendment 2 (2026-11-01): changes after release.** After Release 3
+> the team used the portal and reviewed it twice (a site test run and a
+> logic review; see PROGRESS.md). The architecture is unchanged: the same
+> modules, layers and rules apply. What changed:
+>
+> - **Business rules:** BR-06, BR-09, BR-19 and BR-20 were amended and
+>   BR-23 to BR-28 added (BRD v1.1, Section 10). Each lives in a service
+>   or a pure rule function with boundary tests, as before.
+> - **Endpoints:** 11 new admin routes (Section 7), all behind the same
+>   pipeline; the route table grew from 156 to 167.
+> - **Data:** one migration adds User.must_change_password and
+>   Course.prerequisites_need_review (Section 6.1). Batch.status CLOSED
+>   and Enrollment.status WITHDRAWN existed but were never set; they are
+>   now (Section 8.4).
+> - **Settings:** enrollment.autoApprove, enrollment.autoApproveMinCgpa
+>   and enrollment.autoApproveManualIfPrerequisites (automatic approval).
+> - **Security:** the global rate limit counts signed-in users one by one
+>   instead of per address; admin-set passwords must be changed before
+>   anything else (Section 9).
+>
+> Rows changed by this amendment are marked "(Amendment 2)".
 
 ## 2. Architecture overview
 
@@ -234,35 +256,75 @@ off or cut from scope without breaking the core workflow.
   Module                   Responsibility   Owns tables             Release        Owner
   ------------------------ ---------------- ----------------------- -------------- --------------
   auth                     Login, refresh,  User, RefreshToken      R1             P1
-                           logout, password                                        
-                           change, RBAC +                                          
-                           ownership                                               
-                           middleware                                              
+                           logout, password
+                           change, RBAC +
+                           ownership
+                           middleware;
+                           forced change of
+                           admin-set
+                           passwords, one
+                           answer for every
+                           failed sign-in
+                           (BR-27,
+                           Amendment 2)
 
   students / trainers      Profiles and     Student, Trainer        R1             P2
-                           master data                                             
+                           master data;
+                           admin reset,
+                           unlock, bulk
+                           status, safe
+                           delete; a needed
+                           trainer stays
+                           active (BRQ-1.4,
+                           BRQ-2.5, BR-28,
+                           Amendment 2)
 
   courses                  Courses,         Course                  R1             P2
-                           enrollment                                              
-                           windows,                                                
-                           prerequisites                                           
+                           enrollment
+                           windows,
+                           prerequisites;
+                           cycle choice for
+                           students, bulk
+                           status, safe
+                           delete, windows
+                           inside the cycle
+                           (BRQ-2.4,
+                           BRQ-2.5, BR-24,
+                           Amendment 2)
 
   enrollments              Ranked           Enrollment              R1             P1 / P2
-                           preferences,                                            
-                           review, waitlist                                        
-                           (BR-01, BR-02)                                          
+                           preferences,
+                           review, waitlist
+                           (BR-01, BR-02);
+                           automatic
+                           approval, no
+                           overlapping
+                           trainings
+                           (BRQ-3.5, BR-23,
+                           Amendment 2)
 
   batches + allocation     Batches,         Batch, BatchStudent,    R1             P2
-                           allocation       TrainerAssignment                      
-                           preview and                                             
-                           confirm (BR-03,                                         
-                           BR-04)                                                  
+                           allocation       TrainerAssignment
+                           preview and
+                           confirm (BR-03,
+                           BR-04); dates
+                           inside the
+                           cycle, withdraw,
+                           close
+                           (BR-24--BR-26,
+                           Amendment 2)
 
   sessions + attendance    Scheduling,      TrainingSession,        R1             P1
-                           attendance, 48 h Attendance                             
-                           edit window                                             
-                           (BR-05, BR-06,                                          
-                           BR-08)                                                  
+                           attendance, 48 h Attendance
+                           edit window from
+                           the first
+                           marking or the
+                           session's end;
+                           unmarked
+                           sessions counted
+                           (BR-05, BR-06,
+                           BR-08, Amendment
+                           2)
 
   assessments              Assessments,     Assessment,             R1             P1
                            results,         AssessmentResult,                      
@@ -271,15 +333,23 @@ off or cut from scope without breaking the core workflow.
                            (BR-07, BR-11)                                          
 
   completion               Eligibility      --- (reads others;      R1             P2
-                           engine (BR-09),  writes Enrollment                      
-                           completion queue status)                                
+                           engine (BR-09,   writes Enrollment
+                           incl. sessions   status)
+                           recorded,
+                           Amendment 2),
+                           completion queue
 
   documents                Certificate and  Certificate,            R1 / R2        P2
                            report PDFs, QR  PerformanceReport                      
                            codes                                                   
 
   reports + dashboard      Aggregates, CSV  Read-only views         R1             P2
-                           / PDF export                                            
+                           / PDF export;
+                           ended batches
+                           awaiting
+                           decisions
+                           (BRQ-4.6,
+                           Amendment 2)
 
   audit                    Append-only      AuditLog                R1 / R3        P2
                            change log,                                             
@@ -348,6 +418,13 @@ Additions to existing tables: Certificate.status (VALID, REVOKED,
 SUPERSEDED), Certificate.public_code (12+ char random, unique),
 Certificate.revoked_reason, Certificate.verification_count;
 Assessment.mode (THEORY, PRACTICAL); User.locale (en, or, hi).
+
+Added by Amendment 2 (migration
+20261028100000_password_change_and_prerequisite_review):
+User.must_change_password (set when an admin chooses the password,
+cleared when the user changes it) and Course.prerequisites_need_review
+(default true; when false, automatic approval does not hold
+applications for that course's prerequisites).
 
 ### 6.2 New tables
 
@@ -450,6 +527,14 @@ Assessment.mode (THEORY, PRACTICAL); User.locale (en, or, hi).
     on read or in SQL views, not stored, except snapshots on
     PerformanceReport and Certificate.
 
+-   A student withdrawn from a running batch keeps their BatchStudent
+    row, so attendance and marks stay linked; seat counts, sheets, mark
+    entry and risk checks leave out WITHDRAWN enrollments (Amendment 2).
+
+-   Unmarked sessions are counted on read: SCHEDULED sessions that ended
+    after the student was placed (BatchStudent.allocated_at), never
+    stored (Amendment 2).
+
 ## 7. API design
 
 All endpoints sit under /api/v1, return JSON and share one error format;
@@ -530,6 +615,39 @@ unique-feature endpoints.
                                     thresholds                          
   ---------------------------------------------------------------------------------------
 
+**Endpoints added after release (Amendment 2)**
+
+GET /cycles (students' cycle choice, BRQ-2.4) also gained an
+applications field per cycle. All new routes are admin-only and
+idempotent where they change state.
+
+  ----------------------------------------------------------------------------------------------------
+  Method & path                                        Purpose                  Role   Requirement
+  ---------------------------------------------------- ------------------------ ------ ---------------
+  POST /admin/users/:id/password                       Reset a forgotten        Admin  BRQ-1.4, BR-27
+                                                       password (asks for a new
+                                                       one at next sign-in)
+
+  POST /admin/users/:id/unlock                         Clear a login lock       Admin  BRQ-1.4
+
+  POST /admin/users/bulk-status · DELETE               Deactivate or reactivate Admin  BRQ-2.5, BR-28
+  /admin/users/:id                                     in bulk; delete an
+                                                       unused account
+
+  POST /admin/courses/bulk-status · DELETE             Deactivate or reactivate Admin  BRQ-2.5
+  /admin/courses/:id                                   in bulk; delete an
+                                                       unused course
+
+  GET/PUT /admin/enrollments/auto-approval · POST      Read or change the       Admin  BRQ-3.5
+  /admin/enrollments/auto-approve                      rules; apply them to
+                                                       pending applications
+
+  POST                                                 Withdraw a student with  Admin  BRQ-4.5, BR-26
+  /admin/batches/:id/students/:enrollmentId/withdraw   a reason
+
+  POST /admin/batches/:id/close                        Close a finished batch   Admin  BRQ-4.6, BR-25
+  ----------------------------------------------------------------------------------------------------
+
 ## 8. Key runtime flows
 
 Three flows carry most of the new logic; each runs inside one
@@ -595,6 +713,43 @@ transaction and ends with an audit entry.
 4.  verification_count increments asynchronously; response is cacheable
     for 5 minutes (except after revocation, which purges the cache key).
 
+### 8.4 Batch lifecycle: withdraw and close (F4, Amendment 2)
+
+1.  A batch is created PLANNED, inside its cycle's dates (BR-24), and
+    becomes ACTIVE on activation, which needs a trainer.
+
+2.  A student who leaves is withdrawn with a reason: from a PLANNED
+    batch the BatchStudent row is deleted; from an ACTIVE batch it stays
+    and the enrollment becomes WITHDRAWN (BR-26). One transaction writes
+    the status, the audit rows and the student's notification.
+
+3.  From the day after the end date (institution calendar), the admin
+    dashboard lists the batch with the students still undecided (BRQ-4.6).
+
+4.  When no student is ALLOCATED or ACTIVE, POST /admin/batches/:id/close
+    locks the batch row, checks closeBlocker (pure rule) and sets CLOSED
+    with an audit row (BR-25); otherwise 409 names what is missing.
+
+5.  A CLOSED batch refuses attendance, marks, sessions and students; its
+    records stay readable.
+
+### 8.5 Automatic approval (F3, Amendment 2)
+
+1.  On submit or edit, the enrollments service screens the application
+    with the pure rule screen() against Settings: minimum CGPA, the
+    course's prerequisites_need_review flag and BR-23 (no overlapping
+    training).
+
+2.  If nothing holds it, it is approved in the student's own
+    transaction, audited with by: AUTO_APPROVAL, and the student is
+    notified; otherwise it stays PENDING with the reasons shown to the
+    admin.
+
+3.  POST /admin/enrollments/auto-approve applies the saved rules to a
+    cycle's pending applications in one set-based UPDATE ... RETURNING,
+    with bulk audit rows and notifications; a concurrent manual decision
+    wins.
+
 ## 9. Security architecture
 
 Every request passes the same middleware chain; public endpoints are a
@@ -608,8 +763,12 @@ requireOwnership(resolver) → Zod validation → controller → service.
   Concern                             Design
   ----------------------------------- -----------------------------------
   Passwords                           bcrypt, cost 12; minimum 8
-                                      characters; generic error on failed
-                                      login
+                                      characters with a letter and a
+                                      digit; one generic error for every
+                                      failed login, locked accounts
+                                      included; a password set by an
+                                      admin must be changed before
+                                      anything else (BR-27, Amendment 2)
 
   Tokens                              Access JWT 15 min in memory;
                                       refresh token 7 days in httpOnly,
@@ -617,8 +776,11 @@ requireOwnership(resolver) → Zod validation → controller → service.
                                       rotated on use, stored as a hash
 
   Brute force                         5 failed logins per account per 15
-                                      min → temporary lock; per-IP limit
-                                      on /auth
+                                      min → temporary lock, which an
+                                      admin can clear; per-IP limit on
+                                      /auth; the global limit counts
+                                      signed-in users one by one, others
+                                      per IP (Amendment 2)
 
   Ownership                           Resolvers check the trainer is
                                       assigned to the batch (BR-05) and
@@ -985,4 +1147,13 @@ pull requests reviewed by the other member.
 
   BRQ-19.x (F19)          audit                   Prisma audit middleware,
                                                   /audit-logs
+
+  BRQ-1.4, 2.4, 2.5, 3.5, users, courses,         /admin/users/:id/password,
+  4.5, 4.6 (v1.1)         enrollments, batches,   /cycles,
+                          dashboard               /admin/enrollments/auto-approve,
+                                                  /admin/batches/:id/close,
+                                                  .../withdraw
   ---------------------------------------------------------------------------------
+
+The full matrix (every BRQ and BR with its modules, endpoints and tests) is
+generated from the code into docs/TRACEABILITY.md and checked in CI.
