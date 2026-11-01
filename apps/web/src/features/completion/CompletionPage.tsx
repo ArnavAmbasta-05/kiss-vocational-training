@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { CompletionRow, EligibilityCheck } from '@vtmp/shared';
@@ -52,6 +52,18 @@ export function CompletionPage() {
     else if (!batchId && !cycleId && cycles.data?.[0]) setCycleId(cycles.data[0].id);
   }, [linked.data, batchId, cycleId, cycles.data]);
   useEffect(() => setSelected(new Set()), [batchId]);
+  // A6 (BRQ-7.4): students who meet every rule start selected, once per batch, so the admin reviews and
+  // approves them in one go. Revisiting a Not completed decision stays a deliberate choice.
+  const preselectedFor = useRef('');
+  useEffect(() => {
+    if (!queue.data || queue.isFetching || preselectedFor.current === batchId) return;
+    preselectedFor.current = batchId;
+    setSelected(
+      new Set(
+        queue.data.filter((r) => canApprove(r) && r.status === 'ACTIVE').map((r) => r.enrollmentId),
+      ),
+    );
+  }, [queue.data, queue.isFetching, batchId]);
 
   const options = (batches.data ?? []).filter((b) => b.status !== 'PLANNED');
 
@@ -255,6 +267,11 @@ export function CompletionPage() {
         )}
       </div>
 
+      {chosen.length > 0 && (
+        <p className="text-sm text-slate-700" role="status">
+          {t('queue.preselected', { count: chosen.length })}
+        </p>
+      )}
       {batches.data && options.length === 0 && <EmptyState title={t('queue.noBatches')} />}
       {batchId &&
         (queue.isPending ? (

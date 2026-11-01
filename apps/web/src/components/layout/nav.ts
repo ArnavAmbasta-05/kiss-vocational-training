@@ -45,6 +45,7 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
     { to: '/admin/reports', labelKey: 'nav.admin.reports' },
     { to: '/admin/analytics', labelKey: 'nav.admin.analytics' },
     { to: '/admin/materials', labelKey: 'nav.admin.materials' },
+    { to: '/admin/automation', labelKey: 'nav.admin.automation' },
     { to: '/admin/audit', labelKey: 'nav.admin.audit' },
   ],
 };

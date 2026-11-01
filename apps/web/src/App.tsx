@@ -138,6 +138,10 @@ const AdminOpportunitiesPage = lazy(() =>
   })),
 );
 
+const AutomationPage = lazy(() =>
+  import('./features/automation/AutomationPage').then((m) => ({ default: m.AutomationPage })),
+);
+
 const AnalyticsPage = lazy(() =>
   import('./features/analytics/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage })),
 );
@@ -167,6 +171,7 @@ const BUILT: Record<string, RouteObject['element']> = {
   '/admin/audit': <AuditLogPage />,
   '/admin/opportunities': <AdminOpportunitiesPage />,
   '/admin/analytics': <AnalyticsPage />,
+  '/admin/automation': <AutomationPage />,
   '/admin/materials': <MaterialsPage />,
   '/student/assistant': <AssistantPage />,
   '/student/opportunities': <MyOpportunitiesPage />,

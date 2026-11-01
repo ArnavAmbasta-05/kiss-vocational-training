@@ -38,7 +38,9 @@
     "retried": "Certificate generated",
     "download": "Download",
     "downloadFor": "Download the certificate of {{name}}",
-    "none": "—"
+    "none": "—",
+    "preselected_one": "{{count}} student selected: they meet every completion rule. Review, then approve.",
+    "preselected_other": "{{count}} students selected: they meet every completion rule. Review, then approve."
   },
   "rule": {
     "ATTENDANCE": "Attendance {{actual}} (minimum {{required}} %)",

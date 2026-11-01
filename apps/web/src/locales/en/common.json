@@ -52,7 +52,8 @@
       "audit": "Audit log",
       "opportunities": "Opportunities",
       "analytics": "Outcome analytics",
-      "materials": "Assistant materials"
+      "materials": "Assistant materials",
+      "automation": "Automation"
     }
   },
   "actions": {
