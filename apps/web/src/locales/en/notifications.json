@@ -50,6 +50,42 @@
     "RISK_ACTION_AGREED": {
       "title": "A plan to help you",
       "body": "{{owner}} has set up support for you, due {{dueOn}}."
+    },
+    "BATCH_CLOSED": {
+      "title": "Batch closed",
+      "body": "{{courseTitle}}, {{batchName}} was closed automatically: training is over."
+    },
+    "SESSION_CANCELLED": {
+      "title": "Session cancelled",
+      "body": "{{courseTitle}}, {{batchName}}: the session on {{when}} is cancelled."
+    },
+    "APPLICATIONS_OPEN": {
+      "title": "Applications are open",
+      "body": "{{cycleName}}: {{courses}}. Apply from Courses."
+    },
+    "PASSPORT_LINK_EXPIRING": {
+      "title": "A passport link expires soon",
+      "body": "A link to your Skill Passport stops working on {{date}}. Share a new one if it is still needed."
+    },
+    "OPPORTUNITY_MATCH": {
+      "title": "A new opportunity matches your skills",
+      "body": "{{title}} at {{partner}}: {{matchPercent}} % match."
+    },
+    "REMINDER_ATTENDANCE": {
+      "title": "Attendance to mark",
+      "body": "{{count}} session(s) ended without attendance. Mark them before the edit window closes."
+    },
+    "REMINDER_PENDING_APPLICATIONS": {
+      "title": "Applications waiting",
+      "body": "{{count}} application(s) have waited more than {{days}} days for a decision."
+    },
+    "REMINDER_ENDED_BATCHES": {
+      "title": "Completion decisions due",
+      "body": "{{count}} ended batch(es) still have students without a decision."
+    },
+    "PLACEMENT_FOLLOW_UP": {
+      "title": "Placement follow-up",
+      "body": "Is {{studentName}} still working as {{roleTitle}} at {{employer}}? It has been {{days}} days."
     }
   }
 }

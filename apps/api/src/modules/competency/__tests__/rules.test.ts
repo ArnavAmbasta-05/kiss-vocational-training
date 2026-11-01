@@ -67,6 +67,8 @@ describe('module boundaries', () => {
     'evidence',
     'assistant',
     'analytics',
+    // Round 2 automation orchestrates core and innovation services; core never imports it.
+    'automation',
   ];
   const modulesDir = path.resolve(__dirname, '../..');
   const files = (dir: string): string[] =>

@@ -176,7 +176,7 @@ describe('admin user management', () => {
   });
 });
 
-describe('admin user clean-up', () => {
+describe('admin user clean-up (BRQ-2.5)', () => {
   it('deactivates several users at once: sessions revoked, each change audited', async () => {
     const admin = await signedIn(Role.ADMIN);
     const a = await signedIn(Role.STUDENT);
@@ -300,7 +300,7 @@ describe('admin user clean-up', () => {
   });
 });
 
-describe('admin password reset', () => {
+describe('admin password reset (BRQ-1.4)', () => {
   it('sets a new password: old one stops working, sessions end, lock cleared, audited', async () => {
     const admin = await signedIn(Role.ADMIN);
     const target = await signedIn(Role.STUDENT);
@@ -364,7 +364,7 @@ describe('admin password reset', () => {
   });
 });
 
-describe('password set by an admin must be changed (A3) and unlocking (A2)', () => {
+describe('password set by an admin must be changed (A3, BR-27) and unlocking (A2, BRQ-1.4)', () => {
   it('a new account asked to change its password can do nothing else until it does', async () => {
     const admin = await signedIn(Role.ADMIN);
     const email = `first-${uid()}@test.local`;
@@ -451,7 +451,7 @@ describe('password set by an admin must be changed (A3) and unlocking (A2)', () 
   });
 });
 
-describe('deactivating a trainer a batch still needs (D3)', () => {
+describe('deactivating a trainer a batch still needs (D3, BR-28)', () => {
   it('refuses while they are the only trainer of a planned batch, allows once another is assigned', async () => {
     const admin = await signedIn(Role.ADMIN);
     const only = await createLoginUser(prisma(), Role.TRAINER);
@@ -536,7 +536,7 @@ describe('POST /users/me/password', () => {
     expect(res.status).toBe(422);
   });
 
-  it('rejects passwords without both a letter and a digit (A4)', async () => {
+  it('rejects passwords without both a letter and a digit (A4, BR-27)', async () => {
     const { accessToken } = await signedIn(Role.STUDENT);
     for (const newPassword of ['aaaaaaaa', '12345678', '!!!!!!!!']) {
       const res = await request(app)

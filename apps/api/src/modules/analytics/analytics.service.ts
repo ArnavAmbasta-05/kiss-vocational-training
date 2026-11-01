@@ -371,3 +371,31 @@ export async function deletePlacement(actor: Actor, id: string): Promise<void> {
     });
   });
 }
+
+/**
+ * A9 (BRQ-20.5): placements whose follow-up date (start + `afterDays`) fell in (from, to], so admins are
+ * asked once whether each student is still in that job.
+ */
+export async function placementsDueFollowUp(
+  from: Date,
+  to: Date,
+  afterDays: number,
+): Promise<Array<{ id: string; studentName: string; employer: string; roleTitle: string }>> {
+  const ms = afterDays * 86_400_000;
+  const rows = await prisma().placementOutcome.findMany({
+    where: { placedOn: { gt: new Date(from.getTime() - ms), lte: new Date(to.getTime() - ms) } },
+    orderBy: { placedOn: 'asc' },
+    select: {
+      id: true,
+      employer: true,
+      roleTitle: true,
+      enrollment: { select: { student: { select: { user: { select: { fullName: true } } } } } },
+    },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    studentName: r.enrollment.student.user.fullName,
+    employer: r.employer,
+    roleTitle: r.roleTitle,
+  }));
+}

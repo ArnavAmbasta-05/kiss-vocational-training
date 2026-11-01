@@ -111,6 +111,12 @@ Never paste `BLOB_READ_WRITE_TOKEN` anywhere: it can read every stored file.
 Without `CRON_SECRET` the route refuses every call (401), so the check only runs when someone
 saves attendance, marks or ratings, or presses the button. Never paste the secret anywhere.
 
+The **daily automation** (closing finished batches, waitlist, reminders, notices) is a second
+cron, `/api/v1/internal/jobs/daily-automation` at 21:30 UTC (03:00 IST), with the same
+`CRON_SECRET`; **Settings → Cron Jobs** lists both. Without the secret, admins can still press
+**Run now** on the *Automation* page. Vercel's free plan runs crons at most once a day, which is
+all these jobs need.
+
 ### 4. Seed the demo data (once)
 
 Run this from your machine against the **direct** URL, with a strong demo password because the
@@ -121,8 +127,10 @@ DATABASE_URL="<neon direct url>" SEED_PASSWORD="<strong demo password>" pnpm db:
 ```
 
 In PowerShell: `$env:DATABASE_URL="…"; $env:SEED_PASSWORD="…"; pnpm db:seed`, then close the
-terminal. The seed is idempotent and never changes existing accounts. Share the demo password
-only with the team and examiners. **Never reuse a real password** (e.g. the database password)
+terminal. The seed is idempotent: it never changes passwords or deletes anything, but it does
+give seeded students 001–040 their current names (a database seeded before 2026-10-30 keeps its
+old students 041–060 until they are removed by hand). Share the demo password only with the
+team and examiners. **Never reuse a real password** (e.g. the database password)
 as the demo password.
 
 To **change the demo password later**, run the same command with `--reset-passwords`. It sets

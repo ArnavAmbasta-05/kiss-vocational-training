@@ -192,3 +192,24 @@ export async function publicPassport(token: string): Promise<PublicPassport> {
       })),
   };
 }
+
+/**
+ * A4: live share links whose warning time (expiry minus `noticeDays`) fell in (from, to], with
+ * the student's account, so each link is warned about once.
+ */
+export async function sharesToWarn(
+  from: Date,
+  to: Date,
+  noticeDays: number,
+): Promise<Array<{ userId: string; expiresAt: Date }>> {
+  const ms = noticeDays * 86_400_000;
+  const rows = await prisma().passportShare.findMany({
+    where: {
+      revokedAt: null,
+      expiresAt: { gt: new Date(from.getTime() + ms), lte: new Date(to.getTime() + ms) },
+      student: { user: { isActive: true } },
+    },
+    select: { expiresAt: true, student: { select: { userId: true } } },
+  });
+  return rows.map((r) => ({ userId: r.student.userId, expiresAt: r.expiresAt! }));
+}

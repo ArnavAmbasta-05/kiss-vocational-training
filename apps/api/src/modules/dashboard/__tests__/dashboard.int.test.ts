@@ -63,7 +63,7 @@ describe('dashboards (BRQ-9.1–9.3)', () => {
     expect(d.minAttendancePercent).toBe(75);
   });
 
-  it('admin: L8 lists running batches past their end date, with students still undecided', async () => {
+  it('admin: L8 lists running batches past their end date, with students still undecided (BRQ-4.6)', async () => {
     const w = await createTrainedBatch(prisma(), [
       { attended: 4, marks: 45, recommended: true },
       { attended: 1 },

@@ -52,6 +52,7 @@ erDiagram
     bool is_active
     int failed_login_count
     timestamptz locked_until
+    bool must_change_password
   }
   students {
     uuid id PK
@@ -73,6 +74,7 @@ erDiagram
     text title
     int duration_weeks ">0"
     text prerequisites
+    bool prerequisites_need_review
     int seat_capacity ">0"
     bool is_active
   }
@@ -422,3 +424,16 @@ erDiagram
 
 Derived values (attendance %, aggregate, gap, match %) are never stored, except the frozen
 snapshots on `certificates` and `performance_reports`.
+
+## Changes after release (BRD/TAD v1.1)
+
+- Migration `20261028100000_password_change_and_prerequisite_review` adds
+  `users.must_change_password` (an admin chose the password; cleared when the user changes it,
+  BR-27) and `courses.prerequisites_need_review` (default true; when false, automatic approval
+  doesn't hold applications for that course's prerequisites, BRQ-3.5).
+- No other table changed. Batch status `CLOSED` and enrollment status `WITHDRAWN` already existed
+  and are now used (BR-25, BR-26). A student withdrawn from a running batch keeps their
+  `batch_students` row so their records stay linked; seat counts leave such rows out.
+- Rules added in v1.1 that the services enforce (not the database): BR-23 (no overlapping
+  trainings), BR-24 (batch dates and enrollment windows inside the cycle), BR-25 (closing),
+  BR-26 (withdrawal), BR-28 (a needed trainer stays active).

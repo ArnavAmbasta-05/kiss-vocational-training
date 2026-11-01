@@ -86,3 +86,14 @@ export async function withJobLease<T>(
   if (error !== undefined) throw error;
   return { ran: true, result: result as T, missedRuns: missed };
 }
+
+/** A job's last run as recorded by withJobLease (status pages), or null if it never ran. */
+export async function lastRun(
+  name: string,
+): Promise<{ lastRunAt: Date | null; lastSuccessAt: Date | null; lastResult: unknown } | null> {
+  const row = await prisma().jobLock.findUnique({
+    where: { name },
+    select: { lastRunAt: true, lastSuccessAt: true, lastResult: true },
+  });
+  return row ?? null;
+}

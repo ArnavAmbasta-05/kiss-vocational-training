@@ -5,8 +5,9 @@ Passport. Software Engineering project by
 [@ShashankSinghhh](https://github.com/ShashankSinghhh) and
 [@ArnavAmbasta-05](https://github.com/ArnavAmbasta-05).
 
-- **Business rules:** [docs/BRD.md](docs/BRD.md) (BR-01…BR-22, BRQ-x.y, NFRs)
-- **Architecture:** [docs/TAD.md](docs/TAD.md) · **Database:** [docs/ER.md](docs/ER.md)
+- **Business rules:** [docs/BRD.md](docs/BRD.md) (v1.2: BR-01…BR-28, BRQ-x.y, NFRs)
+- **Architecture:** [docs/TAD.md](docs/TAD.md) (v1.2) · **Database:** [docs/ER.md](docs/ER.md) ·
+  **Changes since release:** [docs/CHANGELOG.md](docs/CHANGELOG.md)
 - **Traceability:** [docs/TRACEABILITY.md](docs/TRACEABILITY.md) (every BRQ and BR → module,
   endpoint, test)
 - **Testing:** [docs/TEST_PLAN.md](docs/TEST_PLAN.md) · **User guide:**
@@ -142,7 +143,7 @@ apps/api/src/modules/   one folder per module: routes, controller, service, sche
 apps/web/src/           components/ui (design system), features/<module>, locales/{en,or,hi}
 packages/shared/src/    enums, schemas, types shared by API and web
 prisma/                 schema.prisma, migrations, seed.ts
-docs/                   BRD, TAD, ER, traceability, test plan, user guide, demo, progress log
+docs/                   BRD, TAD, ER, changelog, traceability, test plan, user guide, demo, progress log
 perf/                   k6 load test and Lighthouse budget check
 scripts/                Vercel build, traceability and Postman generators
 ```

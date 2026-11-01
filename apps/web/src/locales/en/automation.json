@@ -1,0 +1,61 @@
+{
+  "title": "Automation",
+  "intro": "Jobs the portal does by itself every night at 03:00, and the notices it sends. Each switch and limit is a setting; every change is recorded in the audit log.",
+  "run": {
+    "title": "Daily run",
+    "now": "Run now",
+    "never": "The daily run hasn't run yet.",
+    "at": "Last run {{when}}",
+    "caption": "What the last run did",
+    "step": "Step",
+    "state": "State",
+    "count": "Done",
+    "on": "On",
+    "off": "Off",
+    "failed": "Failed",
+    "done": "The daily run finished.",
+    "busy": "A run is already going; try again in a few minutes."
+  },
+  "steps": {
+    "autoApproval": "Automatic approval of pending applications",
+    "waitlist": "Waitlisted students placed in free seats",
+    "autoClose": "Finished batches closed",
+    "reminders": "Reminders to trainers and admins",
+    "notices": "Notices to students",
+    "placementFollowUp": "Placement follow-ups"
+  },
+  "groups": {
+    "batches": "Batches",
+    "reminders": "Reminders",
+    "notices": "Notices to students",
+    "other": "Other"
+  },
+  "fields": {
+    "autoCloseBatches": "Close finished batches automatically",
+    "autoCloseAfterDays": "Days after the end date",
+    "autoPromoteWaitlist": "Give freed seats to waitlisted students",
+    "latePlacementDays": "Days after the start a batch still takes students",
+    "reminders": "Send daily reminders",
+    "pendingReminderDays": "Remind about applications waiting longer than (days)",
+    "placementFollowUpDays": "Ask about placements after (days)",
+    "notices": "Send notices to students",
+    "passportExpiryNoticeDays": "Warn before a passport link expires (days)",
+    "opportunityMatchPercent": "Tell students about new opportunities they match at least (%)",
+    "analyticsAutoRefreshMinutes": "Refresh outcome analytics after certificates if older than (minutes)"
+  },
+  "hints": {
+    "autoCloseAfterDays": "A batch closes once every student has a decision and this many days have passed, so you can still change a decision first.",
+    "latePlacementDays": "Waitlisted students are placed in planned batches, and in running ones up to this many days after the start.",
+    "pendingReminderDays": "Admins get one reminder a day while older applications wait.",
+    "placementFollowUpDays": "Admins are asked whether the student is still in the job.",
+    "passportExpiryNoticeDays": "The student can share a new link before the old one stops working.",
+    "opportunityMatchPercent": "Sent when an opportunity is published, from verified skills.",
+    "analyticsAutoRefreshMinutes": "A bulk approval refreshes once, not once per student."
+  },
+  "range": "Enter a number from {{min}} to {{max}}.",
+  "autoApproval": "Automatic approval of applications has its own rules on the Enrollments page; when it is on, the daily run also applies them to applications already waiting.",
+  "autoApprovalLink": "Go to Enrollments",
+  "save": "Save changes",
+  "unsaved": "You have unsaved changes.",
+  "saved": "Automation settings saved"
+}

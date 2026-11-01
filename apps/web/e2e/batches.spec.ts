@@ -165,7 +165,7 @@ test.describe('Sprint 4: allocate → trainer sees roster', () => {
   });
 });
 
-test.describe('Round 2: a student leaves, then the batch is closed (L4, L1)', () => {
+test.describe('Round 2: a student leaves, then the batch is closed (L4, L1, BRQ-4.5, BRQ-4.6)', () => {
   test('admin withdraws a student mid-training and closes the batch once it is over', async ({
     page,
     request,

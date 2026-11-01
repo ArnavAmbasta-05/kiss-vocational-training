@@ -741,3 +741,31 @@ export async function titlesByCode(codes: string[]): Promise<Map<string, string>
   for (const r of rows) if (!out.has(r.code.toUpperCase())) out.set(r.code.toUpperCase(), r.title);
   return out;
 }
+
+/**
+ * A4: for each active student with a verified, unrevoked rating on any of these competency
+ * codes, the highest verified level per code (upper-case), in one query (BR-13, BR-22).
+ */
+export async function verifiedLevelsByStudent(
+  codes: string[],
+): Promise<Map<string, { userId: string; levels: Map<string, number> }>> {
+  const out = new Map<string, { userId: string; levels: Map<string, number> }>();
+  if (codes.length === 0) return out;
+  const rows = await prisma().$queryRaw<
+    Array<{ student_id: string; user_id: string; code: string; level: number }>
+  >`
+    SELECT r.student_id, s.user_id, upper(c.code) AS code, MAX(r.level)::int AS level
+    FROM competency_ratings r
+    JOIN competencies c ON c.id = r.competency_id
+    JOIN students s ON s.id = r.student_id
+    JOIN users u ON u.id = s.user_id AND u.is_active
+    WHERE r.verified_at IS NOT NULL AND r.revoked_at IS NULL
+      AND upper(c.code) = ANY(${codes.map((x) => x.toUpperCase())}::text[])
+    GROUP BY r.student_id, s.user_id, upper(c.code)`;
+  for (const r of rows) {
+    const entry = out.get(r.student_id) ?? { userId: r.user_id, levels: new Map<string, number>() };
+    entry.levels.set(r.code, Number(r.level));
+    out.set(r.student_id, entry);
+  }
+  return out;
+}

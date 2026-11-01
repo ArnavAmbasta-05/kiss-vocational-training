@@ -19,13 +19,21 @@ import { prisma, type Tx } from '../../core/db';
 import { AppError } from '../../core/errors';
 import { settings } from '../../core/settings';
 import * as enrollments from '../enrollments/enrollments.service';
-import { clashesFor, closeBlocker, insideCycle, type BookedSlot } from './rules';
+import { notify } from '../notifications/notifications.service';
+import {
+  clashesFor,
+  closeBlocker,
+  insideCycle,
+  takesLatePlacements,
+  waitlistOrder,
+  type BookedSlot,
+} from './rules';
 import { expandRecurring, MAX_GENERATED_SESSIONS } from './sessionsSchedule';
 
 const day = (d: Date) => d.toISOString().slice(0, 10);
 
 /**
- * L4: a student who withdrew mid-training stays on the roster (their record is kept) but no
+ * L4 (BR-26): a student who withdrew mid-training stays on the roster (their record is kept) but no
  * longer holds a seat, so counts of members use this filter.
  */
 const SEATED = {
@@ -287,7 +295,7 @@ export async function membersByCourse(cycleId: string): Promise<Map<string, numb
 }
 
 /**
- * L8: ACTIVE batches that ended before `today` (YYYY-MM-DD), oldest first, with how many of
+ * L8 (BRQ-4.6): ACTIVE batches that ended before `today` (YYYY-MM-DD), oldest first, with how many of
  * their students are still in training (no completion decision yet).
  */
 export async function endedActive(today: string): Promise<EndedBatch[]> {
@@ -315,7 +323,7 @@ export async function endedActive(today: string): Promise<EndedBatch[]> {
   }));
 }
 
-/** L5: names of a cycle's batches that would not fit between these dates (cycle edits). */
+/** L5 (BR-24): names of a cycle's batches that would not fit between these dates (cycle edits). */
 export async function batchesOutsideDates(
   cycleId: string,
   startsOn: Date,
@@ -357,7 +365,7 @@ export async function capacityByCourse(cycleId: string): Promise<Map<string, num
 
 // ─── Admin: batches (BRQ-4.1) ──────────────────────────────────────────────────
 
-/** L5: 422 BATCH_OUTSIDE_CYCLE unless the batch's dates fall within its cycle's. */
+/** L5 (BR-24): 422 BATCH_OUTSIDE_CYCLE unless the batch's dates fall within its cycle's. */
 function assertInsideCycle(
   startDate: Date,
   endDate: Date,
@@ -417,7 +425,7 @@ export async function update(
   id: string,
   input: BatchUpdateInput,
 ): Promise<BatchSummary> {
-  return withAudit(actor, async (tx, log) => {
+  const updated = await withAudit(actor, async (tx, log) => {
     const locked = await lockBatch(tx, id);
     if (locked.status === 'CLOSED')
       throw AppError.conflict('BATCH_CLOSED', 'Closed batches cannot change');
@@ -450,6 +458,11 @@ export async function update(
     });
     return toSummary(await loadBatch(tx, id));
   });
+  // More seats may let waitlisted applicants in (A2).
+  if (input.capacity !== undefined && (await promoteFromWaitlist(actor, id)) > 0) {
+    return toSummary(await loadBatch(prisma(), id));
+  }
+  return updated;
 }
 
 /** PLANNED → ACTIVE; its students' enrollments ALLOCATED → ACTIVE. Needs a trainer. */
@@ -512,7 +525,7 @@ async function institutionToday(now = new Date()): Promise<string> {
 }
 
 /**
- * L1: ACTIVE → CLOSED once the batch has ended and every student has a decision (completed,
+ * L1 (BR-25, BRQ-4.6): ACTIVE → CLOSED once the batch has ended and every student has a decision (completed,
  * not completed or withdrawn). A closed batch takes no attendance, marks or new students and
  * drops out of "active" lists; its records stay readable.
  */
@@ -654,11 +667,12 @@ export async function removeStudent(
       { enrollmentId, from: ['ALLOCATED'], to: 'APPROVED' },
     ]);
   });
+  await promoteFromWaitlist(actor, batchId);
   return detail(batchId, 'ADMIN');
 }
 
 /**
- * L4: a student leaves training. From a planned batch the seat is simply given up (membership
+ * L4 (BR-26, BRQ-4.5): a student leaves training. From a planned batch the seat is simply given up (membership
  * removed, ALLOCATED → WITHDRAWN). From a running batch the membership stays, so attendance and
  * marks so far remain on record, but the student no longer holds a seat, is left off sheets and
  * risk checks, and the application becomes WITHDRAWN with the reason. Audited and notified.
@@ -712,7 +726,67 @@ export async function withdrawStudent(
       },
     ]);
   });
+  // The freed seat goes to the waitlist when the admin has switched that on (A2).
+  await promoteFromWaitlist(actor, batchId);
   return detail(batchId, 'ADMIN');
+}
+
+/**
+ * A2 (BRQ-4.8): fills a batch's free seats from its course's waitlist (BR-04 order), when the admin has
+ * switched it on and the batch still takes students (planned, or running for at most
+ * automation.latePlacementDays). Each placement goes through addStudent, so capacity, audit and
+ * the student's notification are exactly as when the admin places them. Returns how many were
+ * placed.
+ */
+export async function promoteFromWaitlist(actor: Actor, batchId: string): Promise<number> {
+  const [on, lateDays, rule, today] = await Promise.all([
+    settings.get('automation.autoPromoteWaitlist'),
+    settings.get('automation.latePlacementDays'),
+    settings.get('allocation.priorityRule'),
+    institutionToday(),
+  ]);
+  if (!on) return 0;
+  const b = await prisma().batch.findUnique({
+    where: { id: batchId },
+    select: {
+      cycleId: true,
+      courseId: true,
+      capacity: true,
+      status: true,
+      startDate: true,
+      _count: { select: { students: { where: SEATED } } },
+    },
+  });
+  if (!b || !takesLatePlacements(b.status, day(b.startDate), today, lateDays)) return 0;
+  let free = b.capacity - b._count.students;
+  if (free <= 0) return 0;
+  const order = waitlistOrder(await enrollments.candidatesForCourse(b.cycleId, b.courseId), rule);
+  let placed = 0;
+  for (const enrollmentId of order) {
+    if (free <= 0) break;
+    try {
+      await addStudent(actor, batchId, enrollmentId);
+      placed++;
+      free--;
+    } catch (err) {
+      // Someone placed or decided this applicant meanwhile, or the batch filled up: move on.
+      if (err instanceof AppError && err.code === 'BATCH_FULL') break;
+      if (!(err instanceof AppError)) throw err;
+    }
+  }
+  return placed;
+}
+
+/** A2, daily catch-up: tries every planned or running batch; returns the students placed. */
+export async function promoteAllWaitlists(actor: Actor): Promise<number> {
+  if (!(await settings.get('automation.autoPromoteWaitlist'))) return 0;
+  const rows = await prisma().batch.findMany({
+    where: { status: { in: ['PLANNED', 'ACTIVE'] } },
+    select: { id: true },
+  });
+  let placed = 0;
+  for (const r of rows) placed += await promoteFromWaitlist(actor, r.id);
+  return placed;
 }
 
 /** Moves a student to another batch in the same cycle and one of their chosen courses (TC-07). */
@@ -771,6 +845,7 @@ export async function moveStudent(
       ]);
     }
   });
+  await promoteFromWaitlist(actor, fromBatchId);
   return detail(toBatchId, 'ADMIN');
 }
 
@@ -1088,6 +1163,10 @@ export async function cancelSession(
   batchId: string,
   sessionId: string,
 ): Promise<SessionDto> {
+  const [notices, offset] = await Promise.all([
+    settings.get('automation.notices'),
+    settings.get('institution.utcOffsetMinutes'),
+  ]);
   return withAudit(actor, async (tx, log) => {
     const s = await tx.trainingSession.findUnique({ where: { id: sessionId } });
     if (!s || s.batchId !== batchId) throw AppError.notFound('Session not found');
@@ -1106,6 +1185,36 @@ export async function cancelSession(
       oldValue: { status: s.status },
       newValue: { status: 'CANCELLED' },
     });
+    // A4: everyone expecting to be there hears about it, if it hasn't happened yet.
+    if (notices && s.startsAt > new Date()) {
+      const batch = await tx.batch.findUniqueOrThrow({
+        where: { id: batchId },
+        select: {
+          name: true,
+          course: { select: { title: true } },
+          students: { where: SEATED, select: { student: { select: { userId: true } } } },
+          trainers: { select: { trainer: { select: { userId: true } } } },
+        },
+      });
+      const when = new Date(s.startsAt.getTime() + offset * 60_000)
+        .toISOString()
+        .slice(0, 16)
+        .replace('T', ' ');
+      const userIds = [
+        ...batch.students.map((m) => m.student.userId),
+        ...batch.trainers.map((t) => t.trainer.userId),
+      ];
+      await notify(
+        tx,
+        [...new Set(userIds)].map((userId) => ({
+          userId,
+          type: 'SESSION_CANCELLED' as const,
+          title: 'Session cancelled',
+          body: `${batch.course.title}, ${batch.name}: the session on ${when} is cancelled`,
+          data: { courseTitle: batch.course.title, batchName: batch.name, when },
+        })),
+      );
+    }
     return toSession(updated);
   });
 }

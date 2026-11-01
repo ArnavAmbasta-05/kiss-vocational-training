@@ -111,8 +111,9 @@ export async function listCycles(): Promise<Cycle[]> {
 }
 
 /**
- * Cycles a student can choose from on the Courses page (BRQ-2.2): those offering at least one
- * active course that have not ended yet, newest first. Nothing is pre-selected for them.
+ * Cycles a student can choose from on the Courses page (BRQ-2.2, BRQ-2.4): those offering at
+ * least one active course that have not ended yet, open for applications first, then upcoming,
+ * then closed (newest first within each). Nothing is pre-selected for them.
  */
 export async function catalogueCycles(now = new Date()): Promise<CatalogueCycle[]> {
   const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
@@ -252,7 +253,7 @@ export async function updateCourse(
   });
 }
 
-/** Deactivates or reactivates several courses in one transaction; an unknown id rolls it back. */
+/** BRQ-2.5: deactivates or reactivates several courses in one transaction; an unknown id rolls it back. */
 export async function setCoursesActive(
   actor: Actor,
   input: BulkStatusInput,
@@ -286,7 +287,7 @@ const courseInUse = () =>
   );
 
 /**
- * Permanently removes a course that nothing refers to yet (e.g. created by mistake). Anything
+ * BRQ-2.5: permanently removes a course that nothing refers to yet (e.g. created by mistake). Anything
  * with history keeps its row and can only be deactivated, so records never lose their course.
  */
 export async function deleteCourse(actor: Actor, id: string): Promise<void> {
@@ -470,4 +471,39 @@ export async function upsertOffering(
 /** Active courses (admin dashboard, BRQ-9.1). */
 export async function activeCourseCount(): Promise<number> {
   return prisma().course.count({ where: { isActive: true } });
+}
+
+/**
+ * A4: application windows of active courses that opened in (from, to] and are switched on,
+ * grouped by cycle, so students can be told once per cycle.
+ */
+export async function windowsOpenedBetween(
+  from: Date,
+  to: Date,
+): Promise<Array<{ cycleId: string; cycleName: string; courses: string[] }>> {
+  const rows = await prisma().courseOffering.findMany({
+    where: {
+      isOpen: true,
+      enrollmentOpensAt: { gt: from, lte: to },
+      enrollmentClosesAt: { gt: to },
+      course: { isActive: true },
+    },
+    orderBy: { course: { title: 'asc' } },
+    select: {
+      cycleId: true,
+      cycle: { select: { name: true } },
+      course: { select: { title: true } },
+    },
+  });
+  const byCycle = new Map<string, { cycleId: string; cycleName: string; courses: string[] }>();
+  for (const r of rows) {
+    const c = byCycle.get(r.cycleId) ?? {
+      cycleId: r.cycleId,
+      cycleName: r.cycle.name,
+      courses: [],
+    };
+    c.courses.push(r.course.title);
+    byCycle.set(r.cycleId, c);
+  }
+  return [...byCycle.values()];
 }

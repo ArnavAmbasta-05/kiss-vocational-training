@@ -170,3 +170,54 @@ export const UserSummarySchema = z.object({
   employeeCode: z.string().nullable(),
 });
 export type UserSummary = z.infer<typeof UserSummarySchema>;
+
+// ─── Student import (A5) ───────────────────────────────────────────────────────
+
+export const STUDENT_IMPORT_MAX_ROWS = 500;
+
+/** A CSV of students (columns email, fullName, rollNo, cgpa, phone) and their first password. */
+export const StudentImportSchema = z
+  .object({
+    csv: z.string().min(1).max(200_000),
+    /** Shared first password; every imported student must choose their own at first sign-in. */
+    password: PasswordSchema,
+    /** Check every row and report, creating nothing. */
+    dryRun: z.boolean(),
+  })
+  .strict();
+export type StudentImportInput = z.infer<typeof StudentImportSchema>;
+
+/** One CSV row of the import, after trimming. */
+export const StudentImportRowSchema = z.object({
+  email,
+  fullName: z.string().trim().min(2).max(120),
+  rollNo: z.string().trim().min(1).max(40),
+  cgpa: z.coerce.number().min(0).max(10),
+  phone: phone.optional(),
+});
+
+/** Why a row can't be imported; the web app words it through t(). */
+export type StudentImportErrorCode =
+  'INVALID' | 'DUPLICATE_IN_FILE' | 'EMAIL_TAKEN' | 'ROLL_NO_TAKEN';
+
+export interface StudentImportRow {
+  /** Line in the file (the header is line 1). */
+  line: number;
+  email: string;
+  fullName: string;
+  rollNo: string;
+  cgpa: string;
+  phone: string;
+  errors: Array<{
+    field: 'email' | 'fullName' | 'rollNo' | 'cgpa' | 'phone';
+    code: StudentImportErrorCode;
+  }>;
+}
+
+export interface StudentImportResult {
+  rows: StudentImportRow[];
+  valid: number;
+  invalid: number;
+  /** Accounts created: 0 on a dry run or when any row has an error (all or nothing). */
+  created: number;
+}

@@ -11,6 +11,13 @@ import type {
   UserListQuery,
   UserSummary,
 } from '@vtmp/shared';
+import {
+  STUDENT_IMPORT_MAX_ROWS,
+  StudentImportRowSchema,
+  type StudentImportInput,
+  type StudentImportResult,
+  type StudentImportRow,
+} from '@vtmp/shared';
 import { hashPassword, verifyPassword } from '../../core/auth';
 import { withAudit, type Actor } from '../../core/audit';
 import { prisma } from '../../core/db';
@@ -18,8 +25,9 @@ import { AppError } from '../../core/errors';
 import { paginated, parsePagination } from '../../core/http';
 import { getMe, revokeUserSessions } from '../auth/auth.service';
 import { batchesOnlyTaughtBy } from '../batches/batches.service';
+import { importColumns, parseCsv, type ImportField } from './rules';
 
-/** D3: refuse to deactivate the only trainer of a planned or running batch. */
+/** D3 (BR-28): refuse to deactivate the only trainer of a planned or running batch. */
 async function assertNoBatchLeftWithoutTrainer(userIds: string[]): Promise<void> {
   const stranded = await batchesOnlyTaughtBy(userIds);
   if (stranded.length === 0) return;
@@ -274,7 +282,7 @@ export async function updateUser(
 }
 
 /**
- * Sets a new password for a user who forgot theirs (the sign-in page sends them to the training
+ * BRQ-1.4: sets a new password for a user who forgot theirs (the sign-in page sends them to the training
  * office). It also clears any login lock and ends every session, so only the new password works
  * from now on. Admins change their own password under /users/me/password instead.
  */
@@ -311,7 +319,7 @@ export async function resetPassword(
   });
 }
 
-/** Clears a login lock (too many wrong passwords) so the user can try again at once (A2). */
+/** Clears a login lock (too many wrong passwords) so the user can try again at once (A2, BRQ-1.4). */
 export async function unlockUser(actor: Actor, userId: string): Promise<UserSummary> {
   return withAudit(actor, async (tx, log) => {
     const before = await tx.user.findUnique({
@@ -338,7 +346,7 @@ export async function unlockUser(actor: Actor, userId: string): Promise<UserSumm
 }
 
 /**
- * Deactivates or reactivates several accounts in one transaction (admin clean-up). The same
+ * Deactivates or reactivates several accounts in one transaction (admin clean-up, BRQ-2.5). The same
  * rules as one at a time: never yourself, deactivation ends sessions, reactivation unlocks.
  */
 export async function setUsersActive(
@@ -532,4 +540,132 @@ export async function studentByRollNo(
     select: { id: true, rollNo: true, user: { select: { fullName: true } } },
   });
   return s ? { id: s.id, fullName: s.user.fullName, rollNo: s.rollNo } : null;
+}
+
+/**
+ * A5 (BRQ-1.5): creates student accounts from a CSV. Every row is checked first (format,
+ * duplicates in the file, email or roll number already used); a dry run, or any row with a
+ * problem, creates nothing. Otherwise all rows are created in one transaction with an audit row
+ * each, sharing the given first password, which each student must change at first sign-in.
+ */
+export async function importStudents(
+  actor: Actor,
+  input: StudentImportInput,
+): Promise<StudentImportResult> {
+  const table = parseCsv(input.csv);
+  const { columns, missing } = importColumns(table[0] ?? []);
+  if (table.length < 2 || missing.length) {
+    throw AppError.unprocessable(
+      'IMPORT_BAD_HEADER',
+      'The first line must name the columns email, fullName, rollNo and cgpa (phone optional)',
+      missing.map((f) => ({ path: f, message: 'missing column' })),
+    );
+  }
+  if (table.length - 1 > STUDENT_IMPORT_MAX_ROWS) {
+    throw AppError.unprocessable(
+      'IMPORT_TOO_MANY_ROWS',
+      `Import at most ${STUDENT_IMPORT_MAX_ROWS} students at a time`,
+    );
+  }
+
+  const rows: StudentImportRow[] = table.slice(1).map((cells, i) => {
+    const cell = (f: ImportField) =>
+      columns[f] === undefined ? '' : (cells[columns[f]!] ?? '').trim();
+    const raw = {
+      email: cell('email').toLowerCase(),
+      fullName: cell('fullName'),
+      rollNo: cell('rollNo'),
+      cgpa: cell('cgpa'),
+      phone: cell('phone'),
+    };
+    const parsed = StudentImportRowSchema.safeParse({ ...raw, phone: raw.phone || undefined });
+    const errors: StudentImportRow['errors'] = parsed.success
+      ? []
+      : [...new Set(parsed.error.issues.map((x) => String(x.path[0])))].map((field) => ({
+          field: field as StudentImportRow['errors'][number]['field'],
+          code: 'INVALID' as const,
+        }));
+    return { line: i + 2, ...raw, errors };
+  });
+
+  const seen = { email: new Map<string, number>(), rollNo: new Map<string, number>() };
+  for (const r of rows) {
+    for (const f of ['email', 'rollNo'] as const) {
+      const key = r[f].toLowerCase();
+      if (!key) continue;
+      if (seen[f].has(key)) r.errors.push({ field: f, code: 'DUPLICATE_IN_FILE' });
+      else seen[f].set(key, r.line);
+    }
+  }
+  const [emails, rolls] = await Promise.all([
+    prisma().user.findMany({
+      where: { email: { in: rows.map((r) => r.email).filter(Boolean) } },
+      select: { email: true },
+    }),
+    prisma().student.findMany({
+      where: { rollNo: { in: rows.map((r) => r.rollNo).filter(Boolean) } },
+      select: { rollNo: true },
+    }),
+  ]);
+  const takenEmails = new Set(emails.map((u) => u.email));
+  const takenRolls = new Set(rolls.map((x) => x.rollNo));
+  for (const r of rows) {
+    if (takenEmails.has(r.email)) r.errors.push({ field: 'email', code: 'EMAIL_TAKEN' });
+    if (takenRolls.has(r.rollNo)) r.errors.push({ field: 'rollNo', code: 'ROLL_NO_TAKEN' });
+  }
+
+  const invalid = rows.filter((r) => r.errors.length > 0).length;
+  const result = { rows, valid: rows.length - invalid, invalid, created: 0 };
+  if (input.dryRun || invalid > 0) return result;
+
+  const passwordHash = await hashPassword(input.password);
+  try {
+    const created = await withAudit(
+      actor,
+      async (tx, log) => {
+        await tx.user.createMany({
+          data: rows.map((r) => ({
+            email: r.email,
+            fullName: r.fullName,
+            role: 'STUDENT' as const,
+            passwordHash,
+            mustChangePassword: true,
+          })),
+        });
+        const users = await tx.user.findMany({
+          where: { email: { in: rows.map((r) => r.email) } },
+          select: { id: true, email: true },
+        });
+        const idOf = new Map(users.map((u) => [u.email, u.id]));
+        await tx.student.createMany({
+          data: rows.map((r) => ({
+            userId: idOf.get(r.email)!,
+            rollNo: r.rollNo,
+            cgpa: new Prisma.Decimal(Number(r.cgpa)),
+            phone: r.phone || null,
+          })),
+        });
+        await log.many(
+          rows.map((r) => ({
+            action: 'USER_CREATED',
+            entity: 'User',
+            entityId: idOf.get(r.email)!,
+            newValue: {
+              role: 'STUDENT',
+              email: r.email,
+              fullName: r.fullName,
+              rollNo: r.rollNo,
+              cgpa: r.cgpa,
+              by: 'CSV_IMPORT',
+            },
+          })),
+        );
+        return rows.length;
+      },
+      { timeoutMs: 30_000 },
+    );
+    return { ...result, created };
+  } catch (err) {
+    conflictFromUnique(err);
+  }
 }

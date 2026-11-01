@@ -26,6 +26,7 @@ import {
   type UserFilters,
 } from './api';
 import { CreateUserModal } from './CreateUserModal';
+import { ImportStudentsModal } from './ImportStudentsModal';
 import { ResetPasswordModal } from './ResetPasswordModal';
 
 function useDebounced<T>(value: T, ms: number): T {
@@ -61,6 +62,7 @@ export function UsersPage() {
   );
   const [filters, setFilters] = useState<UserFilters>({ page: 1, q: '', ...saved });
   const [creating, setCreating] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [confirming, setConfirming] = useState<UserSummary | null>(null);
   const [deleting, setDeleting] = useState<UserSummary | null>(null);
   const [resetting, setResetting] = useState<UserSummary | null>(null);
@@ -240,7 +242,12 @@ export function UsersPage() {
           <h1 className="text-2xl font-bold text-slate-900">{t('title')}</h1>
           <p className="mt-1 max-w-2xl text-sm text-slate-700">{t('intro')}</p>
         </div>
-        <Button onClick={() => setCreating(true)}>{t('create')}</Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" onClick={() => setImporting(true)}>
+            {t('import.open')}
+          </Button>
+          <Button onClick={() => setCreating(true)}>{t('create')}</Button>
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
@@ -343,6 +350,7 @@ export function UsersPage() {
       )}
 
       <CreateUserModal open={creating} onClose={() => setCreating(false)} />
+      <ImportStudentsModal open={importing} onClose={() => setImporting(false)} />
       <ResetPasswordModal user={resetting} onClose={() => setResetting(null)} />
 
       <Modal

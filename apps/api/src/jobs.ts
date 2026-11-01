@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import { logger } from './core/logger';
 import { refresh } from './modules/analytics/analytics.service';
+import { runDaily } from './modules/automation/automation.service';
 import { evaluateAll } from './modules/intervention/intervention.service';
 
 /**
@@ -26,6 +27,16 @@ export function startLocalJobs(): void {
       refresh()
         .then((r) => logger.info(r, 'analytics refresh finished'))
         .catch((err: unknown) => logger.error({ err }, 'analytics refresh failed'));
+    },
+    { timezone: 'Asia/Kolkata' },
+  );
+  // Round 2 review A1–A9: the daily automation run at 03:00 India time.
+  cron.schedule(
+    '0 3 * * *',
+    () => {
+      runDaily()
+        .then((r) => logger.info(r, 'daily automation finished'))
+        .catch((err: unknown) => logger.error({ err }, 'daily automation failed'));
     },
     { timezone: 'Asia/Kolkata' },
   );

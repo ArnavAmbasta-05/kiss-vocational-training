@@ -12,6 +12,7 @@ import type {
   Paginated,
   ReviewAction,
 } from '@vtmp/shared';
+import { INACTIVE_ENROLLMENT_STATUSES } from '@vtmp/shared';
 import { audit, withAudit, type Actor, type AuditFn } from '../../core/audit';
 import { prisma, type Tx } from '../../core/db';
 import { AppError } from '../../core/errors';
@@ -177,7 +178,36 @@ export async function setAutoApproval(actor: Actor, input: AutoApproval): Promis
       input.manualIfPrerequisites,
     );
   }
+  // A7: new or loosened rules apply at once to what is already waiting, not only to new forms.
+  const changed =
+    before.enabled !== input.enabled ||
+    before.minCgpa !== input.minCgpa ||
+    before.manualIfPrerequisites !== input.manualIfPrerequisites;
+  if (input.enabled && changed) await runAutoApprovalEverywhere(actor);
   return autoApproval();
+}
+
+/** Cycles that still have pending applications (the automatic approval sweeps). */
+export async function cyclesWithPending(): Promise<string[]> {
+  const rows = await prisma().enrollment.findMany({
+    where: { status: 'PENDING' },
+    distinct: ['cycleId'],
+    select: { cycleId: true },
+  });
+  return rows.map((r) => r.cycleId);
+}
+
+/**
+ * A7 (BRQ-3.6): applies the saved rules to every cycle's pending applications when automatic approval is
+ * on (after the rules change, and in the daily run). Returns how many were approved.
+ */
+export async function runAutoApprovalEverywhere(actor: Actor): Promise<number> {
+  if (!(await settings.get('enrollment.autoApprove'))) return 0;
+  let approved = 0;
+  for (const cycleId of await cyclesWithPending()) {
+    approved += (await runAutoApproval(actor, cycleId)).approved;
+  }
+  return approved;
 }
 
 const coursesOf = (e: EnrollmentRow) =>
@@ -903,4 +933,26 @@ export async function statusCounts(cycleId?: string): Promise<Map<EnrollmentStat
     _count: { _all: true },
   });
   return new Map(rows.map((r) => [r.status, r._count._all]));
+}
+
+/** A3: applications still pending that were submitted before `before`. */
+export async function pendingSubmittedBefore(before: Date): Promise<number> {
+  return prisma().enrollment.count({ where: { status: 'PENDING', submittedAt: { lt: before } } });
+}
+
+/**
+ * A4: user accounts of active students with no live application in a cycle (none, or only
+ * rejected / withdrawn / not completed ones), who may want to hear that applications opened.
+ */
+export async function studentUsersWithoutApplication(cycleId: string): Promise<string[]> {
+  const rows = await prisma().student.findMany({
+    where: {
+      user: { isActive: true },
+      enrollments: {
+        none: { cycleId, status: { notIn: [...INACTIVE_ENROLLMENT_STATUSES] } },
+      },
+    },
+    select: { userId: true },
+  });
+  return rows.map((r) => r.userId);
 }

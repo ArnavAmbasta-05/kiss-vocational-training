@@ -16,3 +16,4 @@ export * from './evidence';
 export * from './opportunities';
 export * from './analytics';
 export * from './assistant';
+export * from './automation';

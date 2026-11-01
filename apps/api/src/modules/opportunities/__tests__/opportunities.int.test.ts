@@ -170,6 +170,28 @@ describe('matches (BR-22, BRQ-13.2, 13.3)', () => {
   });
 });
 
+describe('new opportunity notices (A4, BRQ-9.6, BR-22)', () => {
+  it('tells a student who matches a newly published opportunity well enough, once', async () => {
+    const w = await world();
+    const strong = await role(w, 'Wireman', [
+      ['WIRE', 2],
+      ['SAFE', 2],
+    ]);
+    const weak = await role(w, 'Earth tester', [
+      ['EARTH', 2],
+      ['WIRE', 2],
+    ]);
+    await opportunity(w, strong.id, 'Wireman job');
+    await opportunity(w, weak.id, 'Earth job');
+    const notes = await prisma().notification.findMany({
+      where: { userId: w.student.user.id, type: 'OPPORTUNITY_MATCH' },
+    });
+    // 100 % on the first; 50 % on the second is below the 75 % setting.
+    expect(notes.map((n) => (n.data as { title: string }).title)).toEqual([`Wireman job ${w.s}`]);
+    expect(notes[0]!.data).toMatchObject({ matchPercent: '100' });
+  });
+});
+
 describe('interest (BRQ-13.4)', () => {
   it('the student marks interest; the admin sees interested students with match %, and a CSV', async () => {
     const w = await world();

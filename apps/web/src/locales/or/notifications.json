@@ -50,6 +50,42 @@
     "RISK_ACTION_AGREED": {
       "title": "ଆପଣଙ୍କୁ ସାହାଯ୍ୟ କରିବା ପାଇଁ ଏକ ଯୋଜନା",
       "body": "{{owner}} ଆପଣଙ୍କ ପାଇଁ ସହାୟତା ସ୍ଥିର କରିଛନ୍ତି, {{dueOn}} ସୁଦ୍ଧା।"
+    },
+    "BATCH_CLOSED": {
+      "title": "ବ୍ୟାଚ୍ ବନ୍ଦ ହେଲା",
+      "body": "{{courseTitle}}, {{batchName}} ଆପେ ଆପେ ବନ୍ଦ ହେଲା: ପ୍ରଶିକ୍ଷଣ ଶେଷ ହୋଇଛି।"
+    },
+    "SESSION_CANCELLED": {
+      "title": "ସତ୍ର ବାତିଲ",
+      "body": "{{courseTitle}}, {{batchName}}: {{when}}ର ସତ୍ର ବାତିଲ ହୋଇଛି।"
+    },
+    "APPLICATIONS_OPEN": {
+      "title": "ଆବେଦନ ଖୋଲା ଅଛି",
+      "body": "{{cycleName}}: {{courses}}। 'ପାଠ୍ୟକ୍ରମ'ରୁ ଆବେଦନ କରନ୍ତୁ।"
+    },
+    "PASSPORT_LINK_EXPIRING": {
+      "title": "ପାସପୋର୍ଟ ଲିଙ୍କ ଶୀଘ୍ର ଶେଷ ହେବ",
+      "body": "ଆପଣଙ୍କ ସ୍କିଲ୍ ପାସପୋର୍ଟର ଏକ ଲିଙ୍କ {{date}}ରେ କାମ କରିବା ବନ୍ଦ କରିବ। ଦରକାର ହେଲେ ନୂଆ ଲିଙ୍କ ସେୟାର କରନ୍ତୁ।"
+    },
+    "OPPORTUNITY_MATCH": {
+      "title": "ଆପଣଙ୍କ ଦକ୍ଷତା ସହ ମେଳ ଖାଉଥିବା ନୂଆ ସୁଯୋଗ",
+      "body": "{{partner}}ରେ {{title}}: {{matchPercent}} % ମେଳ।"
+    },
+    "REMINDER_ATTENDANCE": {
+      "title": "ଉପସ୍ଥିତି ଲେଖିବା ବାକି",
+      "body": "{{count}}ଟି ସତ୍ର ଉପସ୍ଥିତି ବିନା ଶେଷ ହେଲା। ସମ୍ପାଦନ ସମୟ ବନ୍ଦ ହେବା ପୂର୍ବରୁ ଲେଖନ୍ତୁ।"
+    },
+    "REMINDER_PENDING_APPLICATIONS": {
+      "title": "ଆବେଦନ ଅପେକ୍ଷାରେ",
+      "body": "{{count}}ଟି ଆବେଦନ {{days}} ଦିନରୁ ଅଧିକ ସମୟ ନିଷ୍ପତ୍ତି ପାଇଁ ଅପେକ୍ଷା କରୁଛି।"
+    },
+    "REMINDER_ENDED_BATCHES": {
+      "title": "ସମାପ୍ତି ନିଷ୍ପତ୍ତି ବାକି",
+      "body": "{{count}}ଟି ଶେଷ ହୋଇଥିବା ବ୍ୟାଚରେ ଏବେ ବି ଛାତ୍ରଛାତ୍ରୀଙ୍କ ନିଷ୍ପତ୍ତି ବାକି।"
+    },
+    "PLACEMENT_FOLLOW_UP": {
+      "title": "ପ୍ଲେସମେଣ୍ଟ ଯାଞ୍ଚ",
+      "body": "{{studentName}} ଏବେ ବି {{employer}}ରେ {{roleTitle}} ଭାବେ କାମ କରୁଛନ୍ତି କି? {{days}} ଦିନ ହେଲାଣି।"
     }
   }
 }

@@ -160,7 +160,9 @@ test.describe('Sprint 9: QR verification and the Skill Passport', () => {
       admin.getByRole('status').filter({ hasText: 'Certificate revoked' }),
     ).toBeVisible();
 
-    // A revoked certificate can be replaced: reissue gives a new valid code (BR-19).
+    // A revoked certificate can be replaced: reissue gives a new valid code (BR-19). Wait for the
+    // list to show it revoked first, or the dialog opens on the row as it was (valid).
+    await expect(admin.getByRole('button', { name: `Revoke certificate ${code}` })).toHaveCount(0);
     await admin.getByRole('button', { name: `Reissue certificate ${code}` }).click();
     await expect(admin.getByRole('dialog')).toContainText(
       'The revoked ID keeps showing as revoked',

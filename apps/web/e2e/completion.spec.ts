@@ -96,6 +96,13 @@ test.describe('Sprint 6: approve → certificate PDF', () => {
     await expect(
       secondRow.getByRole('button', { name: `Approve completion for ${second!.fullName}` }),
     ).toHaveCount(0);
+    // A6 (BRQ-7.4): the student who meets every rule starts selected, ready for one approval.
+    await expect(
+      firstRow.getByRole('checkbox', { name: `Select ${first!.fullName}` }),
+    ).toBeChecked();
+    await expect(
+      page.getByText('1 student selected: they meet every completion rule.'),
+    ).toBeVisible();
     await expectNoSeriousA11yViolations(page);
 
     await page.getByRole('button', { name: `Approve completion for ${first!.fullName}` }).click();

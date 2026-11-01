@@ -120,7 +120,7 @@ describe('admin course clean-up (BRQ-2.1)', () => {
     return res.body.id as string;
   }
 
-  it('deactivates and reactivates several courses at once, auditing each one', async () => {
+  it('deactivates and reactivates several courses at once, auditing each one (BRQ-2.5)', async () => {
     const admin = await auth(Role.ADMIN);
     const ids = [await newCourse(admin), await newCourse(admin)];
     const off = await request(app)
@@ -176,7 +176,7 @@ describe('admin course clean-up (BRQ-2.1)', () => {
     expect((await prisma().course.findUniqueOrThrow({ where: { id } })).isActive).toBe(true);
   });
 
-  it('deletes an unused course, but refuses one that has been offered (409 COURSE_IN_USE)', async () => {
+  it('deletes an unused course, but refuses one that has been offered (409 COURSE_IN_USE, BRQ-2.5)', async () => {
     const admin = await auth(Role.ADMIN);
     const unused = await newCourse(admin);
     const del = await request(app).delete(`/api/v1/admin/courses/${unused}`).set(admin.auth);
@@ -214,7 +214,7 @@ describe('admin course clean-up (BRQ-2.1)', () => {
 });
 
 describe('catalogue (BRQ-2.2)', () => {
-  it('lets students choose among cycles that offer active courses and have not ended', async () => {
+  it('lets students choose among cycles that offer active courses and have not ended (BRQ-2.4)', async () => {
     const db = prisma();
     const { auth: S } = await auth(Role.STUDENT);
     const open = await createOpenCycle(db, 1);
@@ -248,7 +248,7 @@ describe('catalogue (BRQ-2.2)', () => {
     expect(list.body.cycle.id).toBe(open.cycle.id);
   });
 
-  it('L7: says which cycles take applications and lists the open ones first', async () => {
+  it('L7: says which cycles take applications and lists the open ones first (BRQ-2.4)', async () => {
     const db = prisma();
     const { auth: S } = await auth(Role.STUDENT);
     const open = await createOpenCycle(db, 1);

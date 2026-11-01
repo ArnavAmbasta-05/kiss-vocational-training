@@ -272,6 +272,110 @@ project rule (both below).
 
 ---
 
+## After Sprint 13 — Automation of the Round 2 manual steps (2026-11-01)
+
+### Built
+- **New `automation` module** (innovation tier, so it may call core services; no core module
+  imports it). An **Automation** page for admins (`/admin/automation`) holds every switch and
+  limit below, shows the last nightly run step by step, and has **Run now**.
+  - API: `GET/PUT /admin/automation` and `POST /admin/automation/run` (Idempotency-Key).
+  - Cron: `/internal/jobs/daily-automation`, Vercel Cron at 21:30 UTC (03:00 IST); node-cron runs
+    it locally.
+  - One lease (`job_locks`), so two runs never overlap. Each step is independent: one failing
+    step is logged and reported, and the rest still run. Notices that fire once cover the time
+    since the last successful run, so a missed night is caught up and nothing is sent twice.
+  - 11 new Settings rows (all audited when changed), 9 notification types.
+- **A1 auto-close (BRQ-4.7, BR-25):** an active batch is closed by the system 7 days
+  (`automation.autoCloseAfterDays`) after its end date once every student has a decision. Its
+  trainers and the admins are told. A decision that changed meanwhile skips the batch.
+- **A2 waitlist promotion (BRQ-4.8, BR-04):** off by default. When on, a freed seat (remove,
+  withdraw, move, larger capacity, or switching the setting on) goes to the next waitlisted
+  student: the course they ranked higher first, then the cycle's priority rule. A running batch
+  takes late students for `automation.latePlacementDays` (7) after its start.
+- **A3 reminders (BRQ-9.5):** once a day, only when there is something to do: trainers with
+  ended sessions still unmarked; admins with applications waiting more than 3 days and ended
+  batches with undecided students.
+- **A4 notices (BRQ-9.6, BR-22):** students without an application hear that a window opened;
+  students and trainers hear that a future session was cancelled; a student hears 7 days before
+  a passport link expires; students whose verified competencies match at least 75 % of a new
+  opportunity hear about it.
+- **A5 CSV import (BRQ-1.5):** *Import students* on the Users page. Up to 500 rows, checked
+  first (row-by-row errors: invalid, duplicate in file, email or roll number taken), then all or
+  nothing. Imported accounts must change the starting password at the first sign-in; each is
+  audited (`by: CSV_IMPORT`).
+- **A6 (BRQ-7.4):** on Completions, the eligible active students of a batch start selected, so
+  approving them is one click.
+- **A7 (BRQ-3.6):** saving changed automatic-approval rules (while on) applies them to what is
+  already pending in every cycle, and the nightly run does the same.
+- **A8 (BRQ-20.4):** issuing a certificate refreshes outcome analytics unless they were refreshed
+  in the last `analytics.autoRefreshMinutes` (10), so a bulk approval refreshes once. It uses a
+  new `certificateEvents` hook on the core event bus.
+- **A9 (BRQ-20.5):** 90 days after a placement, admins are asked once whether the student is
+  still in the job.
+- **Docs:** BRD v1.2 (Section 8.2, new BRQs), TAD v1.2 (Amendment 3, flow 8.6), Word exports of
+  both as v1.2 (they replace v1.1), User guide, Deployment (second cron), Changelog, Test plan,
+  openapi.yaml and Postman.
+- **Tests:** unit tests for the new pure rules (notice window, ready to close, analytics stale,
+  waitlist order, late placements, CSV parsing). Integration tests for every step, the
+  settings, Run now, the import and the opportunity notices. A new browser test for the
+  Automation page and the import; the Completions test checks the pre-selection. 478 API tests,
+  75 browser tests, traceability 120 of 120.
+
+### Deviations from BRD/TAD (and why)
+- None in rules: BRD v1.2 and TAD Amendment 3 were written with the code. Waitlist promotion is
+  off by default because it changes who gets a seat without a person deciding.
+- No database migration: everything uses the existing Settings, job lock, notification and
+  audit tables.
+
+### Known gaps / follow-ups
+- Notices are in-app only (no email or SMS: those cost money).
+- Two automation tests (applications open, placement follow-up) have a 120 s limit: the shared
+  local test database holds tens of thousands of students and placements, and a run covers them.
+- A browser test (passport) raced the certificate list refetch on phones; it now waits for the
+  list to show the revoke before reissuing.
+- The v1.2 rules still need the project owner's sign-off.
+
+### Definition of done
+- [x] lint · [x] typecheck · [x] tests · [x] openapi.yaml · [x] seed (settings defaults, no new
+  data needed) · [x] strings externalized (en, hi, or)
+
+---
+
+## After Sprint 13 — Documentation brought to v1.1 (2026-11-01)
+
+### Built
+- **BRD v1.1** (`docs/BRD.md`, plus `docs/KISS_VTMP_BRD_v1.1.docx` generated with pandoc, styled
+  from v1.0):
+  - Section 5.4 lists the scope changes after release.
+  - Section 8.1 adds BRQ-1.4, 2.4, 2.5, 3.5, 4.5 and 4.6.
+  - BR-06, BR-09, BR-19 and BR-20 are amended (marked "amended v1.1").
+  - Section 10.3 adds BR-23 to BR-28.
+  - Section 16 traces them.
+- **TAD v1.1** (`docs/TAD.md`, plus `docs/KISS_VTMP_TAD_v1.1.docx`): Amendment 2 summarises the
+  post-release changes. It updates the module, data, endpoint, flow (new 8.4 batch lifecycle,
+  8.5 automatic approval), security and traceability rows, each marked "(Amendment 2)".
+- **ER.md**: the two new columns and the v1.1 rules. **TEST_PLAN.md**: v1.1 results (455 API
+  tests, re-measured coverage, 71 browser tests, 111/111 traced). **New CHANGELOG.md**: release
+  notes from v1.0 to v1.1. **README** links them. **DEPLOYMENT.md** now says the seed renames
+  students 001–040.
+- **Traceability stays complete** (111 of 111): the tests, services and `openapi.yaml` entries
+  that already covered the new requirements and rules now cite their IDs. Only titles and
+  comments changed, no behaviour.
+
+### Deviations from BRD/TAD (and why)
+- None: this entry brings the BRD and TAD up to date with the code. The v1.0 Word documents are
+  kept as the reviewed baseline next to v1.1.
+
+### Known gaps / follow-ups
+- The v1.1 rule changes still need the project owner's sign-off (BRD Section 16).
+- The v2.1 project documentation (Word) is not revised; the BRD and TAD win where they differ.
+
+### Definition of done
+- [x] lint · [x] typecheck · [x] tests · [x] openapi.yaml (IDs only) · [x] seed (no change) ·
+  [x] strings externalized (no UI change)
+
+---
+
 ## After Sprint 13 — Unique, realistic student names and a smaller seed (2026-10-30)
 
 ### Built

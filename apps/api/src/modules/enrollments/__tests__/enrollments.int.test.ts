@@ -437,7 +437,7 @@ describe('notifications', () => {
   });
 });
 
-describe('automatic approval (BRQ-3.3)', () => {
+describe('automatic approval (BRQ-3.3, BRQ-3.5)', () => {
   let admin: Awaited<ReturnType<typeof signedIn>>;
   const rules = (over: object) =>
     request(app)
@@ -571,7 +571,7 @@ describe('automatic approval (BRQ-3.3)', () => {
   });
 });
 
-describe('overlapping trainings', () => {
+describe('overlapping trainings (BR-23)', () => {
   // Fixture cycles all run 2027-01-04 – 2027-04-30, so any two of them overlap.
   async function laterCycle() {
     const later = await createOpenCycle(prisma(), 1);

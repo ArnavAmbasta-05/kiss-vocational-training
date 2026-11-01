@@ -84,5 +84,39 @@
     "submit": "Create account",
     "cancel": "Cancel",
     "invalid": "Check this field"
+  },
+  "import": {
+    "open": "Import students",
+    "title": "Import students from a CSV file",
+    "body": "The file's first line names the columns: email, fullName, rollNo, cgpa and, if you have it, phone. Up to {{max}} students at a time. Check the file first; nothing is created until every row is right.",
+    "file": "CSV file",
+    "password": "First password for every student",
+    "passwordHint": "At least 8 characters with a letter and a digit. Share it privately; each student must choose their own at first sign-in.",
+    "check": "Check file",
+    "confirm_one": "Import {{count}} student",
+    "confirm_other": "Import {{count}} students",
+    "ready_one": "{{count}} student is ready to import.",
+    "ready_other": "{{count}} students are ready to import.",
+    "problems": "{{valid}} rows are ready and {{invalid}} have problems. Fix the file and check it again.",
+    "caption": "Rows with problems",
+    "line": "Line",
+    "who": "Student",
+    "what": "Problem",
+    "more": "…and {{count}} more rows with problems.",
+    "done_one": "{{count}} student imported",
+    "done_other": "{{count}} students imported",
+    "error": {
+      "INVALID": "{{field}} is not valid",
+      "DUPLICATE_IN_FILE": "{{field}} appears twice in the file",
+      "EMAIL_TAKEN": "an account with this email already exists",
+      "ROLL_NO_TAKEN": "this roll number is already used"
+    },
+    "field": {
+      "email": "email",
+      "fullName": "name",
+      "rollNo": "roll number",
+      "cgpa": "CGPA (0–10)",
+      "phone": "phone"
+    }
   }
 }

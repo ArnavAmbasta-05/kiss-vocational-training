@@ -32,7 +32,7 @@ export function cycleEndInstant(endsOn: Date, utcOffsetMinutes: number): Date {
 }
 
 /**
- * L6: an application window must close by the end of its cycle: applying for a training that
+ * L6 (BR-24): an application window must close by the end of its cycle: applying for a training that
  * is over makes no sense. Opening after the cycle has started stays allowed, because late
  * applicants can still be placed in a running batch.
  */
@@ -45,7 +45,7 @@ export function windowInsideCycle(
 }
 
 /**
- * L7: a cycle takes applications if any of its courses' windows is open, will once one opens,
+ * L7 (BRQ-2.4): a cycle takes applications if any of its courses' windows is open, will once one opens,
  * and is closed otherwise (a running cycle students may still look at).
  */
 export function cycleApplications(states: readonly WindowState[]): CycleApplications {

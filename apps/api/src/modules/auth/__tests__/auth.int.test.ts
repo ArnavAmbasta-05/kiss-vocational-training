@@ -39,7 +39,7 @@ describe('POST /auth/login (TC-01)', () => {
     expect(res.status).toBe(200);
   });
 
-  it('gives the same generic error for wrong password, unknown email and inactive account', async () => {
+  it('gives the same generic error for wrong password, unknown email and inactive account (BR-27)', async () => {
     const user = await createLoginUser(prisma(), Role.STUDENT);
     const inactive = await createLoginUser(prisma(), Role.STUDENT, { isActive: false });
 

@@ -7,6 +7,7 @@ import type {
   Paginated,
   Role,
   UserSummary,
+  StudentImportResult,
 } from '@vtmp/shared';
 import { api } from '../../lib/api/client';
 
@@ -78,6 +79,16 @@ export function useUnlockUser() {
   return useMutation({
     mutationFn: (id: string) => api.post<UserSummary>(`/admin/users/${id}/unlock`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-users'] }),
+  });
+}
+
+/** A5: check (dryRun) or import a CSV of students. */
+export function useImportStudents() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { csv: string; password: string; dryRun: boolean }) =>
+      api.post<StudentImportResult>('/admin/users/import', body),
+    onSuccess: (r) => (r.created ? qc.invalidateQueries({ queryKey: ['admin-users'] }) : undefined),
   });
 }
 

@@ -35,18 +35,24 @@ CI (GitHub Actions, every push and pull request) runs lint, typecheck, the i18n 
 traceability checks, unit tests, integration tests against PostgreSQL 16, the production build,
 the bundle budget and the full browser suite, then a smoke test of the deployed site.
 
-## Latest results (2026-10-26, Sprint 13)
+## Latest results (2026-11-01, v1.2)
 
 | Suite | Result |
 | --- | --- |
-| API unit + integration | **49 suites, 381 tests, all passing** |
-| API coverage (statements / branches / functions / lines) | **91.22 % / 73.43 % / 90.93 % / 93.12 %** |
-| Browser (desktop + phone) | **65 tests, all passing** (journeys, security, accessibility) |
+| API unit + integration | **57 files, 478 tests, all passing** |
+| API coverage (statements / branches / functions / lines) | **88.54 % / 73.78 % / 88.97 % / 90.39 %** (v1.1, not re-measured) |
+| Browser (desktop + phone) | **75 tests, all passing** (journeys, security, accessibility) |
 | Accessibility | every page of every role: **0 serious or critical issues** |
-| Traceability | **99 of 99** BRQs and BRs cited by a test or CI check |
-| Lighthouse, `/verify` (mobile, slow 4G) | score 100, LCP 0.9 s, 11 KB |
-| Lighthouse, sign-in shell | score 94, LCP 2.6 s, 216 KB, 14 requests |
-| Live site, first request after idle | 2.66 s (cold start); 0.4–0.6 s warm |
+| Traceability | **120 of 120** BRQs and BRs cited by a test or CI check (BRD v1.2) |
+| Lighthouse, `/verify` (mobile, slow 4G) | score 100, LCP 0.9 s, 11 KB (Sprint 13, not re-measured) |
+| Lighthouse, sign-in shell | score 94, LCP 2.6 s, 216 KB, 14 requests (Sprint 13, not re-measured) |
+| Live site, first request after idle | 2.66 s (cold start); 0.4–0.6 s warm (Sprint 13) |
+
+At Sprint 13 (2026-10-26) the API had 381 tests with 91.22 % / 73.43 % / 90.93 % / 93.12 %
+coverage and the browser suite 65 tests. Coverage fell slightly because the post-release code
+added more defensive paths than tests reach. Under coverage instrumentation, which slows every
+test, three tests can fail: one verification test that times out at 5 s, and two analytics tests
+whose refresh lease another suite holds. They pass in the normal run and alone.
 
 Coverage is measured with `jest --coverage` over the API. Branch coverage is lower because
 defensive branches (database errors, provider timeouts, storage failures) are only partly
