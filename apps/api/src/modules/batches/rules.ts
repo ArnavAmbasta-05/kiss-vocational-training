@@ -205,3 +205,53 @@ export function insideCycle(
 ): boolean {
   return batch.startDate >= cycle.startsOn && batch.endDate <= cycle.endsOn;
 }
+
+export interface WaitlistCandidate {
+  enrollmentId: string;
+  status: string;
+  submittedAt: string;
+  cgpa: string;
+  /** Rank of the batch's course in the applicant's preferences (1 = first choice). */
+  rankForCourse: number;
+}
+
+/**
+ * A2 (BR-04): who gets a freed seat. Only WAITLISTED applicants (approved ones not yet placed
+ * wait for the allocation run), the course ranked higher first, then the same priority rule as
+ * allocation. Returns enrollment ids in the order they should be placed.
+ */
+export function waitlistOrder(
+  candidates: readonly WaitlistCandidate[],
+  rule: AllocationPriorityRule,
+): string[] {
+  const priority = compareByPriority(rule);
+  return candidates
+    .filter((c) => c.status === 'WAITLISTED' && c.rankForCourse > 0)
+    .map((c) => ({
+      rank: c.rankForCourse,
+      applicant: {
+        enrollmentId: c.enrollmentId,
+        preferences: [],
+        submittedAt: new Date(c.submittedAt),
+        cgpa: Number(c.cgpa),
+      },
+    }))
+    .sort((a, b) => a.rank - b.rank || priority(a.applicant, b.applicant))
+    .map((c) => c.applicant.enrollmentId);
+}
+
+/**
+ * A2: a batch still takes waitlisted applicants while it is planned, or running for at most
+ * `lateDays` days. Dates are institution calendar days (YYYY-MM-DD).
+ */
+export function takesLatePlacements(
+  status: BatchStatus,
+  startDate: string,
+  today: string,
+  lateDays: number,
+): boolean {
+  if (status === 'PLANNED') return true;
+  if (status !== 'ACTIVE') return false;
+  const days = (Date.parse(today) - Date.parse(startDate)) / 86_400_000;
+  return days <= lateDays;
+}

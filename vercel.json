@@ -5,7 +5,10 @@
   "buildCommand": "sh scripts/vercel-build.sh",
   "outputDirectory": "apps/web/dist",
   "regions": ["sin1"],
-  "crons": [{ "path": "/api/v1/internal/jobs/risk-evaluation", "schedule": "30 20 * * *" }],
+  "crons": [
+    { "path": "/api/v1/internal/jobs/risk-evaluation", "schedule": "30 20 * * *" },
+    { "path": "/api/v1/internal/jobs/daily-automation", "schedule": "30 21 * * *" }
+  ],
   "functions": {
     "api/index.js": {
       "maxDuration": 30,

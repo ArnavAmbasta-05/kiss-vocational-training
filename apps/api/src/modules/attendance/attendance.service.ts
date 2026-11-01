@@ -424,3 +424,24 @@ export async function weeklyTrend(
     marks: Number(r.marks),
   }));
 }
+
+/**
+ * A3 (BRQ-9.5): sessions of running batches that have ended but nobody marked, while their trainers can
+ * still mark them (inside the edit window, BR-06), counted per trainer account. A session that
+ * names no trainer counts for every trainer of its batch (BR-20).
+ */
+export async function unmarkedByTrainer(now = new Date()): Promise<Map<string, number>> {
+  const hours = await settings.get('attendance.editWindowHours');
+  const since = new Date(now.getTime() - hours * 3_600_000);
+  const rows = await prisma().$queryRaw<Array<{ user_id: string; n: number }>>`
+    SELECT t.user_id, COUNT(DISTINCT ts.id)::int AS n
+    FROM training_sessions ts
+    JOIN batches b ON b.id = ts.batch_id AND b.status = 'ACTIVE'
+    JOIN trainer_assignments ta ON ta.batch_id = b.id
+    JOIN trainers t ON t.id = ta.trainer_id
+    JOIN users u ON u.id = t.user_id AND u.is_active
+    WHERE ts.status = 'SCHEDULED' AND ts.ends_at <= ${now} AND ts.ends_at > ${since}
+      AND (ts.trainer_id IS NULL OR ts.trainer_id = ta.trainer_id)
+    GROUP BY t.user_id`;
+  return new Map(rows.map((r) => [r.user_id, Number(r.n)]));
+}

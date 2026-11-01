@@ -4,6 +4,7 @@ import { config } from './core/config';
 import { AppError } from './core/errors';
 import { asyncHandler } from './core/http';
 import { refresh } from './modules/analytics/analytics.service';
+import { runDaily } from './modules/automation/automation.service';
 import { evaluateAll } from './modules/intervention/intervention.service';
 
 const digest = (v: string) => createHash('sha256').update(v).digest();
@@ -35,5 +36,9 @@ export function internalJobRoutes(): Router {
   router.post('/risk-evaluation', risk);
   router.get('/analytics-refresh', analytics);
   router.post('/analytics-refresh', analytics);
+  // Round 2 review A1–A9: auto-close, waitlist, reminders, notices, follow-ups.
+  const automation = job(() => runDaily());
+  router.get('/daily-automation', automation);
+  router.post('/daily-automation', automation);
   return router;
 }

@@ -472,3 +472,38 @@ export async function upsertOffering(
 export async function activeCourseCount(): Promise<number> {
   return prisma().course.count({ where: { isActive: true } });
 }
+
+/**
+ * A4: application windows of active courses that opened in (from, to] and are switched on,
+ * grouped by cycle, so students can be told once per cycle.
+ */
+export async function windowsOpenedBetween(
+  from: Date,
+  to: Date,
+): Promise<Array<{ cycleId: string; cycleName: string; courses: string[] }>> {
+  const rows = await prisma().courseOffering.findMany({
+    where: {
+      isOpen: true,
+      enrollmentOpensAt: { gt: from, lte: to },
+      enrollmentClosesAt: { gt: to },
+      course: { isActive: true },
+    },
+    orderBy: { course: { title: 'asc' } },
+    select: {
+      cycleId: true,
+      cycle: { select: { name: true } },
+      course: { select: { title: true } },
+    },
+  });
+  const byCycle = new Map<string, { cycleId: string; cycleName: string; courses: string[] }>();
+  for (const r of rows) {
+    const c = byCycle.get(r.cycleId) ?? {
+      cycleId: r.cycleId,
+      cycleName: r.cycle.name,
+      courses: [],
+    };
+    c.courses.push(r.course.title);
+    byCycle.set(r.cycleId, c);
+  }
+  return [...byCycle.values()];
+}

@@ -18,6 +18,10 @@ import { certificateRenderRoutes, completionRoutes } from './modules/completion/
 import { analyticsRoutes } from './modules/analytics/analytics.routes';
 import { assistantRoutes, materialRoutes } from './modules/assistant/assistant.routes';
 import { auditLogRoutes } from './modules/audit/audit.routes';
+import {
+  adminAutomationRoutes,
+  registerAutomationHooks,
+} from './modules/automation/automation.routes';
 import { authRoutes } from './modules/auth/auth.routes';
 import { adminBatchRoutes, batchRoutes } from './modules/batches/batches.routes';
 import { adminCourseRoutes, catalogueRoutes } from './modules/courses/courses.routes';
@@ -103,6 +107,9 @@ export function v1Routes(): Router {
   router.use('/students', studentRiskRoutes());
   // F11: saves of attendance, marks and ratings re-evaluate that batch's risk flags.
   registerInterventionHooks();
+  // A8: a certificate refreshes outcome analytics when they are stale.
+  registerAutomationHooks();
+  router.use('/admin/automation', adminAutomationRoutes());
   router.use('/admin/users', adminUserRoutes());
   router.use('/admin/enrollments', adminEnrollmentRoutes());
   router.use('/admin', adminBatchRoutes());

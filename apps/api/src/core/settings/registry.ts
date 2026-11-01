@@ -209,6 +209,58 @@ export const SETTINGS = {
     50,
     'Failed sign-in attempts per 15 minutes per IP [TAD §9]',
   ),
+  // Automation (Round 2 review A1–A9); the admin changes these on the Automation page.
+  'automation.autoCloseBatches': define(
+    z.boolean(),
+    true,
+    'Close running batches that ended and have every student decided [A1, BR-25]',
+  ),
+  'automation.autoCloseAfterDays': define(
+    z.number().int().min(0).max(90),
+    7,
+    'Days after the end date before a ready batch is closed automatically [A1]',
+  ),
+  'automation.autoPromoteWaitlist': define(
+    z.boolean(),
+    false,
+    'Place the next waitlisted applicant when a batch seat frees up [A2, BR-04]',
+  ),
+  'automation.latePlacementDays': define(
+    z.number().int().min(0).max(60),
+    7,
+    'Days after a batch starts during which waitlisted applicants are still placed [A2]',
+  ),
+  'automation.reminders': define(z.boolean(), true, 'Daily reminders to trainers and admins [A3]'),
+  'automation.pendingReminderDays': define(
+    positiveInt,
+    3,
+    'Remind admins about applications pending longer than this many days [A3]',
+  ),
+  'automation.notices': define(
+    z.boolean(),
+    true,
+    'Notices to students: windows opening, passport links expiring, matching opportunities [A4]',
+  ),
+  'automation.passportExpiryNoticeDays': define(
+    positiveInt,
+    7,
+    'Days before a passport link expires that its student is warned [A4]',
+  ),
+  'automation.opportunityMatchPercent': define(
+    percent,
+    75,
+    'Minimum match % for telling a student about a new opportunity [A4, BR-22]',
+  ),
+  'automation.placementFollowUpDays': define(
+    z.number().int().min(7).max(730),
+    90,
+    'Days after a placement starts that admins are asked to confirm it [A9]',
+  ),
+  'analytics.autoRefreshMinutes': define(
+    positiveInt,
+    10,
+    'Refresh outcome analytics after certificates are issued if older than this [A8]',
+  ),
   'public.rateLimitPerMin': define(
     positiveInt,
     30,

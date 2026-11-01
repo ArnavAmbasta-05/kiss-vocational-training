@@ -6,6 +6,7 @@ import type {
   Grade,
 } from '@vtmp/shared';
 import { withAudit, type Actor } from '../../core/audit';
+import { certificateEvents } from '../../core/events';
 import { AppError } from '../../core/errors';
 import { logger } from '../../core/logger';
 import { settings } from '../../core/settings';
@@ -214,6 +215,8 @@ async function certify(actor: Actor, enrollmentId: string, c: CertificateSummary
       },
     ]),
   );
+  // A8: outcome analytics can pick the new certificate up (core never imports analytics).
+  await certificateEvents.issued(enrollmentId);
 }
 
 /**

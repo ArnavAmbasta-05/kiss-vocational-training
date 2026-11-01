@@ -27,3 +27,27 @@ export const batchEvents = {
     }
   },
 };
+
+type CertificateHandler = (enrollmentId: string) => Promise<unknown>;
+
+const certificateHandlers = new Set<CertificateHandler>();
+
+/**
+ * "A certificate was issued." The completion module announces it after the certificate is
+ * stored; the automation module refreshes outcome analytics from it (A8). Same rules as
+ * batchEvents: awaited, and a failing handler never fails the issue.
+ */
+export const certificateEvents = {
+  onIssued(handler: CertificateHandler): void {
+    certificateHandlers.add(handler);
+  },
+  async issued(enrollmentId: string): Promise<void> {
+    for (const handler of certificateHandlers) {
+      try {
+        await handler(enrollmentId);
+      } catch (err) {
+        logger.error({ err, enrollmentId }, 'certificate-issued handler failed');
+      }
+    }
+  },
+};

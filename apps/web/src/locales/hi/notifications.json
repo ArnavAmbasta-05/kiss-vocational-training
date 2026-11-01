@@ -50,6 +50,42 @@
     "RISK_ACTION_AGREED": {
       "title": "आपकी मदद के लिए एक योजना",
       "body": "{{owner}} ने आपके लिए सहायता तय की है, {{dueOn}} तक।"
+    },
+    "BATCH_CLOSED": {
+      "title": "बैच बंद हुआ",
+      "body": "{{courseTitle}}, {{batchName}} अपने आप बंद हो गया: प्रशिक्षण समाप्त हो गया है।"
+    },
+    "SESSION_CANCELLED": {
+      "title": "सत्र रद्द",
+      "body": "{{courseTitle}}, {{batchName}}: {{when}} का सत्र रद्द कर दिया गया है।"
+    },
+    "APPLICATIONS_OPEN": {
+      "title": "आवेदन खुले हैं",
+      "body": "{{cycleName}}: {{courses}}। 'पाठ्यक्रम' से आवेदन करें।"
+    },
+    "PASSPORT_LINK_EXPIRING": {
+      "title": "पासपोर्ट लिंक जल्द समाप्त होगा",
+      "body": "आपके स्किल पासपोर्ट का एक लिंक {{date}} को काम करना बंद कर देगा। ज़रूरत हो तो नया लिंक साझा करें।"
+    },
+    "OPPORTUNITY_MATCH": {
+      "title": "आपके कौशल से मेल खाता नया अवसर",
+      "body": "{{partner}} में {{title}}: {{matchPercent}} % मेल।"
+    },
+    "REMINDER_ATTENDANCE": {
+      "title": "उपस्थिति दर्ज करनी है",
+      "body": "{{count}} सत्र बिना उपस्थिति के समाप्त हुए। संपादन अवधि बंद होने से पहले दर्ज करें।"
+    },
+    "REMINDER_PENDING_APPLICATIONS": {
+      "title": "आवेदन प्रतीक्षा में",
+      "body": "{{count}} आवेदन {{days}} दिन से अधिक से निर्णय की प्रतीक्षा में हैं।"
+    },
+    "REMINDER_ENDED_BATCHES": {
+      "title": "समापन निर्णय बाकी",
+      "body": "{{count}} समाप्त बैचों में अभी भी विद्यार्थियों पर निर्णय बाकी है।"
+    },
+    "PLACEMENT_FOLLOW_UP": {
+      "title": "प्लेसमेंट की पुष्टि",
+      "body": "क्या {{studentName}} अब भी {{employer}} में {{roleTitle}} के रूप में काम कर रहे हैं? {{days}} दिन हो गए हैं।"
     }
   }
 }

@@ -48,6 +48,8 @@ const UNAUTHENTICATED = [
   'POST /api/v1/internal/jobs/risk-evaluation',
   'GET /api/v1/internal/jobs/analytics-refresh',
   'POST /api/v1/internal/jobs/analytics-refresh',
+  'GET /api/v1/internal/jobs/daily-automation',
+  'POST /api/v1/internal/jobs/daily-automation',
 ];
 
 describe('route inventory (TAD §9, CLAUDE.md rule 2)', () => {

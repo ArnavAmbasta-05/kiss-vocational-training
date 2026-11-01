@@ -16,6 +16,7 @@ import { paginated } from '../../core/http';
 import { settings } from '../../core/settings';
 import { toCsv } from '../reports/csv';
 import * as competency from '../competency/competency.service';
+import { notify } from '../notifications/notifications.service';
 import * as users from '../users/users.service';
 import { evaluateRole, rankMatches } from './rules';
 
@@ -228,10 +229,44 @@ export async function createOpportunity(
     });
     return o.id;
   });
+  if (input.isActive ?? true) await notifyMatches(id);
   return toOpp(
     await prisma().opportunity.findUniqueOrThrow({ where: { id }, include: oppInclude }),
     await today(),
   );
+}
+
+/**
+ * A4 (BRQ-9.6): tells every student who matches a newly published opportunity at least
+ * automation.opportunityMatchPercent (and above 0 %) that it exists, in one notification each
+ * (BR-22). Off with automation.notices. Returns how many students were told.
+ */
+export async function notifyMatches(opportunityId: string): Promise<number> {
+  const [on, minimum] = await Promise.all([
+    settings.get('automation.notices'),
+    settings.get('automation.opportunityMatchPercent'),
+  ]);
+  if (!on) return 0;
+  const o = await prisma().opportunity.findUnique({
+    where: { id: opportunityId },
+    select: { title: true, partner: true, role: { select: { competencies: true } } },
+  });
+  if (!o) return 0;
+  const requirements = o.role.competencies.map((c) => ({ code: c.competencyCode, level: c.level }));
+  const byStudent = await competency.verifiedLevelsByStudent(requirements.map((r) => r.code));
+  const items = [...byStudent.values()]
+    .map((s) => ({ userId: s.userId, percent: evaluateRole(requirements, s.levels).percent }))
+    .filter((m) => m.percent > 0 && m.percent >= minimum)
+    .map((m) => ({
+      userId: m.userId,
+      type: 'OPPORTUNITY_MATCH' as const,
+      title: 'A new opportunity matches your skills',
+      body: `${o.title} at ${o.partner}: ${m.percent} % match`,
+      data: { title: o.title, partner: o.partner, matchPercent: String(m.percent) },
+      link: '/student/opportunities',
+    }));
+  await notify(prisma(), items);
+  return items.length;
 }
 
 export async function updateOpportunity(

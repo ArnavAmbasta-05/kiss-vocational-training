@@ -1999,6 +1999,55 @@ paths:
       responses:
         '200': { description: refreshed and refreshedAt }
         '401': { $ref: '#/components/responses/Unauthorized' }
+  /internal/jobs/daily-automation:
+    get:
+      tags: [jobs]
+      summary: Daily automation run, called by Vercel Cron (BRQ-3.6, 4.7, 4.8, 9.5, 9.6, 20.5)
+      description: >-
+        Authorization Bearer CRON_SECRET. Under a job lease (a second run returns ran false), runs
+        in order: automatic approval of pending applications (when it is on), waitlist promotion,
+        closing finished batches (BR-25), reminders, notices to students and placement follow-ups.
+        Each step is independent; a failed step reports its error and the others still run.
+        Once-only notices cover the time since the last successful run. POST works the same.
+      security: []
+      responses:
+        '200':
+          { description: 'ran, and the result: ranAt and each step with enabled, count, error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [jobs]
+      summary: Same as GET, for manual runs with the cron secret
+      security: []
+      responses:
+        '200': { description: Run summary }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /admin/automation:
+    get:
+      tags: [automation]
+      summary: The automation switches and limits, the last daily run and when it last succeeded (Admin)
+      responses: { '200': { description: AutomationStatus } }
+    put:
+      tags: [automation]
+      summary: Change the automation settings (Admin); each changed setting is audited
+      description: >-
+        Body is every field of AutomationSettings: autoCloseBatches, autoCloseAfterDays (0–90),
+        autoPromoteWaitlist, latePlacementDays (0–60), reminders, pendingReminderDays (1–60),
+        notices, passportExpiryNoticeDays (1–60), opportunityMatchPercent (0–100),
+        placementFollowUpDays (7–730), analyticsAutoRefreshMinutes (1–1440). Switching waitlist
+        promotion on fills seats already free.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { description: The saved settings }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+  /admin/automation/run:
+    post:
+      tags: [automation]
+      summary: Run the daily automation now (Admin, BRQ-4.7, BRQ-9.5); ran false while another run holds the lease
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses: { '200': { description: 'ran, and the run result' } }
   /audit-logs:
     get:
       tags: [audit]
