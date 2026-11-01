@@ -35,7 +35,7 @@ const close = (batchId: string) =>
     .set('Idempotency-Key', `k-${uid()}`)
     .send();
 
-describe('closeBlocker (L1)', () => {
+describe('closeBlocker (L1, BR-25)', () => {
   it('needs an active batch, a passed end date and no undecided students', () => {
     expect(closeBlocker('PLANNED', '2027-01-31', '2027-02-01', 0)).toBe('INVALID_BATCH_STATUS');
     expect(closeBlocker('CLOSED', '2027-01-31', '2027-02-01', 0)).toBe('INVALID_BATCH_STATUS');
@@ -46,7 +46,7 @@ describe('closeBlocker (L1)', () => {
   });
 });
 
-describe('insideCycle (L5)', () => {
+describe('insideCycle (L5, BR-24)', () => {
   const cycle = { startsOn: '2027-06-01', endsOn: '2027-09-30' };
   it('accepts the cycle bounds and refuses a day either side', () => {
     expect(insideCycle({ startDate: '2027-06-01', endDate: '2027-09-30' }, cycle)).toBe(true);
@@ -55,7 +55,7 @@ describe('insideCycle (L5)', () => {
   });
 });
 
-describe('withdraw from training (L4)', () => {
+describe('withdraw from training (L4, BRQ-4.5, BR-26)', () => {
   it('from a running batch: WITHDRAWN with the reason, kept on the roster, seat freed, off the sheet', async () => {
     const db = prisma();
     const w = await createActiveBatch(db, { students: 2, sessions: 2 });
@@ -161,7 +161,7 @@ describe('withdraw from training (L4)', () => {
   });
 });
 
-describe('close a batch (L1)', () => {
+describe('close a batch (L1, BRQ-4.6, BR-25)', () => {
   it('refuses before the end date and while students are undecided, then closes', async () => {
     const db = prisma();
     const w = await createActiveBatch(db, { students: 2, sessions: 1 });

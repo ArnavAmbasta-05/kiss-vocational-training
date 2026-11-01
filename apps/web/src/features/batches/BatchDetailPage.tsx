@@ -221,7 +221,7 @@ export function BatchDetailPage({ admin }: { admin: boolean }) {
 const UNDECIDED = ['ALLOCATED', 'ACTIVE'];
 
 /**
- * L1: closing ends a batch for good. The API checks the end date and decisions; this dialog
+ * L1 (BR-25): closing ends a batch for good. The API checks the end date and decisions; this dialog
  * shows the same facts first so the admin knows what is left to do.
  */
 function CloseModal({
@@ -452,7 +452,7 @@ function StudentsTab({ batch, admin }: { batch: BatchDetail; admin: boolean }) {
   );
 }
 
-/** L4: a student leaves training; the reason is kept on the application and sent to them. */
+/** L4 (BR-26): a student leaves training; the reason is kept on the application and sent to them. */
 function WithdrawModal({
   batch,
   student,

@@ -5,7 +5,7 @@ import { AppError } from '../errors';
 import { verifyAccessToken } from './tokens';
 
 /**
- * What a user whose password an admin set may still do before choosing their own (A3): see who
+ * What a user whose password an admin set may still do before choosing their own (A3, BR-27): see who
  * they are, change the password or language, and load the notification bell of the page.
  */
 const ALLOWED_BEFORE_PASSWORD_CHANGE = new Set([

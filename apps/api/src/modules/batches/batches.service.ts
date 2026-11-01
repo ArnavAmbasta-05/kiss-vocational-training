@@ -25,7 +25,7 @@ import { expandRecurring, MAX_GENERATED_SESSIONS } from './sessionsSchedule';
 const day = (d: Date) => d.toISOString().slice(0, 10);
 
 /**
- * L4: a student who withdrew mid-training stays on the roster (their record is kept) but no
+ * L4 (BR-26): a student who withdrew mid-training stays on the roster (their record is kept) but no
  * longer holds a seat, so counts of members use this filter.
  */
 const SEATED = {
@@ -287,7 +287,7 @@ export async function membersByCourse(cycleId: string): Promise<Map<string, numb
 }
 
 /**
- * L8: ACTIVE batches that ended before `today` (YYYY-MM-DD), oldest first, with how many of
+ * L8 (BRQ-4.6): ACTIVE batches that ended before `today` (YYYY-MM-DD), oldest first, with how many of
  * their students are still in training (no completion decision yet).
  */
 export async function endedActive(today: string): Promise<EndedBatch[]> {
@@ -315,7 +315,7 @@ export async function endedActive(today: string): Promise<EndedBatch[]> {
   }));
 }
 
-/** L5: names of a cycle's batches that would not fit between these dates (cycle edits). */
+/** L5 (BR-24): names of a cycle's batches that would not fit between these dates (cycle edits). */
 export async function batchesOutsideDates(
   cycleId: string,
   startsOn: Date,
@@ -357,7 +357,7 @@ export async function capacityByCourse(cycleId: string): Promise<Map<string, num
 
 // ─── Admin: batches (BRQ-4.1) ──────────────────────────────────────────────────
 
-/** L5: 422 BATCH_OUTSIDE_CYCLE unless the batch's dates fall within its cycle's. */
+/** L5 (BR-24): 422 BATCH_OUTSIDE_CYCLE unless the batch's dates fall within its cycle's. */
 function assertInsideCycle(
   startDate: Date,
   endDate: Date,
@@ -512,7 +512,7 @@ async function institutionToday(now = new Date()): Promise<string> {
 }
 
 /**
- * L1: ACTIVE → CLOSED once the batch has ended and every student has a decision (completed,
+ * L1 (BR-25, BRQ-4.6): ACTIVE → CLOSED once the batch has ended and every student has a decision (completed,
  * not completed or withdrawn). A closed batch takes no attendance, marks or new students and
  * drops out of "active" lists; its records stay readable.
  */
@@ -658,7 +658,7 @@ export async function removeStudent(
 }
 
 /**
- * L4: a student leaves training. From a planned batch the seat is simply given up (membership
+ * L4 (BR-26, BRQ-4.5): a student leaves training. From a planned batch the seat is simply given up (membership
  * removed, ALLOCATED → WITHDRAWN). From a running batch the membership stays, so attendance and
  * marks so far remain on record, but the student no longer holds a seat, is left off sheets and
  * risk checks, and the application becomes WITHDRAWN with the reason. Audited and notified.

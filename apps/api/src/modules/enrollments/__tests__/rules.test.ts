@@ -74,7 +74,7 @@ describe('isEditable', () => {
   });
 });
 
-describe('automatic approval screening (BRQ-3.3)', () => {
+describe('automatic approval screening (BRQ-3.3, BRQ-3.5)', () => {
   const plain = { title: 'Tailoring', prerequisites: null };
   const withPre = { title: 'Electrician', prerequisites: 'Class 10 maths' };
   const rules = { minCgpa: 6, manualIfPrerequisites: true };
@@ -109,7 +109,7 @@ describe('automatic approval screening (BRQ-3.3)', () => {
   });
 });
 
-describe('overlapping cycles', () => {
+describe('overlapping cycles (BR-23)', () => {
   const pilot = { startsOn: '2026-09-30', endsOn: '2026-12-23' };
   it.each([
     ['starts inside the other', { startsOn: '2026-12-02', endsOn: '2027-03-24' }, true],

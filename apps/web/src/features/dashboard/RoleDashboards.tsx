@@ -21,7 +21,7 @@ const pct = (n: number | null, none: string) => (n === null ? none : `${n.toFixe
 
 /** BRQ-9.1, BRQ-9.2: counts, completion and charts. */
 /**
- * L8: batches whose training is over but which are still open: decisions to make on
+ * L8 (BRQ-4.6): batches whose training is over but which are still open: decisions to make on
  * Completions, or nothing left but to close them.
  */
 function EndedBatchesCard({ batches }: { batches: EndedBatch[] }) {

@@ -19,7 +19,7 @@ import { paginated, parsePagination } from '../../core/http';
 import { getMe, revokeUserSessions } from '../auth/auth.service';
 import { batchesOnlyTaughtBy } from '../batches/batches.service';
 
-/** D3: refuse to deactivate the only trainer of a planned or running batch. */
+/** D3 (BR-28): refuse to deactivate the only trainer of a planned or running batch. */
 async function assertNoBatchLeftWithoutTrainer(userIds: string[]): Promise<void> {
   const stranded = await batchesOnlyTaughtBy(userIds);
   if (stranded.length === 0) return;
@@ -274,7 +274,7 @@ export async function updateUser(
 }
 
 /**
- * Sets a new password for a user who forgot theirs (the sign-in page sends them to the training
+ * BRQ-1.4: sets a new password for a user who forgot theirs (the sign-in page sends them to the training
  * office). It also clears any login lock and ends every session, so only the new password works
  * from now on. Admins change their own password under /users/me/password instead.
  */
@@ -311,7 +311,7 @@ export async function resetPassword(
   });
 }
 
-/** Clears a login lock (too many wrong passwords) so the user can try again at once (A2). */
+/** Clears a login lock (too many wrong passwords) so the user can try again at once (A2, BRQ-1.4). */
 export async function unlockUser(actor: Actor, userId: string): Promise<UserSummary> {
   return withAudit(actor, async (tx, log) => {
     const before = await tx.user.findUnique({
@@ -338,7 +338,7 @@ export async function unlockUser(actor: Actor, userId: string): Promise<UserSumm
 }
 
 /**
- * Deactivates or reactivates several accounts in one transaction (admin clean-up). The same
+ * Deactivates or reactivates several accounts in one transaction (admin clean-up, BRQ-2.5). The same
  * rules as one at a time: never yourself, deactivation ends sessions, reactivation unlocks.
  */
 export async function setUsersActive(

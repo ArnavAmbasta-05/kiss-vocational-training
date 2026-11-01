@@ -46,7 +46,7 @@ const newBatch = (w: { cycleId: string; courseId: string }, startDate: string, e
       venue: 'Yard 2',
     });
 
-describe('batch dates inside the cycle (L5)', () => {
+describe('batch dates inside the cycle (L5, BR-24)', () => {
   it('creates a batch on the cycle bounds and refuses one that starts early or ends late', async () => {
     const w = await world();
     expect((await newBatch(w, '2027-06-01', '2027-09-30')).status).toBe(201);
@@ -84,7 +84,7 @@ describe('batch dates inside the cycle (L5)', () => {
   });
 });
 
-describe('application windows close by the end of the cycle (L6)', () => {
+describe('application windows close by the end of the cycle (L6, BR-24)', () => {
   const offer = (w: { cycleId: string; courseId: string }, closes: string) =>
     request(app).put(`/api/v1/admin/cycles/${w.cycleId}/offerings/${w.courseId}`).set(admin).send({
       enrollmentOpensAt: '2027-05-01T03:30:00.000Z',

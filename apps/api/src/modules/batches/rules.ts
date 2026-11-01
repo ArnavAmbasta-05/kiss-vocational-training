@@ -180,7 +180,7 @@ export function capacityLevel(
 export type CloseBlocker = 'INVALID_BATCH_STATUS' | 'BATCH_NOT_ENDED' | 'STUDENTS_UNDECIDED';
 
 /**
- * L1: a running batch may be closed from the day after its end date, once no student is still
+ * L1 (BR-25): a running batch may be closed from the day after its end date, once no student is still
  * waiting for a completion decision. Dates are institution calendar days (YYYY-MM-DD).
  */
 export function closeBlocker(
@@ -196,7 +196,7 @@ export function closeBlocker(
 }
 
 /**
- * L5: a batch runs inside its training cycle (both dates inclusive). Calendar days as
+ * L5 (BR-24): a batch runs inside its training cycle (both dates inclusive). Calendar days as
  * YYYY-MM-DD, so plain string comparison is a date comparison.
  */
 export function insideCycle(

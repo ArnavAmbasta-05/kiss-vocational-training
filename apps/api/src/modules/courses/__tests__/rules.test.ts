@@ -35,7 +35,7 @@ describe('windowState (BR-02, BRQ-2.3)', () => {
   });
 });
 
-describe('windowInsideCycle (L6)', () => {
+describe('windowInsideCycle (L6, BR-24)', () => {
   const endsOn = new Date('2027-09-30'); // stored as UTC midnight
   const IST = 330;
 
@@ -49,7 +49,7 @@ describe('windowInsideCycle (L6)', () => {
   });
 });
 
-describe('cycleApplications (L7)', () => {
+describe('cycleApplications (L7, BRQ-2.4)', () => {
   it('is open if any course is open, upcoming if one will open, closed otherwise', () => {
     expect(cycleApplications(['CLOSED', 'OPEN', 'UPCOMING'])).toBe('OPEN');
     expect(cycleApplications(['CLOSED', 'UPCOMING'])).toBe('UPCOMING');

@@ -35,7 +35,7 @@ export function isEditable(status: EnrollmentStatus, allWindowsOpen: boolean): b
 }
 
 /**
- * BRQ-3.3 automatic approval: the reasons an application must wait for a person, in the
+ * BRQ-3.3 / BRQ-3.5 automatic approval: the reasons an application must wait for a person, in the
  * admin's rules (Settings). No reasons means it is approved automatically. CGPA is compared to
  * two decimals, so 6.00 meets a minimum of 6.
  */
@@ -69,7 +69,7 @@ export const COMMITTED_STATUSES: readonly EnrollmentStatus[] = ['APPROVED', 'ALL
 
 /**
  * Two training cycles overlap when each starts on or before the day the other ends (dates are
- * YYYY-MM-DD, both ends inclusive). A student committed to one can't train in the other.
+ * YYYY-MM-DD, both ends inclusive). A student committed to one can't train in the other (BR-23).
  */
 export function cyclesOverlap(
   a: { startsOn: string; endsOn: string },
