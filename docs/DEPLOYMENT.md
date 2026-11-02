@@ -30,6 +30,7 @@ locally and in CI it still runs as a normal server (`apps/api/src/server.ts`).
 | Scheduled jobs (Sprint 10) | Vercel Cron (`crons` in `vercel.json`) calls `GET /api/v1/internal/jobs/risk-evaluation` once a day at 20:30 UTC (02:00 IST; Hobby may fire up to ~1 h late) with `Authorization: Bearer $CRON_SECRET`. A lease row in `job_locks` stops two runs overlapping (session advisory locks don't survive the pooled URL). A run stops after 25 s and reports `partial`; batches go in random order, so later runs reach the rest. node-cron runs the same job at 02:00 only locally |
 | Files (Sprint 6+) | No persistent disk, so certificate PDFs (and evidence in Sprint 11) go to a **private Vercel Blob store** (`STORAGE_DRIVER=vercel-blob`). The database keeps only the object key; only the API can read the files, using `BLOB_READ_WRITE_TOKEN`. Fonts and PDFKit's data files ship with the function (`includeFiles` in `vercel.json`) |
 | Request time | Function limit set to 30 s (`vercel.json`). Bulk operations are designed to finish well inside it |
+| Browser security headers | The API sets its own (helmet). The pages get theirs from `vercel.json` `headers`: CSP (scripts from the site only; `connect-src` allows `vercel.com` and `*.blob.vercel-storage.com` for evidence uploads), `frame-ancestors 'none'`, `X-Frame-Options`, `nosniff`, referrer and permissions policies, HSTS. Add any new outside host to the CSP, or the browser blocks it |
 
 ## One-time setup
 
