@@ -4,8 +4,9 @@ import type { Role } from '@vtmp/shared';
 import { AppShell } from './components/layout/AppShell';
 import { PageSkeleton } from './components/ui';
 import { NAV_BY_ROLE } from './components/layout/nav';
-import { RequireAuth, RequireRole, RoleHomeRedirect } from './lib/auth';
+import { RequireAuth, RequireRole } from './lib/auth';
 import { ComingSoonPage } from './pages/ComingSoonPage';
+import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
@@ -232,6 +233,8 @@ function roleSection(role: Role, base: string): RouteObject {
 }
 
 const router = createBrowserRouter([
+  // The public front page; signed-in users are sent to their own dashboard from it.
+  { path: '/', element: <HomePage /> },
   { path: '/login', element: <LoginPage /> },
   // A shared Skill Passport: public, no sign-in and no app chrome (BRQ-10.3).
   {
@@ -248,7 +251,6 @@ const router = createBrowserRouter([
       {
         element: <AppShell />,
         children: [
-          { index: true, element: <RoleHomeRedirect /> },
           roleSection('STUDENT', '/student'),
           roleSection('TRAINER', '/trainer'),
           roleSection('ADMIN', '/admin'),

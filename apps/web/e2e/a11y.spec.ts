@@ -23,7 +23,7 @@ async function settled(page: Page) {
 test.describe('NFR-12, BRQ-16.4: every main page passes axe (WCAG 2.1 AA, no serious issues)', () => {
   test('public pages', async ({ page }) => {
     const found: string[] = [];
-    for (const path of ['/login', '/this-page-does-not-exist']) {
+    for (const path of ['/', '/login', '/this-page-does-not-exist']) {
       await page.goto(path);
       await expect(page.locator('h1').first()).toBeVisible();
       found.push(...(await violations(page)));

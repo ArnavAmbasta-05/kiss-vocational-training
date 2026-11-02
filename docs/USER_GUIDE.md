@@ -15,6 +15,12 @@ screenshot is taken automatically from a freshly seeded copy of the app
 
 ## Signing in, language and phones
 
+![Front page](screenshots/public-home.jpg)
+
+The portal opens on its **front page**: what the portal does, a box where employers type a
+certificate ID to check it, the four steps from applying to a first job, and **Sign in** at the
+top right. Signed-in users skip it and land on their own dashboard.
+
 ![Sign-in page](screenshots/public-login.jpg)
 
 1. Open the portal and sign in with your email and password. After 5 wrong passwords the
