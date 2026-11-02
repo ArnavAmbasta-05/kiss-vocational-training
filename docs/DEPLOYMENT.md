@@ -129,10 +129,22 @@ DATABASE_URL="<neon direct url>" SEED_PASSWORD="<strong demo password>" pnpm db:
 
 In PowerShell: `$env:DATABASE_URL="…"; $env:SEED_PASSWORD="…"; pnpm db:seed`, then close the
 terminal. The seed is idempotent: it never changes passwords or deletes anything, but it does
-give seeded students 001–040 their current names (a database seeded before 2026-10-30 keeps its
-old students 041–060 until they are removed by hand). Share the demo password only with the
+give seeded students 001–040 their current names. Share the demo password only with the
 team and examiners. **Never reuse a real password** (e.g. the database password)
 as the demo password.
+
+A database seeded **before 2026-10-30** also holds the old seeded students 041–060. Remove them
+once, after the seed above has renamed 001–040:
+
+```bash
+DATABASE_URL="<neon direct url>" pnpm db:seed --remove-old-students
+```
+
+A student whose only records are pending applications (as the old seed left them) is deleted
+with those applications. One with anything more (an admin decision, a batch, marks, their own
+actions) keeps the records and is deactivated instead. Each change is in the audit log, and
+running it again changes nothing. Accounts with real emails and students 001–040 are never
+touched.
 
 To **change the demo password later**, run the same command with `--reset-passwords`. It sets
 `SEED_PASSWORD` on every seeded account (`@kiss-vtmp.test`: admin, trainers, students), clears

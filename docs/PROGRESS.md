@@ -307,8 +307,40 @@ audit. Three medium issues are fixed here.
 - The headers can only be confirmed on the live site after deploy (`curl -I` the home page).
 
 ### Definition of done
-- [x] lint · [x] typecheck · [x] tests (479) · [x] openapi.yaml (no endpoint) · [x] seed (no
+- [x] lint · [x] typecheck · [x] tests (481 with the seed clean-up) · [x] openapi.yaml (no endpoint) · [x] seed (no
   change) · [x] strings externalized (no UI change)
+
+---
+
+## After Sprint 13 — Removing the old seeded students 041–060 (2026-11-02)
+
+### Built
+- `pnpm db:seed --remove-old-students` (`apps/api/src/seed/removeOldStudents.ts`) clears the
+  seeded students 041–060 that a database seeded before 2026-10-30 still holds (the follow-up
+  left by the unique-names change).
+  - A student whose only records are pending applications, as the old seed left them, is
+    deleted with those applications.
+  - A student with anything more (an admin decision, a batch, marks, their own actions in the
+    insert-only audit log) keeps the records and is deactivated instead, like the admin's safe
+    delete (BRQ-2.5).
+  - Each change is audited (`USER_DELETED` or `USER_DEACTIVATED`, `by: seed
+    --remove-old-students`). Running it again changes nothing. Accounts with real emails and
+    students 001–040 are never touched.
+- DEPLOYMENT.md step 4 gives the command for the live database.
+- Tests: +2 integration tests (`seed/__tests__/removeOldStudents.int.test.ts`).
+
+### Deviations from BRD/TAD (and why)
+- None: a one-off maintenance option of the seed, no API or rule change.
+
+### Known gaps / follow-ups
+- The live (Neon) database still has to be cleaned. This session can't reach it and never
+  handles its URL, so the project owner runs the command from their machine. The local database
+  already had only 40 students.
+- The screenshots in `docs/screenshots` still show the old names.
+
+### Definition of done
+- [x] lint · [x] typecheck · [x] tests · [x] openapi.yaml (no endpoint) · [x] seed ·
+  [x] strings externalized (no UI change)
 
 ---
 
