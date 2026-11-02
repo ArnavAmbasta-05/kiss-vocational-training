@@ -5,6 +5,15 @@ What changed in the portal, newest first. The reasons and the details of each ch
 [TAD.md](TAD.md) (v1.2, Amendment 3). IDs in brackets are the review findings (S, A, D, T, P from
 the site test run; L from the logic review) and the BRD requirements and rules they touch.
 
+## v1.2.1 — security fixes (2026-11-02)
+
+### Fixed
+- Wrong passwords sent at the same moment now all count, so the 5-attempt lock can't be dodged
+  by sending guesses in parallel (TC-02).
+- Every page now sends browser-protection headers (content security policy, no framing by other
+  sites, nosniff, referrer and permissions policies, HSTS).
+- `body-parser` updated to 1.20.9 (denial-of-service fix).
+
 ## v1.2 — automation (2026-11-01)
 
 The nine manual steps from the Round 2 review, automated (BRD v1.2 Section 8.2, TAD Amendment

@@ -272,6 +272,46 @@ project rule (both below).
 
 ---
 
+## After Sprint 13 — Medium-severity security fixes (2026-11-02)
+
+A security check of the deployed code (run locally in production mode, since the live site
+can't be reached from the work environment): 51 attacks, a code review and a dependency
+audit. Three medium issues are fixed here.
+
+### Built
+- **Lockout race (TC-02):** failed sign-ins were counted by reading the count and writing it back,
+  so 20 wrong passwords sent at once counted as one and the account never locked. The count now
+  goes up in one atomic database step, and only the attempt that reaches the limit locks and
+  audits (`auth.service.ts`). A new test sends 12 parallel wrong passwords and expects one lock;
+  it fails on the old code.
+- **Web pages had no browser-protection headers:** `vercel.json` now sends a Content Security
+  Policy (scripts only from the site; uploads to Vercel Blob allowed), `frame-ancestors 'none'` and
+  `X-Frame-Options: DENY` (no clickjacking), `nosniff`, a referrer policy, a permissions policy and
+  HSTS on every page. API responses keep helmet's headers. Checked in a browser on a built copy
+  behind the same headers: every admin, trainer and student page, charts, Odia fonts and the
+  public verify page load with no policy violations, and the site no longer shows inside
+  another site's frame.
+- **`body-parser` 1.20.8 → 1.20.9** (lockfile only; Express's range allowed it): fixes a
+  denial-of-service flaw with compressed request bodies.
+
+### Deviations from BRD/TAD (and why)
+- None: TAD §9 already requires the lockout and the security headers.
+
+### Known gaps / follow-ups
+- Low findings left as they are: anyone can lock the single admin account with 5 wrong guesses
+  (add a second admin); an over-1 MB request answers 500 instead of 413; `%` and `_` act as
+  wildcards in the admin user search; all seeded accounts share one demo password.
+- Remaining audit warnings don't reach this app: React Router's open redirect needs a redirect
+  link the app doesn't have; `uuid` is only in local node-cron; the flawed Zod is only inside
+  other libraries.
+- The headers can only be confirmed on the live site after deploy (`curl -I` the home page).
+
+### Definition of done
+- [x] lint · [x] typecheck · [x] tests (481 with the seed clean-up) · [x] openapi.yaml (no endpoint) · [x] seed (no
+  change) · [x] strings externalized (no UI change)
+
+---
+
 ## After Sprint 13 — Removing the old seeded students 041–060 (2026-11-02)
 
 ### Built

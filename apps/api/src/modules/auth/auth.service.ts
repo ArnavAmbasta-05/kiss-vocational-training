@@ -94,7 +94,6 @@ export async function login(input: LoginInput, ip?: string): Promise<IssuedSessi
       ...meSelect,
       passwordHash: true,
       isActive: true,
-      failedLoginCount: true,
       lockedUntil: true,
     },
   });
@@ -111,7 +110,7 @@ export async function login(input: LoginInput, ip?: string): Promise<IssuedSessi
 
   const passwordOk = await verifyPassword(input.password, user.passwordHash);
   if (!passwordOk) {
-    await recordFailedLogin(user.id, user.failedLoginCount, ip);
+    await recordFailedLogin(user.id, ip);
     throw invalidCredentials();
   }
   // Deactivated accounts get the same answer as a wrong password.
@@ -127,18 +126,26 @@ export async function login(input: LoginInput, ip?: string): Promise<IssuedSessi
   });
 }
 
-async function recordFailedLogin(userId: string, previousFailures: number, ip?: string) {
+async function recordFailedLogin(userId: string, ip?: string) {
   const { 'auth.maxFailedLogins': maxFailed, 'auth.lockMinutes': lockMinutes } =
     await settings.getMany(['auth.maxFailedLogins', 'auth.lockMinutes'] as const);
-  const failures = previousFailures + 1;
+  // One atomic increment, so failed attempts sent at the same moment each count (a read-then-
+  // write let a burst of parallel guesses count as one and never lock the account).
+  const { failedLoginCount: failures } = await prisma().user.update({
+    where: { id: userId },
+    data: { failedLoginCount: { increment: 1 } },
+    select: { failedLoginCount: true },
+  });
+  if (failures < maxFailed) return;
 
-  if (failures < maxFailed) {
-    await prisma().user.update({ where: { id: userId }, data: { failedLoginCount: failures } });
-    return;
-  }
   const lockedUntil = new Date(Date.now() + lockMinutes * 60_000);
   await withAudit({ userId: null, ip }, async (tx, log) => {
-    await tx.user.update({ where: { id: userId }, data: { failedLoginCount: 0, lockedUntil } });
+    // Only the attempt that reaches the limit first locks and audits; the others find it reset.
+    const locked = await tx.user.updateMany({
+      where: { id: userId, failedLoginCount: { gte: maxFailed } },
+      data: { failedLoginCount: 0, lockedUntil },
+    });
+    if (locked.count === 0) return;
     await log({
       action: 'USER_LOCKED',
       entity: 'User',
