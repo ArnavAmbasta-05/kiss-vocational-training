@@ -2,7 +2,7 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import type { Role } from '@vtmp/shared';
 import { BootSpinner } from '../../components/BootSpinner';
 import { ForbiddenPage } from '../../pages/ForbiddenPage';
-import { ROLE_HOME, useAuth } from './context';
+import { useAuth } from './context';
 
 /** Signed-in users only; everyone else goes to /login and comes back afterwards. */
 export function RequireAuth() {
@@ -30,10 +30,4 @@ export function RequireRole({ roles }: { roles: Role[] }) {
   const { user } = useAuth();
   if (!user) return null;
   return roles.includes(user.role) ? <Outlet /> : <ForbiddenPage />;
-}
-
-/** "/" sends each role to its own dashboard. */
-export function RoleHomeRedirect() {
-  const { user } = useAuth();
-  return user ? <Navigate to={ROLE_HOME[user.role]} replace /> : null;
 }

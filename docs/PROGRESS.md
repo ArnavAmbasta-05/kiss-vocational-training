@@ -272,6 +272,34 @@ project rule (both below).
 
 ---
 
+## After Sprint 13 — A public front page (2026-11-02)
+
+- **Why:** the portal opened on a bare sign-in form. Visitors, examiners and employers had nothing
+  telling them what it is or how to check a certificate.
+- **What:** `/` is now a front page (`pages/HomePage.tsx`) for anyone not signed in. Signed-in
+  users are sent to their own dashboard, as before. It has:
+  - a header with the mark, the language switcher and **Sign in**;
+  - a serif headline ("Skills you can prove. A future you can build.") and an illustrated,
+    decorative certificate with a seal, a QR and a "Verified by KISS" chip;
+  - an employer box: type a certificate ID → the standalone `/verify/<ID>` page;
+  - the journey (Apply → Train → Get certified → Show your skills);
+  - three promises (your language, any phone, help before you fall behind);
+  - a footer.
+- **Sign-in page:** the same header and footer, a two-column layout and a "Checking a certificate?"
+  link. Labels and behaviour are unchanged.
+- **Assets:** no photos or web fonts. Line icons are inline SVG, and the headline serif is
+  Georgia (on every device). The `home` translations load with the app (en, hi, or), so the
+  header never suspends.
+- **No live statistics on purpose:** the team chose a page that reads well to any visitor over
+  KISS-specific numbers.
+- **Tests:** the smoke tests cover landing on the front page and signing in from it, the
+  certificate box (invalid ID error, then `/verify/ZZZZZZZZZZZZZZZZ`), and signed-in users
+  skipping it. axe covers `/`.
+- **Screenshots:** all 27 retaken from a fresh seed, with the new student names, plus
+  `public-home.jpg` and `public-home-full.jpg`.
+
+---
+
 ## After Sprint 13 — Medium-severity security fixes (2026-11-02)
 
 A security check of the deployed code (run locally in production mode, since the live site

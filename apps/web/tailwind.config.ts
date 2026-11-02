@@ -20,6 +20,15 @@ export default {
         },
       },
       fontFamily: {
+        // Headlines on the public pages: a warm serif already on every device (no download).
+        display: [
+          'Georgia',
+          '"Iowan Old Style"',
+          '"Times New Roman"',
+          '"Noto Sans Oriya"',
+          '"Noto Sans Devanagari"',
+          'serif',
+        ],
         sans: [
           'system-ui',
           '-apple-system',

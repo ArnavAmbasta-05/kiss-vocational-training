@@ -1,0 +1,72 @@
+{
+  "meta": {
+    "title": "Vocational training"
+  },
+  "brand": {
+    "subtitle": "Vocational Training"
+  },
+  "nav": {
+    "signIn": "Sign in",
+    "verify": "Verify a certificate"
+  },
+  "footer": {
+    "label": "Site links"
+  },
+  "hero": {
+    "eyebrow": "Kalinga Institute of Social Sciences",
+    "title1": "Skills you can prove.",
+    "title2": "A future you can build.",
+    "body": "Apply for a trade, train with your trainers, and earn a certificate any employer can check in seconds, with every skill you master on your own Skill Passport.",
+    "signIn": "Sign in",
+    "verify": "Verify a certificate",
+    "art": {
+      "title": "Certificate of training",
+      "verified": "Verified by KISS"
+    }
+  },
+  "verify": {
+    "title": "Hiring a KISS trainee?",
+    "body": "Check any certificate in seconds. Type the ID printed under its QR code, or scan the code with your phone. No account needed.",
+    "label": "Certificate ID",
+    "placeholder": "For example 3AP6V42D7P0EFWF3",
+    "submit": "Verify",
+    "hint": "Shows only the name, course, grade, date and whether it is valid.",
+    "invalid": "Enter the certificate ID: letters and numbers, at least 8."
+  },
+  "journey": {
+    "eyebrow": "How it works",
+    "title": "From your first day to your first job",
+    "apply": {
+      "title": "Apply",
+      "body": "Choose a training cycle and up to three courses in the order you want them."
+    },
+    "train": {
+      "title": "Train",
+      "body": "Follow your attendance, marks and skills as your trainers record them, with help when you need it."
+    },
+    "certify": {
+      "title": "Get certified",
+      "body": "Finish the course and receive a certificate with a QR code that anyone can verify."
+    },
+    "passport": {
+      "title": "Show your skills",
+      "body": "Share your Skill Passport with employers and find internships and jobs that match."
+    }
+  },
+  "promises": {
+    "title": "Made for every learner",
+    "language": {
+      "title": "In your language",
+      "body": "Everything in English, ଓଡ଼ିଆ and हिन्दी. Switch any time."
+    },
+    "phone": {
+      "title": "On any phone",
+      "body": "Light and fast, even on a slow mobile connection."
+    },
+    "support": {
+      "title": "Help before you fall behind",
+      "body": "Trainers see early when someone needs support, and act on it together."
+    },
+    "cta": "Sign in to your account"
+  }
+}

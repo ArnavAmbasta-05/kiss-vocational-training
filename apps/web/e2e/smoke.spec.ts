@@ -5,11 +5,30 @@ import { test, expect } from '@playwright/test';
 import { ACCOUNTS, expectNoSeriousA11yViolations, signIn } from './helpers';
 
 test.describe('app shell smoke', () => {
-  test('signed-out visitors land on the login page', async ({ page }) => {
+  test('signed-out visitors land on the front page and can sign in from it', async ({ page }) => {
     await page.goto('/');
-    await expect(page).toHaveURL(/\/login/);
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Sign in');
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Skills you can prove.');
     await expectNoSeriousA11yViolations(page);
+    await page.getByRole('banner').getByRole('link', { name: 'Sign in' }).click();
+    await expect(page).toHaveURL(/\/login$/);
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Sign in');
+  });
+
+  test('the front page checks a certificate ID and opens the verify page', async ({ page }) => {
+    await page.goto('/');
+    const code = page.getByLabel('Certificate ID');
+    await page.getByRole('button', { name: 'Verify', exact: true }).click();
+    await expect(page.getByRole('alert')).toContainText('Enter the certificate ID');
+    await code.fill(' zzzz zzzz zzzz zzzz ');
+    await page.getByRole('button', { name: 'Verify', exact: true }).click();
+    await expect(page).toHaveURL(/\/verify\/ZZZZZZZZZZZZZZZZ$/);
+  });
+
+  test('signed-in users skip the front page', async ({ page }) => {
+    await signIn(page, ACCOUNTS.STUDENT);
+    await page.goto('/');
+    await expect(page).toHaveURL('/student');
   });
 
   test('skip link moves focus to the main content', async ({ page }) => {

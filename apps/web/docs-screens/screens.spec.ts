@@ -59,6 +59,13 @@ test('prepare: issue one certificate, run the daily risk check, refresh analytic
 });
 
 test('public pages', async ({ page }) => {
+  await shot(page, 'public-home', '/');
+  await page.screenshot({
+    path: join(OUT, 'public-home-full.jpg'),
+    type: 'jpeg',
+    quality: 70,
+    fullPage: true,
+  });
   await shot(page, 'public-login', '/login');
   await shot(page, 'public-verify', `/verify/${publicCode}`);
 });
