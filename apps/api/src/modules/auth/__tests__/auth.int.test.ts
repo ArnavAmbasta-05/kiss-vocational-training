@@ -78,6 +78,29 @@ describe('POST /auth/login (TC-01)', () => {
     ).toBe(1);
   });
 
+  it('counts failures sent at the same moment, so a burst still locks (TC-02, NFR-09)', async () => {
+    const user = await createLoginUser(prisma(), Role.STUDENT);
+    // Each request gets its own address, so the per-IP limit doesn't hide the account lock.
+    const statuses = await Promise.all(
+      Array.from({ length: 12 }, (_, i) =>
+        request(app)
+          .post('/api/v1/auth/login')
+          .set('X-Forwarded-For', `198.51.100.${i + 1}`)
+          .send({ email: user.email, password: `Wrong-guess-${i}` })
+          .then((r) => r.status),
+      ),
+    );
+    expect(statuses.every((s) => s === 401)).toBe(true);
+
+    const row = await prisma().user.findUniqueOrThrow({ where: { id: user.id } });
+    expect(row.lockedUntil!.getTime()).toBeGreaterThan(Date.now());
+    expect((await login(app, user.email, TEST_PASSWORD)).res.status).toBe(401);
+    // One lock, audited once, however many attempts crossed the limit together.
+    expect(
+      await prisma().auditLog.count({ where: { action: 'USER_LOCKED', entityId: user.id } }),
+    ).toBe(1);
+  });
+
   it('resets the failure count after a successful login', async () => {
     const user = await createLoginUser(prisma(), Role.STUDENT);
     for (let i = 0; i < 4; i++) await login(app, user.email, 'nope');
